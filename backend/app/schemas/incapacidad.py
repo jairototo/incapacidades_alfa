@@ -1,0 +1,263 @@
+"""
+Schemas Pydantic para Incapacidad.
+
+Soporta dos tipos:
+- ARL: Requiere empleado_id y empresa_id, puede tener siniestro
+- SALUD: Requiere afiliado_id, no tiene empleado/empresa/siniestro
+"""
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Optional
+from uuid import UUID
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
+
+
+class IncapacidadBase(BaseModel):
+    """Schema base de Incapacidad."""
+    tipo: TipoIncapacidad
+    subtipo: Optional[str] = None
+    fecha_inicio: date
+    fecha_fin: date
+    diagnostico_cie10: Optional[str] = Field(None, max_length=10)
+    descripcion_diagnostico: Optional[str] = None
+    eps: Optional[str] = Field(None, max_length=255)
+    ips: Optional[str] = Field(None, max_length=255)
+    valor_dia: Optional[Decimal] = Field(None, ge=0, description="Valor por día de incapacidad")
+    valor_total: Optional[Decimal] = Field(None, ge=0, description="Valor total de la incapacidad")
+    observaciones: Optional[str] = None
+    prioridad: Prioridad = Prioridad.NORMAL
+    
+    @field_validator("fecha_fin")
+    @classmethod
+    def validate_fechas(cls, v, info):
+        if "fecha_inicio" in info.data and v < info.data["fecha_inicio"]:
+            raise ValueError("fecha_fin debe ser mayor o igual a fecha_inicio")
+        return v
+
+
+class IncapacidadARLCreate(IncapacidadBase):
+    """Schema para crear incapacidad de tipo ARL (empleado de empresa)."""
+    tipo: TipoIncapacidad = Field(default=TipoIncapacidad.ARL, frozen=True)
+    empleado_id: UUID = Field(..., description="ID del empleado")
+    empresa_id: UUID = Field(..., description="ID de la empresa")
+    siniestro_id: Optional[UUID] = Field(None, description="ID del siniestro laboral")
+    numero_siniestro: Optional[str] = Field(None, max_length=50, description="Número del siniestro")
+
+
+class IncapacidadSaludCreate(IncapacidadBase):
+    """Schema para crear incapacidad de tipo SALUD (afiliado con póliza)."""
+    tipo: TipoIncapacidad = Field(default=TipoIncapacidad.SALUD, frozen=True)
+    afiliado_id: UUID = Field(..., description="ID del afiliado con póliza")
+
+
+class IncapacidadCreate(IncapacidadBase):
+    """Schema genérico para crear incapacidad (valida tipo)."""
+    empleado_id: Optional[UUID] = Field(None, description="ID del empleado (requerido para ARL)")
+    empresa_id: Optional[UUID] = Field(None, description="ID de la empresa (requerido para ARL)")
+    afiliado_id: Optional[UUID] = Field(None, description="ID del afiliado (requerido para SALUD)")
+    siniestro_id: Optional[UUID] = Field(None, description="ID del siniestro (opcional para ARL)")
+    numero_siniestro: Optional[str] = Field(None, max_length=50, description="Número del siniestro")
+    
+    @model_validator(mode='after')
+    def validate_tipo_relacion(self):
+        """Valida que los campos requeridos estén presentes según el tipo."""
+        if self.tipo == TipoIncapacidad.ARL:
+            if not self.empleado_id or not self.empresa_id:
+                raise ValueError("empleado_id y empresa_id son obligatorios para incapacidades de tipo ARL")
+            if self.afiliado_id:
+                raise ValueError("afiliado_id no debe estar presente en incapacidades de tipo ARL")
+        elif self.tipo == TipoIncapacidad.SALUD:
+            if not self.afiliado_id:
+                raise ValueError("afiliado_id es obligatorio para incapacidades de tipo SALUD")
+            if self.empleado_id or self.empresa_id or self.siniestro_id or self.numero_siniestro:
+                raise ValueError("empleado_id, empresa_id y siniestro no deben estar presentes en incapacidades de tipo SALUD")
+        return self
+
+
+class IncapacidadUpdate(BaseModel):
+    """Schema para actualizar incapacidad."""
+    siniestro_id: Optional[UUID] = None
+    numero_siniestro: Optional[str] = None
+    subtipo: Optional[str] = None
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
+    diagnostico_cie10: Optional[str] = None
+    descripcion_diagnostico: Optional[str] = None
+    eps: Optional[str] = None
+    ips: Optional[str] = None
+    observaciones: Optional[str] = None
+    prioridad: Optional[Prioridad] = None
+
+
+class IncapacidadAuditar(BaseModel):
+    """Schema para auditar incapacidad."""
+    accion: str = Field(..., description="SOLICITAR_INFORMACION, APROBAR_PARA_PAGO, RECHAZAR")
+    observaciones: str = Field(..., min_length=10)
+    
+    @field_validator("accion")
+    @classmethod
+    def validate_accion(cls, v):
+        acciones_validas = ["SOLICITAR_INFORMACION", "APROBAR_PARA_PAGO", "RECHAZAR"]
+        if v not in acciones_validas:
+            raise ValueError(f"Acción debe ser una de: {', '.join(acciones_validas)}")
+        return v
+
+
+class IncapacidadResponder(BaseModel):
+    """Schema para responder observaciones."""
+    respuesta: str = Field(..., min_length=10)
+
+
+class EmpleadoSimple(BaseModel):
+    """Schema simplificado de empleado."""
+    id: UUID
+    nombre_completo: str
+    documento: str
+    
+    model_config = {"from_attributes": True}
+
+
+class AfiliadoSimple(BaseModel):
+    """Schema simplificado de afiliado."""
+    id: UUID
+    nombre_completo: str
+    numero_poliza: str
+    documento: str
+    
+    model_config = {"from_attributes": True}
+
+
+class EmpresaSimple(BaseModel):
+    """Schema simplificado de empresa."""
+    id: UUID
+    razon_social: str
+    nit: str
+    
+    model_config = {"from_attributes": True}
+
+
+class UsuarioSimple(BaseModel):
+    """Schema simplificado de usuario."""
+    id: UUID
+    nombre_completo: str
+    rol: str
+    
+    model_config = {"from_attributes": True}
+
+
+class DocumentoSimple(BaseModel):
+    """Schema simplificado de documento."""
+    id: UUID
+    tipo_documento: str
+    nombre_archivo: str
+    mime_type: str
+    tamanio_bytes: int
+    created_at: datetime
+    download_url: str
+    
+    model_config = {"from_attributes": True}
+
+
+class HistorialEstadoSchema(BaseModel):
+    """Schema de historial de estado."""
+    estado_anterior: Optional[str]
+    estado_nuevo: str
+    observacion: Optional[str]
+    cambiado_por: str
+    fecha: datetime
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadInDB(IncapacidadBase):
+    """Schema de incapacidad completa desde DB."""
+    id: UUID
+    numero: str
+    empleado_id: Optional[UUID]
+    empresa_id: Optional[UUID]
+    afiliado_id: Optional[UUID]
+    siniestro_id: Optional[UUID]
+    numero_siniestro: Optional[str]
+    dias_totales: int
+    valor_dia: Optional[Decimal]
+    valor_total: Optional[Decimal]
+    estado: EstadoIncapacidad
+    motivo_rechazo: Optional[str]
+    radicado_por_id: Optional[UUID]
+    auditado_por_id: Optional[UUID]
+    aprobado_por_id: Optional[UUID]
+    fecha_radicacion: datetime
+    fecha_auditoria: Optional[datetime]
+    fecha_aprobacion: Optional[datetime]
+    fecha_rechazo: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadResponse(IncapacidadInDB):
+    """Schema de respuesta de incapacidad con relaciones."""
+    empleado: Optional[EmpleadoSimple] = None
+    empresa: Optional[EmpresaSimple] = None
+    afiliado: Optional[AfiliadoSimple] = None
+    radicado_por: Optional[UsuarioSimple]
+    auditado_por: Optional[UsuarioSimple]
+    aprobado_por: Optional[UsuarioSimple]
+    documentos: list[DocumentoSimple] = []
+    historial: list[HistorialEstadoSchema] = []
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadListResponse(BaseModel):
+    """Schema de lista de incapacidades."""
+    id: UUID
+    numero: str
+    empleado: Optional[EmpleadoSimple] = None
+    empresa: Optional[EmpresaSimple] = None
+    afiliado: Optional[AfiliadoSimple] = None
+    tipo: TipoIncapacidad
+    subtipo: Optional[str]
+    fecha_inicio: date
+    fecha_fin: date
+    dias_totales: int
+    diagnostico_cie10: Optional[str]
+    descripcion_diagnostico: Optional[str]
+    valor_total: Optional[Decimal]
+    estado: EstadoIncapacidad
+    prioridad: Prioridad
+    fecha_radicacion: datetime
+    radicado_por: Optional[str]
+    total_documentos: int
+    
+    model_config = {"from_attributes": True}
+
+
+class EstadisticasIncapacidades(BaseModel):
+    """Schema de estadísticas de incapacidades."""
+    
+    class Resumen(BaseModel):
+        total_incapacidades: int
+        total_dias: int
+        valor_total: Decimal
+        promedio_dias: float
+    
+    class PorMes(BaseModel):
+        mes: str
+        total: int
+        valor: Decimal
+    
+    class TopEmpresa(BaseModel):
+        empresa: str
+        nit: str
+        total: int
+        valor: Decimal
+    
+    resumen: Resumen
+    por_estado: dict[str, int]
+    por_tipo: dict[str, int]
+    por_mes: list[PorMes]
+    top_empresas: list[TopEmpresa]
