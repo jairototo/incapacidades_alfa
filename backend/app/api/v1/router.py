@@ -13,7 +13,8 @@ from app.api.v1.endpoints import (
     siniestros,
     historial_estado,
     documentos,
-    storage
+    storage,
+    ordenes_pago
 )
 
 api_router = APIRouter()
@@ -29,3 +30,4 @@ api_router.include_router(siniestros.router, prefix="/siniestros", tags=["sinies
 api_router.include_router(historial_estado.router, prefix="/historial", tags=["historial"])
 api_router.include_router(documentos.router, prefix="/documentos", tags=["documentos"])
 api_router.include_router(storage.router, prefix="/storage", tags=["storage"])
+api_router.include_router(ordenes_pago.router, prefix="/ordenes-pago", tags=["ordenes-pago"])
