@@ -119,3 +119,103 @@ export function formatTelefono(telefono: string): string {
 export function cleanTelefono(telefono: string): string {
   return telefono.replace(/\D/g, '');
 }
+
+// ============================================================================
+// PASO 3: DATOS INCAPACIDAD
+// ============================================================================
+
+/**
+ * Schema base para datos de incapacidad (campos comunes ARL y SALUD)
+ */
+export const datosIncapacidadBaseSchema = z.object({
+  fecha_inicio: z.date({
+    message: 'Debe seleccionar la fecha de inicio',
+  }),
+  fecha_fin: z.date({
+    message: 'Debe seleccionar la fecha de fin',
+  }),
+  dias_totales: z.number().int().positive('Los días totales deben ser un número positivo'),
+  diagnostico_cie10: z
+    .string()
+    .max(10, 'El código CIE-10 no puede exceder 10 caracteres')
+    .regex(/^[A-Z]\d{2}(\.\d{1,2})?$/, 'Formato CIE-10 inválido. Ejemplo: A00, A00.1')
+    .optional()
+    .or(z.literal('')),
+  descripcion_diagnostico: z
+    .string()
+    .max(500, 'La descripción no puede exceder 500 caracteres')
+    .optional()
+    .or(z.literal('')),
+  ips: z
+    .string()
+    .max(255, 'El nombre de la IPS no puede exceder 255 caracteres')
+    .optional()
+    .or(z.literal('')),
+  eps: z
+    .string()
+    .max(255, 'El nombre de la EPS no puede exceder 255 caracteres')
+    .optional()
+    .or(z.literal('')),
+}).refine(
+  (data) => data.fecha_fin >= data.fecha_inicio,
+  {
+    message: 'La fecha de fin debe ser igual o posterior a la fecha de inicio',
+    path: ['fecha_fin'],
+  }
+).refine(
+  (data) => data.dias_totales <= 180,
+  {
+    message: 'El período de incapacidad no puede exceder 180 días',
+    path: ['dias_totales'],
+  }
+);
+
+/**
+ * Schema para datos de incapacidad ARL
+ * Incluye campo específico: tipo_enfermedad
+ */
+export const datosIncapacidadARLSchema = datosIncapacidadBaseSchema.extend({
+  tipo: z.literal('ARL'),
+  tipo_enfermedad: z.enum(['ACCIDENTE_TRABAJO', 'ENFERMEDAD_LABORAL', 'ACCIDENTE_TRAYECTO'], {
+    message: 'Seleccione un tipo de enfermedad válido',
+  }),
+});
+
+/**
+ * Schema para datos de incapacidad SALUD
+ * Incluye campo específico: subtipo
+ */
+export const datosIncapacidadSaludSchema = datosIncapacidadBaseSchema.extend({
+  tipo: z.literal('SALUD'),
+  subtipo: z.enum(['ENFERMEDAD_GENERAL', 'MATERNIDAD', 'LICENCIA'], {
+    message: 'Seleccione un subtipo válido',
+  }),
+});
+
+/**
+ * Union type para datos de incapacidad (discriminated union)
+ */
+export const datosIncapacidadSchema = z.discriminatedUnion('tipo', [
+  datosIncapacidadARLSchema,
+  datosIncapacidadSaludSchema,
+]);
+
+// ============================================================================
+// TYPES - PASO 3
+// ============================================================================
+
+export type DatosIncapacidadBase = z.infer<typeof datosIncapacidadBaseSchema>;
+export type DatosIncapacidadARL = z.infer<typeof datosIncapacidadARLSchema>;
+export type DatosIncapacidadSalud = z.infer<typeof datosIncapacidadSaludSchema>;
+export type DatosIncapacidad = z.infer<typeof datosIncapacidadSchema>;
+
+// ============================================================================
+// HELPER FUNCTIONS - PASO 3
+// ============================================================================
+
+/**
+ * Obtiene el schema apropiado según el tipo de incapacidad
+ */
+export function getDatosIncapacidadSchema(tipo: 'ARL' | 'SALUD') {
+  return tipo === 'ARL' ? datosIncapacidadARLSchema : datosIncapacidadSaludSchema;
+}

@@ -83,16 +83,15 @@ Teléfono: [__________]
 
 **Paso 3: Datos de la Incapacidad**
 ```
-Fecha de inicio: [DD/MM/YYYY]
-Fecha de fin: [DD/MM/YYYY]
+Fecha de inicio: [DD/MM/YYYY] (requerido)
+Fecha de fin: [DD/MM/YYYY] (requerido)
 Días totales: [Auto-calculado]
 
-Diagnóstico CIE-10: [Búsqueda con autocomplete]
-Descripción: [Textarea]
+Diagnóstico CIE-10: [__________] (opcional, máx 10 caracteres)
+Descripción del diagnóstico: [Textarea] (opcional, máx 500 caracteres)
 
-Nombre del médico: [__________]
-IPS que emite: [__________]
-EPS: [__________]
+IPS: [__________] (opcional, Institución Prestadora de Salud)
+EPS: [__________] (opcional, Entidad Promotora de Salud)
 
 [← Atrás]  [Siguiente →]
 ```
