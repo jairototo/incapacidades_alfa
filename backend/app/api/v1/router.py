@@ -14,7 +14,8 @@ from app.api.v1.endpoints import (
     historial_estado,
     documentos,
     storage,
-    ordenes_pago
+    ordenes_pago,
+    usuarios
 )
 
 api_router = APIRouter()
@@ -22,6 +23,7 @@ api_router = APIRouter()
 # Include endpoint routers
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(usuarios.router, prefix="/usuarios", tags=["usuarios"])
 api_router.include_router(afiliados.router, prefix="/afiliados", tags=["afiliados"])
 api_router.include_router(empresas.router, prefix="/empresas", tags=["empresas"])
 api_router.include_router(empleados.router, prefix="/empleados", tags=["empleados"])

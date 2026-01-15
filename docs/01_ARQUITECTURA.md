@@ -11,15 +11,21 @@ Sistema de gestión de incapacidades para aseguradora con cobertura de ARL y pó
 │                        CAPA DE PRESENTACIÓN                      │
 ├──────────────────────────────┬──────────────────────────────────┤
 │     Portal Externo           │      Sistema Interno             │
-│   (React/Vue/Angular)        │    (React/Vue/Angular)           │
+│   (React 18 + TypeScript)    │    (React 18 + TypeScript)       │
 │                              │                                  │
-│  - Radicación                │  - Auditoría                     │
-│  - Consultas                 │  - Aprobación/Rechazo            │
-│  - Adjuntar docs             │  - Órdenes de pago               │
-│                              │  - Control de roles              │
+│  - Radicación (sin auth)     │  - Autenticación JWT             │
+│  - Consulta por número       │  - Dashboard auditoría           │
+│  - Upload documentos         │  - Workflow incapacidades        │
+│  - Validación en tiempo real │  - Órdenes de pago               │
+│                              │  - Gestión usuarios/roles        │
+│                              │  - Reportes y analytics          │
+│                              │  - Exportación datos             │
+│                              │                                  │
+│  Stack: Vite, TailwindCSS,   │  Stack: +Zustand, TanStack       │
+│  React Query, Zod, Shadcn/ui │  Table, Recharts, Socket.io      │
 └──────────────────────────────┴──────────────────────────────────┘
                               ▲
-                              │ HTTPS/REST
+                              │ HTTPS/REST + WebSockets
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        API GATEWAY                               │
@@ -113,23 +119,252 @@ Sistema de gestión de incapacidades para aseguradora con cobertura de ARL y pó
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## 2.1 Detalle de Capa de Presentación
+
+### Portal Externo (Público)
+
+**Propósito**: Interfaz para radicación y consulta de incapacidades sin autenticación.
+
+**Tecnologías**:
+- React 18 + TypeScript
+- Vite (build tool)
+- TailwindCSS + Shadcn/ui (UI framework)
+- React Query (data fetching)
+- React Hook Form + Zod (formularios y validación)
+- React Router v6 (routing)
+- Axios (HTTP client)
+
+**Funcionalidades**:
+- Wizard de radicación de incapacidades (5 pasos)
+- Consulta de estado por número o documento
+- Upload de documentos (PDF, JPG, PNG hasta 10MB)
+- Validaciones en tiempo real
+- Diseño responsive (mobile-first)
+
+**Despliegue**: Vercel/Netlify (JAMstack)
+
+---
+
+### Sistema Interno (Privado)
+
+**Propósito**: Dashboard de auditoría y gestión completa para usuarios internos.
+
+**Tecnologías**:
+- React 18 + TypeScript
+- Vite (build tool)
+- TailwindCSS + Shadcn/ui
+- Zustand (state management global)
+- React Query (server state)
+- TanStack Table (tablas avanzadas)
+- Recharts (gráficas y dashboards)
+- React Hook Form + Zod
+- Socket.io client (notificaciones real-time)
+
+**Funcionalidades**:
+- Autenticación JWT con refresh tokens
+- Dashboard con métricas y KPIs
+- Gestión completa de incapacidades (CRUD + workflow)
+- Auditoría de incapacidades (aprobar/rechazar/observar)
+- Gestión de órdenes de pago
+- CRUD de usuarios, empresas, empleados, afiliados
+- Reportes personalizados con filtros
+- Exportación a Excel y PDF
+- Sistema de permisos RBAC por rol
+- Notificaciones en tiempo real
+
+**Roles de Usuario**:
+- ADMIN: Acceso completo
+- AUDITOR: Auditoría de incapacidades, reportes
+- APROBADOR: Aprobación de órdenes de pago
+- EMPRESA: Consulta y radicación
+- EMPLEADO: Consulta propia
+- READONLY: Solo lectura
+
+**Despliegue**: Vercel/Netlify + CDN
+
+---
+
+### Arquitectura de Componentes Compartidos
+
+**Library**: `@incapacidades/ui` (monorepo en Fase 3)
+
+**Componentes Base (Shadcn/ui)**:
+- Button, Input, Select, Textarea
+- Card, Dialog, Dropdown Menu
+- Table, Badge, Alert, Toast
+
+**Componentes Personalizados**:
+- FileUploader (drag & drop, validación)
+- AutocompleteInput (búsqueda con debounce)
+- DateRangePicker
+- DataTable (genérico, sortable, paginado)
+- Pagination (server-side)
+- StatsCard (métricas con iconos)
+- LoadingSpinner, EmptyState
+- TimelineEstados (historial visual)
+
+**Custom Hooks**:
+- useDebounce, usePagination
+- useLocalStorage, useMediaQuery
+- useAuth, usePermissions
+
+---
+
+### Integración Frontend-Backend
+
+**API Communication**:
+- Axios con interceptores para JWT
+- React Query para cache y sincronización
+- Refresh token automático en 401
+- Manejo centralizado de errores (422, 403, 500)
+
+**Validaciones**:
+- Client-side: Zod (UX inmediata)
+- Server-side: Pydantic (seguridad)
+
+**File Handling**:
+- Upload: FormData multipart
+- Download: Blob con presigned URLs
+- Progress tracking con onUploadProgress
+
+**Real-time** (Fase 3):
+- Socket.io para notificaciones
+- WebSockets para actualizaciones live
+
+---
+
+### Performance y Optimización
+
+**Code Splitting**:
+- Lazy loading de rutas con React.lazy
+- Dynamic imports para componentes pesados
+
+**Bundle Size**:
+- Initial bundle < 200KB (gzip)
+- Lazy routes < 100KB cada una
+- Tree-shaking automático con Vite
+
+**Caching Strategy**:
+- React Query: staleTime 5 minutos
+- Service Worker para assets estáticos (Fase 3)
+- CDN para imágenes y archivos públicos
+
+**Core Web Vitals**:
+- LCP < 2.5s
+- FID < 100ms
+- CLS < 0.1
+
+---
+
+### Seguridad Frontend
+
+**Autenticación**:
+- JWT almacenado en httpOnly cookies (ideal)
+- Refresh token rotation
+- Logout con revocación de tokens
+
+**Validación de Inputs**:
+- Sanitización de datos del usuario
+- XSS protection con React (escaping automático)
+- CSRF tokens en requests sensibles
+
+**Headers de Seguridad**:
+- Content Security Policy (CSP)
+- X-Content-Type-Options: nosniff
+- X-Frame-Options: DENY
+
+---
+
+### Testing Frontend
+
+**Pirámide de Testing**:
+```
+     /\
+    /E2E\      10% - Playwright (flujos críticos)
+   /------\
+  /Integr.\   20% - Testing Library (componentes + API)
+ /----------\
+/  Unitarios \ 70% - Vitest (lógica, hooks, utils)
+--------------
+```
+
+**Tools**:
+- Vitest + Testing Library (unit/integration)
+- Playwright (E2E)
+- MSW (Mock Service Worker para APIs)
+- Storybook (documentación de componentes)
+
+**Cobertura Mínima**:
+- Unitarios: 70%
+- Integración: 50%
+- E2E: Flujos críticos (radicación, login, auditoría)
+
+---
+
+### CI/CD Pipeline Frontend
+
+```
+Commit → Lint → TypeCheck → Tests → Build → E2E → Deploy
+  ↓       ↓         ↓          ↓       ↓      ↓       ↓
+ Git   ESLint   tsc    Vitest   Vite  Playwright Vercel
+```
+
+**Environments**:
+- `feature/*` → Preview deployment
+- `develop` → Staging
+- `main` → Production (manual approval)
+
+---
+
+### Accesibilidad (A11y)
+
+**Estándar**: WCAG 2.1 Nivel AA
+
+**Checklist**:
+- Contraste de color 4.5:1
+- Navegación completa por teclado
+- ARIA labels en elementos interactivos
+- Focus visible en todos los controles
+- Textos alternativos en imágenes
+- Estructura semántica HTML5
+- Soporte para screen readers
+
+**Tools**:
+- eslint-plugin-jsx-a11y (linting)
+- axe-core (testing)
+- Lighthouse (auditoría)
+
+---
+
+### Internacionalización (i18n)
+
+**Fase 1**: Solo español (Colombia)
+**Fase 3**: Español + Inglés con react-i18next
+
+---
+
 ## 3. Patrones Arquitectónicos
 
-### 3.1 Clean Architecture / Hexagonal Architecture
+### 3.1 Clean Architecture / Hexagonal Architecture (Backend)
 - **Domain Layer**: Entidades de negocio, reglas de dominio
 - **Application Layer**: Casos de uso, servicios de aplicación
 - **Infrastructure Layer**: Implementaciones concretas (DB, APIs)
 - **Presentation Layer**: Controllers, schemas de API
 
-### 3.2 Repository Pattern
+### 3.2 Component-Driven Development (Frontend)
+- **Atomic Design**: Átomos → Moléculas → Organismos → Templates → Páginas
+- **Composition over Inheritance**: Componentes reutilizables
+- **Container/Presenter Pattern**: Separación lógica/presentación
+
+### 3.3 Repository Pattern (Backend)
 - Abstracción del acceso a datos
 - Facilita testing y cambio de tecnología
 
-### 3.3 Dependency Injection
+### 3.4 Dependency Injection (Backend)
 - Inversión de dependencias
 - Mayor testabilidad
 
-### 3.4 CQRS (Command Query Responsibility Segregation)
+### 3.5 CQRS (Command Query Responsibility Segregation)
 - Separación de lecturas y escrituras
 - Optimización de queries complejos
 
