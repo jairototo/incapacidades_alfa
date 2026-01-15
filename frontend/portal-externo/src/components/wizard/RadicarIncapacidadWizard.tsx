@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Stepper } from './Stepper';
 import { TipoIncapacidadSelector } from './TipoIncapacidadSelector';
+import { DatosPersonalesForm } from './DatosPersonalesForm';
+import type { DatosPersonalesFormData } from './DatosPersonalesForm';
 
 export interface WizardFormData {
   tipo?: string;
+  datosPersonales?: DatosPersonalesFormData;
   // Campos para pasos futuros:
-  // empleado?: EmpleadoData;
-  // afiliado?: AfiliadoData;
   // incapacidad?: IncapacidadData;
   // documentos?: File[];
 }
@@ -22,6 +23,15 @@ export function RadicarIncapacidadWizard() {
   const handleTipoContinue = (tipo: string) => {
     setFormData({ ...formData, tipo });
     setCurrentStep(2);
+  };
+
+  const handleDatosPersonalesBack = () => {
+    setCurrentStep(1);
+  };
+
+  const handleDatosPersonalesContinue = (datosPersonales: DatosPersonalesFormData) => {
+    setFormData({ ...formData, datosPersonales });
+    setCurrentStep(3);
   };
 
   return (
@@ -42,20 +52,29 @@ export function RadicarIncapacidadWizard() {
           <Stepper currentStep={currentStep} totalSteps={5} />
         </div>
 
-        {/* Step Content */}
+        {/* Wizard Content */}
         <div className="bg-white rounded-lg shadow-sm p-8">
+          {/* Paso 1: Tipo de Incapacidad */}
           {currentStep === 1 && (
             <TipoIncapacidadSelector onContinue={handleTipoContinue} />
           )}
 
-          {currentStep === 2 && (
+          {/* Paso 2: Datos Personales */}
+          {currentStep === 2 && formData.tipo && (
+            <DatosPersonalesForm
+              tipo={formData.tipo as 'ARL' | 'SALUD'}
+              initialData={formData.datosPersonales}
+              onContinue={handleDatosPersonalesContinue}
+              onBack={handleDatosPersonalesBack}
+            />
+          )}
+
+          {/* Paso 3-5: Placeholder */}
+          {currentStep === 2 && !formData.tipo && (
             <div className="text-center py-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Paso 2: Datos Personales
               </h2>
-              <p className="text-gray-600 mb-4">
-                Tipo seleccionado: <span className="font-semibold">{formData.tipo}</span>
-              </p>
               <p className="text-gray-500 italic">
                 Este paso se implementará en la siguiente fase
               </p>

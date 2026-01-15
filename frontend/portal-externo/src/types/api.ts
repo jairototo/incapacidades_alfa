@@ -40,8 +40,20 @@ export type TipoDocumentoArchivo = typeof TipoDocumentoArchivo[keyof typeof Tipo
  * Interfaces de respuesta de la API
  */
 
+export interface EmpresaResponse {
+  id: string;
+  nit: string;
+  razon_social: string;
+  direccion: string | null;
+  telefono: string | null;
+  email: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EmpleadoResponse {
   id: string;
+  empresa_id: string; // ID de la empresa relacionada
   numero_documento: string;
   tipo_documento: TipoDocumento;
   nombres: string;
@@ -49,6 +61,7 @@ export interface EmpleadoResponse {
   email: string;
   telefono: string | null;
   cargo: string | null;
+  fecha_ingreso: string | null;
   created_at: string;
   updated_at: string;
 }
