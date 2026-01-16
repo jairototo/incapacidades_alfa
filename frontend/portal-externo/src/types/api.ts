@@ -133,6 +133,32 @@ export interface CreateAfiliadoDTO {
   fecha_nacimiento: string;
 }
 
+/**
+ * DTO unificado para crear incapacidad (ARL o SALUD)
+ * El backend diferencia por la presencia de empleado_id vs afiliado_id
+ */
+export interface CreateIncapacidadDTO {
+  tipo: TipoIncapacidad;
+  // Campos específicos ARL
+  empleado_id?: string;
+  empresa_id?: string;
+  siniestro_id?: string;
+  tipo_enfermedad?: string; // ACCIDENTE_TRABAJO, ENFERMEDAD_LABORAL, etc.
+  // Campos específicos SALUD
+  afiliado_id?: string;
+  subtipo?: string; // ENFERMEDAD_GENERAL, MATERNIDAD, etc.
+  // Campos comunes
+  fecha_inicio: string; // ISO date (YYYY-MM-DD)
+  fecha_fin: string; // ISO date (YYYY-MM-DD)
+  dias_totales: number;
+  diagnostico_cie10: string;
+  descripcion_diagnostico?: string;
+  valor_dia: number;
+  ips?: string;
+  eps?: string;
+  observaciones?: string;
+}
+
 export interface CreateIncapacidadARLDTO {
   empleado_id: string;
   empresa_id: string;
@@ -153,6 +179,15 @@ export interface CreateIncapacidadSaludDTO {
   descripcion_diagnostico?: string;
   valor_dia: number;
   observaciones?: string;
+}
+
+/**
+ * DTO para upload de documentos asociados a incapacidad
+ */
+export interface UploadDocumentoDTO {
+  incapacidad_id: string;
+  tipo_documento: TipoDocumentoArchivo;
+  archivo: File;
 }
 
 /**

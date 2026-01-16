@@ -113,6 +113,7 @@ export function DatosPersonalesForm({
       setValue('cargo', empleadoCompleto.cargo || '');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setValue('fecha_ingreso' as any, empleadoCompleto.fecha_ingreso || new Date().toISOString().split('T')[0]);
+      setValue('id', empleadoCompleto.id);
     }
   }, [empleadoCompleto?.id, tipo, setValue]);
 

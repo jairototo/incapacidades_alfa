@@ -49,6 +49,7 @@ export const datosPersonalesBaseSchema = z.object({
 export const datosPersonalesARLSchema = datosPersonalesBaseSchema.extend({
   tipo: z.literal('ARL'),
   empresa_id: z.string().uuid('Debe seleccionar una empresa válida'),
+  id: z.string().uuid('Debe seleccionar un empleado válido'),
   empresa_nombre: z.string().optional(), // Para mostrar en UI
   cargo: z
     .string()
@@ -156,6 +157,10 @@ export const datosIncapacidadBaseSchema = z.object({
     .max(255, 'El nombre de la EPS no puede exceder 255 caracteres')
     .optional()
     .or(z.literal('')),
+  valor_dia: z
+    .number()
+    .positive('El valor por día debe ser un número positivo')
+    .optional(),
 }).refine(
   (data) => data.fecha_fin >= data.fecha_inicio,
   {

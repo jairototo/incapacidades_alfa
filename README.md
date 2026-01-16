@@ -1,53 +1,117 @@
 # Sistema de Gestión de Incapacidades - Aseguradora
 
-Sistema integral para la gestión del ciclo completo de incapacidades en una aseguradora, desde la radicación hasta el pago, con cobertura de ARL y pólizas de salud.
+**Estado**: 🚀 En Desarrollo Avanzado (97% completado)  
+**Última actualización**: 16 de enero de 2026  
+**Versión**: 1.0.0-beta
+
+---
 
 ## 📋 Descripción del Proyecto
 
-Este sistema permite gestionar el flujo completo de incapacidades:
-1. **Radicación** por empresas o empleados
-2. **Auditoría** por personal interno
-3. **Aprobación/Rechazo** con observaciones
-4. **Generación de órdenes de pago**
-5. **Registro de pagos** efectuados
+Sistema integral para la gestión del ciclo completo de incapacidades médicas en aseguradoras colombianas, desde la radicación hasta el pago, con soporte diferenciado para:
+
+- **Incapacidades ARL** (Administradora de Riesgos Laborales) con gestión de siniestros/accidentes laborales
+- **Incapacidades SALUD** con gestión de afiliados y pólizas
+
+### Flujo Completo
+
+1. **Radicación** - Portal externo para empresas/empleados/afiliados
+2. **Auditoría** - Revisión por auditores internos
+3. **Aprobación/Observación/Rechazo** - Decisión con trazabilidad
+4. **Generación de Órdenes de Pago** - Automatizada desde incapacidades aprobadas
+5. **Pago** - Registro y seguimiento de pagos efectuados
+
+---
+
+## 🎯 Estado del Proyecto
+
+### Progreso Global: 97% 🚀
+
+| Componente | Progreso | Estado |
+|------------|----------|--------|
+| **Backend** | 100% | ✅ Completado |
+| **Frontend Fase 1** | 100% | ✅ Completado |
+| **Frontend Fase 2** | 0% | ⏳ Pendiente |
+| **Deployment** | 0% | ⏳ Pendiente |
+
+### Backend (100% ✅)
+- ✅ 11 modelos SQLAlchemy (Empresa, Empleado, Afiliado, Incapacidad, Siniestro, Documento, etc.)
+- ✅ 11 repositories con patrón Repository
+- ✅ 11 services con lógica de negocio
+- ✅ 66 endpoints REST documentados
+- ✅ Autenticación JWT con refresh tokens
+- ✅ RBAC con 6 roles (ADMIN, AUDITOR, APROBADOR, EMPRESA, EMPLEADO, READONLY)
+- ✅ Storage MinIO para documentos
+- ✅ Workflow de estados con validaciones
+- ✅ 149+ tests con 87% cobertura
+- ✅ Docker Compose con 8 servicios
+
+### Frontend - Portal Externo (100% ✅)
+- ✅ Wizard de radicación en 5 pasos
+- ✅ Integración completa con backend
+- ✅ Upload de documentos a MinIO
+- ✅ Validación robusta con Zod
+- ✅ 217 tests con >75% cobertura
+- ✅ Build optimizado (520 KB bundle)
+
+### Frontend - Sistema Interno (0% ⏳)
+- ⏳ Autenticación JWT (próximo)
+- ⏳ Dashboard de métricas
+- ⏳ CRUD de incapacidades
+- ⏳ Gestión de órdenes de pago
+- ⏳ Gestión de usuarios y roles
+
+**Ver detalles completos**: [`ESTADO_PROYECTO.md`](ESTADO_PROYECTO.md)
+
+---
 
 ## 🏗️ Arquitectura General
 
 ```
-┌─────────────────────┐         ┌─────────────────────┐
-│  Portal Externo     │         │  Sistema Interno    │
-│  (Empresas/         │         │  (Auditores/        │
-│   Empleados)        │         │   Administradores)  │
-└──────────┬──────────┘         └──────────┬──────────┘
-           │                               │
-           │         HTTPS/REST            │
-           └───────────────┬───────────────┘
-                           ▼
-                  ┌────────────────┐
-                  │   API Gateway  │
-                  └────────┬───────┘
-                           ▼
-                  ┌────────────────┐
-                  │   Backend API  │
-                  │   (FastAPI)    │
-                  └────────┬───────┘
-                           ▼
-           ┌───────────────┴────────────────┐
+┌──────────────────────┐         ┌──────────────────────┐
+│  PORTAL EXTERNO      │         │  SISTEMA INTERNO     │
+│  (Empresas/          │         │  (Auditores/         │
+│   Empleados/         │         │   Administradores)   │
+│   Afiliados) ✅      │         │  ⏳ En desarrollo     │
+│                      │         │                      │
+│  • Wizard 5 pasos    │         │  • Dashboard         │
+│  • Radicación        │         │  • CRUD              │
+│  • Upload docs       │         │  • Workflow          │
+│  • Confirmación      │         │  • Reportes          │
+└──────────┬───────────┘         └──────────┬───────────┘
            │                                │
-    ┌──────▼──────┐              ┌─────────▼────────┐
-    │  PostgreSQL │              │  MinIO/S3        │
-    │  Database   │              │  (Documentos)    │
-    └─────────────┘              └──────────────────┘
+           │         HTTPS/REST             │
+           └───────────────┬────────────────┘
+                           ▼
+                  ┌────────────────┐
+                  │   BACKEND API  │
+                  │   FastAPI ✅   │
+                  │                │
+                  │  • 66 Endpoints│
+                  │  • JWT Auth    │
+                  │  • RBAC        │
+                  │  • Workflow    │
+                  └────────┬───────┘
+                           ▼
+           ┌───────────────┴────────────────┬─────────────┐
+           │                                │             │
+    ┌──────▼──────┐              ┌─────────▼──────┐  ┌──▼─────┐
+    │ PostgreSQL  │              │    MinIO/S3    │  │ Redis  │
+    │ 15+ ✅      │              │  (Documentos)  │  │  7+ ✅ │
+    │ 11 tablas   │              │       ✅       │  │ Cache  │
+    └─────────────┘              └────────────────┘  └────────┘
 ```
+
+---
 
 ## 🛠️ Stack Tecnológico
 
 ### Backend
 - **Python 3.11+**
-- **FastAPI** - Framework web moderno y rápido
-- **SQLAlchemy 2.0** - ORM async
+- **FastAPI 0.109+** - Framework web moderno y rápido
+- **SQLAlchemy 2.0** - ORM async/await native
 - **PostgreSQL 15+** - Base de datos principal
-- **Redis** - Cache y sesiones
+- **Redis 7+** - Cache y sesiones
 - **Celery + RabbitMQ** - Tareas asíncronas
 - **MinIO/S3** - Almacenamiento de archivos
 
