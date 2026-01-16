@@ -3,15 +3,15 @@ import { Stepper } from './Stepper';
 import { TipoIncapacidadSelector } from './TipoIncapacidadSelector';
 import { DatosPersonalesForm } from './DatosPersonalesForm';
 import { DatosIncapacidadForm } from './DatosIncapacidadForm';
+import { DocumentosForm } from './DocumentosForm';
 import type { DatosPersonalesFormData } from './DatosPersonalesForm';
-import type { DatosIncapacidadARL, DatosIncapacidadSalud } from '@/schemas/radicacionSchema';
+import type { DatosIncapacidadARL, DatosIncapacidadSalud, DocumentosFormData } from '@/schemas/radicacionSchema';
 
 export interface WizardFormData {
   tipo?: string;
   datosPersonales?: DatosPersonalesFormData;
   datosIncapacidad?: DatosIncapacidadARL | DatosIncapacidadSalud;
-  // Campos para pasos futuros:
-  // documentos?: File[];
+  documentos?: DocumentosFormData;
 }
 
 /**
@@ -43,6 +43,17 @@ export function RadicarIncapacidadWizard() {
   const handleDatosIncapacidadContinue = (datosIncapacidad: DatosIncapacidadARL | DatosIncapacidadSalud) => {
     setFormData({ ...formData, datosIncapacidad });
     setCurrentStep(4);
+  };
+
+  const handleDocumentosBack = () => {
+    setCurrentStep(3);
+  };
+
+  const handleDocumentosContinue = (documentos: DocumentosFormData) => {
+    setFormData({ ...formData, documentos });
+    // TODO: Paso 5 - Resumen y envío
+    console.log('Wizard completado:', { ...formData, documentos });
+    setCurrentStep(5);
   };
 
   return (
@@ -90,6 +101,16 @@ export function RadicarIncapacidadWizard() {
             />
           )}
 
+          {/* Paso 4: Documentos */}
+          {currentStep === 4 && formData.tipo && (
+            <DocumentosForm
+              tipo={formData.tipo as 'ARL' | 'SALUD'}
+              initialData={formData.documentos}
+              onBack={handleDocumentosBack}
+              onContinue={handleDocumentosContinue}
+            />
+          )}
+
           {/* Paso 2: Fallback si no hay tipo */}
           {currentStep === 2 && !formData.tipo && (
             <div className="text-center py-12">
@@ -108,8 +129,8 @@ export function RadicarIncapacidadWizard() {
             </div>
           )}
 
-          {/* Pasos 4-5: Placeholder */}
-          {currentStep > 3 && (
+          {/* Pasos 5+: Placeholder */}
+          {currentStep > 4 && (
             <div className="text-center py-12">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Paso {currentStep}
@@ -118,10 +139,10 @@ export function RadicarIncapacidadWizard() {
                 Este paso se implementará en las siguientes fases
               </p>
               <button
-                onClick={() => setCurrentStep(3)}
+                onClick={() => setCurrentStep(4)}
                 className="mt-6 px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
               >
-                Volver al Paso 3
+                Volver al Paso 4
               </button>
             </div>
           )}

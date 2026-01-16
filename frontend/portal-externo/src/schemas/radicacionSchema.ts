@@ -207,6 +207,44 @@ export const datosIncapacidadSchema = z.discriminatedUnion('tipo', [
 export type DatosIncapacidadBase = z.infer<typeof datosIncapacidadBaseSchema>;
 export type DatosIncapacidadARL = z.infer<typeof datosIncapacidadARLSchema>;
 export type DatosIncapacidadSalud = z.infer<typeof datosIncapacidadSaludSchema>;
+
+// ========================================
+// PASO 4: DOCUMENTOS
+// ========================================
+
+export const documentosSchema = z.object({
+  incapacidad_medica: z
+    .array(z.instanceof(File))
+    .min(1, 'Debe cargar al menos un documento de incapacidad médica')
+    .max(1, 'Solo se permite un documento de incapacidad médica'),
+  historia_clinica: z
+    .array(z.instanceof(File))
+    .max(3, 'Máximo 3 archivos de historia clínica')
+    .optional()
+    .default([]),
+  soportes_adicionales: z
+    .array(z.instanceof(File))
+    .max(5, 'Máximo 5 archivos de soportes adicionales')
+    .optional()
+    .default([]),
+}).refine(
+  (data) => {
+    // Validar tamaño total (no más de 50 MB)
+    const totalSize = [
+      ...data.incapacidad_medica,
+      ...(data.historia_clinica || []),
+      ...(data.soportes_adicionales || []),
+    ].reduce((acc, file) => acc + file.size, 0);
+    
+    const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50 MB
+    return totalSize <= MAX_TOTAL_SIZE;
+  },
+  {
+    message: 'El tamaño total de todos los archivos no puede exceder 50 MB',
+  }
+);
+
+export type DocumentosFormData = z.infer<typeof documentosSchema>;
 export type DatosIncapacidad = z.infer<typeof datosIncapacidadSchema>;
 
 // ============================================================================
