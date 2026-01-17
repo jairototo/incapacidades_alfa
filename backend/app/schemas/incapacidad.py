@@ -5,6 +5,8 @@ Soporta dos tipos:
 - ARL: Requiere empleado_id y empresa_id, puede tener siniestro
 - SALUD: Requiere afiliado_id, no tiene empleado/empresa/siniestro
 """
+from __future__ import annotations
+
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
@@ -22,6 +24,8 @@ class IncapacidadBase(BaseModel):
     fecha_fin: date
     diagnostico_cie10: Optional[str] = Field(None, max_length=10)
     descripcion_diagnostico: Optional[str] = None
+    nombre_medico: Optional[str] = Field(None, max_length=200, description="Nombre del médico tratante")
+    registro_medico: Optional[str] = Field(None, max_length=50, description="Registro médico profesional")
     eps: Optional[str] = Field(None, max_length=255)
     ips: Optional[str] = Field(None, max_length=255)
     valor_dia: Optional[Decimal] = Field(None, ge=0, description="Valor por día de incapacidad")
@@ -42,6 +46,7 @@ class IncapacidadARLCreate(IncapacidadBase):
     tipo: TipoIncapacidad = Field(default=TipoIncapacidad.ARL, frozen=True)
     empleado_id: UUID = Field(..., description="ID del empleado")
     empresa_id: UUID = Field(..., description="ID de la empresa")
+    solicitante_id: Optional[UUID] = Field(None, description="ID del solicitante")
     siniestro_id: Optional[UUID] = Field(None, description="ID del siniestro laboral")
     numero_siniestro: Optional[str] = Field(None, max_length=50, description="Número del siniestro")
 
@@ -50,6 +55,7 @@ class IncapacidadSaludCreate(IncapacidadBase):
     """Schema para crear incapacidad de tipo SALUD (afiliado con póliza)."""
     tipo: TipoIncapacidad = Field(default=TipoIncapacidad.SALUD, frozen=True)
     afiliado_id: UUID = Field(..., description="ID del afiliado con póliza")
+    solicitante_id: Optional[UUID] = Field(None, description="ID del solicitante")
 
 
 class IncapacidadCreate(IncapacidadBase):
@@ -57,6 +63,7 @@ class IncapacidadCreate(IncapacidadBase):
     empleado_id: Optional[UUID] = Field(None, description="ID del empleado (requerido para ARL)")
     empresa_id: Optional[UUID] = Field(None, description="ID de la empresa (requerido para ARL)")
     afiliado_id: Optional[UUID] = Field(None, description="ID del afiliado (requerido para SALUD)")
+    solicitante_id: Optional[UUID] = Field(None, description="ID del solicitante")
     siniestro_id: Optional[UUID] = Field(None, description="ID del siniestro (opcional para ARL)")
     numero_siniestro: Optional[str] = Field(None, max_length=50, description="Número del siniestro")
     
@@ -178,6 +185,7 @@ class IncapacidadInDB(IncapacidadBase):
     empleado_id: Optional[UUID]
     empresa_id: Optional[UUID]
     afiliado_id: Optional[UUID]
+    solicitante_id: Optional[UUID]
     siniestro_id: Optional[UUID]
     numero_siniestro: Optional[str]
     dias_totales: int
@@ -198,16 +206,26 @@ class IncapacidadInDB(IncapacidadBase):
     model_config = {"from_attributes": True}
 
 
+class SolicitanteSimple(BaseModel):
+    """Schema simplificado de solicitante."""
+    id: UUID
+    nombre_completo: str
+    correo: str
+    
+    model_config = {"from_attributes": True}
+
+
 class IncapacidadResponse(IncapacidadInDB):
     """Schema de respuesta de incapacidad con relaciones."""
-    empleado: Optional[EmpleadoSimple] = None
-    empresa: Optional[EmpresaSimple] = None
-    afiliado: Optional[AfiliadoSimple] = None
-    radicado_por: Optional[UsuarioSimple]
-    auditado_por: Optional[UsuarioSimple]
-    aprobado_por: Optional[UsuarioSimple]
-    documentos: list[DocumentoSimple] = []
-    historial: list[HistorialEstadoSchema] = []
+    empleado: Optional["EmpleadoSimple"] = None
+    empresa: Optional["EmpresaSimple"] = None
+    afiliado: Optional["AfiliadoSimple"] = None
+    solicitante: Optional["SolicitanteSimple"] = None
+    radicado_por: Optional["UsuarioSimple"] = None
+    auditado_por: Optional["UsuarioSimple"] = None
+    aprobado_por: Optional["UsuarioSimple"] = None
+    documentos: list["DocumentoSimple"] = []
+    historial: list["HistorialEstadoSchema"] = []
     
     model_config = {"from_attributes": True}
 
@@ -216,9 +234,9 @@ class IncapacidadListResponse(BaseModel):
     """Schema de lista de incapacidades."""
     id: UUID
     numero: str
-    empleado: Optional[EmpleadoSimple] = None
-    empresa: Optional[EmpresaSimple] = None
-    afiliado: Optional[AfiliadoSimple] = None
+    empleado: Optional["EmpleadoSimple"] = None
+    empresa: Optional["EmpresaSimple"] = None
+    afiliado: Optional["AfiliadoSimple"] = None
     tipo: TipoIncapacidad
     subtipo: Optional[str]
     fecha_inicio: date

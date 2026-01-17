@@ -38,13 +38,14 @@
                 │   │ empresa_id (FK) │  -- NULL si tipo=SALUD
                 │   │ afiliado_id(FK) │  -- NULL si tipo=ARL
                 │   │ siniestro_id(FK)│  -- Solo para ARL
-                │   │ numero_siniestro│  -- Solo para ARL
+                │   │ solicitante_id  │  -- NUEVO: Quien radica
+                │   │ numero_siniestro│
                 │   │ tipo            │  -- ARL o SALUD
                 │   │ subtipo         │
                 │   │ fecha_inicio    │
                 │   │ fecha_fin       │
                 │   │ dias_totales    │
-                │   │ diagnostico_cie10│
+                │   │ diagnostico_cie10│ -- Validado con CATALOGO_CIE10
                 │   │ descripcion_dx  │
                 │   │ valor_dia       │
                 │   │ valor_total     │
@@ -59,30 +60,30 @@
                 │   │ created_at      │
                 │   │ updated_at      │
                 │   └─────────────────┘
-                │           │
-                │           │*
-                │           │
-                │           │1
-                │   ┌─────────────────┐
-                │   │   SINIESTRO     │
-                │   │─────────────────│
-                │   │ id (PK)         │
-                │   │ numero_siniestro│
-                │   │ empleado_id(FK) │
-                │   │ empresa_id (FK) │
-                │   │ fecha_siniestro │
-                │   │ tipo_siniestro  │
-                │   │ descripcion     │
-                │   │ parte_cuerpo    │
-                │   │ gravedad        │
-                │   │ estado          │
-                │   │ created_at      │
-                │   │ updated_at      │
-                │   │ sync_source     │
-                │   │ external_id     │
-                │   └─────────────────┘
-                │           │1
-                │           │
+                │           │               
+                │           │*              ┌──────────────────┐
+                │           │               │  SOLICITANTE     │ 
+                │           │1              │──────────────────│
+                │   ┌─────────────────┐  *  │ id (PK)          │
+                │   │   SINIESTRO     │◄────┤ correo (UNIQUE)  │
+                │   │─────────────────│     │ nombres          │
+                │   │ id (PK)         │     │ apellidos        │
+                │   │ numero_siniestro│     │ telefono         │
+                │   │ empleado_id(FK) │     │ created_at       │
+                │   │ empresa_id (FK) │     │ updated_at       │
+                │   │ fecha_siniestro │     └──────────────────┘
+                │   │ tipo_siniestro  │             
+                │   │ descripcion     │     ┌──────────────────┐
+                │   │ parte_cuerpo    │     │ CATALOGO_CIE10   │
+                │   │ gravedad        │     │──────────────────│
+                │   │ estado          │     │ id (PK)          │
+                │   │ created_at      │     │ codigo (UNIQUE)  │
+                │   │ updated_at      │     │ descripcion      │
+                │   │ sync_source     │     │ created_at       │
+                │   │ external_id     │     │ updated_at       │
+                │   └─────────────────┘     └──────────────────┘
+                │           │1                  ~ 22,000 registros
+                │           │                   Full-text search (pg_trgm)
                 │           │*
                 │   ┌─────────────────┐
                 │   │ DOCUMENTO       │
@@ -351,7 +352,83 @@ CREATE INDEX idx_usuario_rol ON usuario(rol);
 CREATE INDEX idx_usuario_empresa ON usuario(empresa_id);
 ```
 
-### 2.5 Tabla: INCAPACIDAD
+### 2.5 Tabla: SOLICITANTE
+
+Almacena datos de personas que radican incapacidades (independiente de empleados/afiliados).
+
+```sql
+CREATE TABLE solicitante (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    correo VARCHAR(100) UNIQUE NOT NULL,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT chk_solicitante_correo CHECK (correo ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$'),
+    CONSTRAINT chk_solicitante_nombres CHECK (nombres ~* '^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{2,100}$'),
+    CONSTRAINT chk_solicitante_apellidos CHECK (apellidos ~* '^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]{2,100}$'),
+    CONSTRAINT chk_solicitante_telefono CHECK (telefono IS NULL OR telefono ~* '^\d{7,20}$')
+);
+
+CREATE UNIQUE INDEX idx_solicitante_correo ON solicitante(correo);
+CREATE INDEX idx_solicitante_correo_search ON solicitante(correo varchar_pattern_ops);
+
+-- Trigger para actualizar updated_at
+CREATE TRIGGER update_solicitante_updated_at
+    BEFORE UPDATE ON solicitante
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+```
+
+**Relación con Incapacidad**:
+- Un solicitante puede radicar múltiples incapacidades
+- El campo `solicitante_id` en incapacidad es opcional (puede ser NULL para radicaciones internas)
+
+### 2.6 Tabla: CATALOGO_CIE10
+
+Catálogo oficial de códigos CIE-10 (Clasificación Internacional de Enfermedades, 10ª revisión).
+
+```sql
+CREATE TABLE catalogo_cie10 (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    codigo VARCHAR(10) UNIQUE NOT NULL,
+    descripcion VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT chk_cie10_codigo CHECK (codigo ~* '^[A-Z]\d{2}(\.\d{1,2})?$')
+);
+
+CREATE UNIQUE INDEX idx_catalogo_cie10_codigo ON catalogo_cie10(codigo);
+
+-- Índice GIN para full-text search en descripción
+CREATE INDEX idx_catalogo_cie10_descripcion_gin 
+ON catalogo_cie10 USING GIN (to_tsvector('spanish', descripcion));
+
+-- Índice trigram para búsqueda parcial (requiere extensión pg_trgm)
+CREATE INDEX idx_catalogo_cie10_descripcion_trgm 
+ON catalogo_cie10 USING GIN (descripcion gin_trgm_ops);
+
+-- Trigger para actualizar updated_at
+CREATE TRIGGER update_catalogo_cie10_updated_at
+    BEFORE UPDATE ON catalogo_cie10
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+```
+
+**Extensión PostgreSQL Requerida**:
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+```
+
+**Datos**:
+- Aproximadamente 22,000 códigos CIE-10
+- Carga inicial mediante script `seed_cie10.py`
+- Formato: código (ej: "A00", "A00.0") + descripción
+
+### 2.7 Tabla: INCAPACIDAD
 
 Tabla principal de incapacidades (ARL y SALUD).
 
@@ -369,12 +446,13 @@ CREATE TABLE incapacidad (
     afiliado_id UUID REFERENCES afiliado(id), -- NULL si tipo=ARL
     siniestro_id UUID REFERENCES siniestro(id), -- Solo para ARL
     numero_siniestro VARCHAR(50), -- Solo para ARL: referencia al número de siniestro
+    solicitante_id UUID REFERENCES solicitante(id) ON DELETE SET NULL, -- NUEVO: Persona que radica
     tipo VARCHAR(20) NOT NULL, -- ARL, SALUD
     subtipo VARCHAR(50), -- ENFERMEDAD_GENERAL, ACCIDENTE_TRABAJO, ENFERMEDAD_LABORAL, etc.
     fecha_inicio DATE NOT NULL,
     fecha_fin DATE NOT NULL,
     dias_totales INTEGER NOT NULL,
-    diagnostico_cie10 VARCHAR(10),
+    diagnostico_cie10 VARCHAR(10), -- Código CIE-10 (valida con catalogo_cie10)
     descripcion_diagnostico TEXT,
     eps VARCHAR(255),
     ips VARCHAR(255),
@@ -415,6 +493,7 @@ CREATE INDEX idx_incapacidad_empresa ON incapacidad(empresa_id);
 CREATE INDEX idx_incapacidad_afiliado ON incapacidad(afiliado_id);
 CREATE INDEX idx_incapacidad_siniestro ON incapacidad(siniestro_id);
 CREATE INDEX idx_incapacidad_numero_siniestro ON incapacidad(numero_siniestro);
+CREATE INDEX idx_incapacidad_solicitante ON incapacidad(solicitante_id);
 CREATE INDEX idx_incapacidad_estado ON incapacidad(estado);
 CREATE INDEX idx_incapacidad_tipo ON incapacidad(tipo);
 CREATE INDEX idx_incapacidad_fecha_radicacion ON incapacidad(fecha_radicacion);
@@ -422,7 +501,7 @@ CREATE INDEX idx_incapacidad_fecha_inicio ON incapacidad(fecha_inicio);
 CREATE INDEX idx_incapacidad_auditado_por ON incapacidad(auditado_por_id);
 ```
 
-### 2.6 Tabla: DOCUMENTO
+### 2.8 Tabla: DOCUMENTO
 
 Almacena referencias a documentos adjuntos.
 
@@ -455,7 +534,7 @@ CREATE INDEX idx_documento_tipo ON documento(tipo_documento);
 CREATE INDEX idx_documento_hash ON documento(hash_sha256);
 ```
 
-### 2.6 Tabla: SINIESTRO
+### 2.9 Tabla: SINIESTRO
 
 Registra los siniestros laborales (accidentes de trabajo) reportados.
 
@@ -507,7 +586,7 @@ CREATE INDEX idx_siniestro_estado ON siniestro(estado);
 CREATE INDEX idx_siniestro_sync ON siniestro(sync_source, external_id);
 ```
 
-### 2.7 Tabla: HISTORIAL_ESTADO
+### 2.10 Tabla: HISTORIAL_ESTADO
 
 Auditoría de cambios de estado.
 
@@ -527,7 +606,7 @@ CREATE INDEX idx_historial_incapacidad ON historial_estado(incapacidad_id);
 CREATE INDEX idx_historial_created_at ON historial_estado(created_at DESC);
 ```
 
-### 2.8 Tabla: ORDEN_PAGO
+### 2.11 Tabla: ORDEN_PAGO
 
 Órdenes de pago generadas.
 
@@ -570,7 +649,7 @@ CREATE INDEX idx_orden_beneficiario ON orden_pago(beneficiario_id);
 CREATE INDEX idx_orden_fecha_generacion ON orden_pago(fecha_generacion);
 ```
 
-### 2.9 Tabla: AUDITORIA_LOG
+### 2.12 Tabla: AUDITORIA_LOG
 
 Log de auditoría completo.
 
@@ -595,7 +674,7 @@ CREATE INDEX idx_auditoria_created_at ON auditoria_log(created_at DESC);
 CREATE INDEX idx_auditoria_detalles ON auditoria_log USING gin(detalles);
 ```
 
-### 2.10 Tabla: TIPO_DOCUMENTO (Catálogo)
+### 2.13 Tabla: TIPO_DOCUMENTO (Catálogo)
 
 Define tipos de documentos requeridos.
 
@@ -619,7 +698,7 @@ CREATE INDEX idx_tipo_doc_codigo ON tipo_documento_catalogo(codigo);
 CREATE INDEX idx_tipo_doc_activo ON tipo_documento_catalogo(activo);
 ```
 
-### 2.11 Tabla: PARAMETRO (Configuración)
+### 2.14 Tabla: PARAMETRO (Configuración)
 
 Parámetros configurables del sistema.
 

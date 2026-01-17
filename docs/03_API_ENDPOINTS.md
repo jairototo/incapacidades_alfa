@@ -1038,9 +1038,295 @@ tipo_documento: INCAPACIDAD_MEDICA
 
 **Response (204)**: No content
 
-## 9. Módulo de Integraciones
+## 9. Módulo de Solicitantes
 
-### 9.1 Sincronizar Empresas desde Sistema Externo
+### 9.1 Crear Solicitante
+
+**Endpoint**: `POST /solicitantes`
+
+**Descripción**: Registrar persona que radica una incapacidad.
+
+**Permisos**: Público (sin autenticación)
+
+**Request:**
+```json
+{
+  "correo": "juan.perez@example.com",
+  "nombres": "Juan Carlos",
+  "apellidos": "Pérez Gómez",
+  "telefono": "3001234567"
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "correo": "juan.perez@example.com",
+  "nombres": "Juan Carlos",
+  "apellidos": "Pérez Gómez",
+  "telefono": "3001234567",
+  "created_at": "2026-01-17T10:30:00Z",
+  "updated_at": "2026-01-17T10:30:00Z"
+}
+```
+
+**Validaciones:**
+- `correo`: formato email válido, único en sistema
+- `nombres`: solo letras y espacios (2-100 caracteres)
+- `apellidos`: solo letras y espacios (2-100 caracteres)
+- `telefono`: 7-20 dígitos (opcional)
+
+**Errores:**
+- `422`: Email duplicado o formato inválido
+- `400`: Validación de campos
+
+### 9.2 Buscar Solicitante por Correo (Autocompletado)
+
+**Endpoint**: `GET /solicitantes/search?correo={query}&limit=10`
+
+**Descripción**: Búsqueda parcial por correo para autocompletar.
+
+**Permisos**: Público
+
+**Query Params:**
+- `correo`: mínimo 3 caracteres
+- `limit`: máximo 100 (default 10)
+
+**Response (200):**
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "correo": "juan.perez@example.com",
+    "nombres": "Juan Carlos",
+    "apellidos": "Pérez Gómez",
+    "telefono": "3001234567",
+    "created_at": "2026-01-17T10:30:00Z",
+    "updated_at": "2026-01-17T10:30:00Z"
+  }
+]
+```
+
+**Errores:**
+- `422`: Query menor a 3 caracteres
+
+### 9.3 Obtener Solicitante
+
+**Endpoint**: `GET /solicitantes/{id}`
+
+**Permisos**: Público
+
+**Response (200):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "correo": "juan.perez@example.com",
+  "nombres": "Juan Carlos",
+  "apellidos": "Pérez Gómez",
+  "telefono": "3001234567",
+  "created_at": "2026-01-17T10:30:00Z",
+  "updated_at": "2026-01-17T10:30:00Z"
+}
+```
+
+**Errores:**
+- `404`: Solicitante no encontrado
+
+### 9.4 Listar Solicitantes
+
+**Endpoint**: `GET /solicitantes?skip=0&limit=50`
+
+**Permisos**: `ADMIN`, `AUDITOR`
+
+**Query Params:**
+- `skip`: offset (default 0)
+- `limit`: límite (default 100, max 500)
+
+**Response (200):**
+```json
+[
+  {
+    "id": "uuid",
+    "correo": "usuario@example.com",
+    "nombres": "Nombre",
+    "apellidos": "Apellidos",
+    "telefono": "3001234567",
+    "created_at": "2026-01-17T10:00:00Z",
+    "updated_at": "2026-01-17T10:00:00Z"
+  }
+]
+```
+
+### 9.5 Actualizar Solicitante
+
+**Endpoint**: `PUT /solicitantes/{id}`
+
+**Permisos**: `ADMIN` o el propio solicitante
+
+**Request:**
+```json
+{
+  "telefono": "3009876543"
+}
+```
+
+**Response (200):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "correo": "juan.perez@example.com",
+  "nombres": "Juan Carlos",
+  "apellidos": "Pérez Gómez",
+  "telefono": "3009876543",
+  "created_at": "2026-01-17T10:30:00Z",
+  "updated_at": "2026-01-17T10:35:00Z"
+}
+```
+
+**Errores:**
+- `404`: Solicitante no encontrado
+- `422`: Email duplicado o validación
+
+### 9.6 Eliminar Solicitante
+
+**Endpoint**: `DELETE /solicitantes/{id}`
+
+**Permisos**: `ADMIN`
+
+**Response (204):** No content
+
+**Errores:**
+- `404`: Solicitante no encontrado
+
+---
+
+## 10. Módulo de Catálogos
+
+### 10.1 Buscar Códigos CIE-10
+
+**Endpoint**: `GET /catalogos/cie10?query={term}&limit=20`
+
+**Descripción**: Búsqueda inteligente por código o descripción.
+
+**Permisos**: Público (para wizard de radicación)
+
+**Query Params:**
+- `query`: término de búsqueda (mínimo 3 caracteres)
+- `limit`: máximo 100 (default 20)
+
+**Algoritmo:**
+1. Busca por código si query empieza con letra (ej: "A00")
+2. Busca en descripción si es texto completo (ej: "diabetes")
+3. Full-text search con PostgreSQL `pg_trgm`
+
+**Request:**
+```http
+GET /catalogos/cie10?query=diabetes&limit=10
+```
+
+**Response (200):**
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440010",
+    "codigo": "E10",
+    "descripcion": "Diabetes mellitus insulinodependiente",
+    "created_at": "2026-01-17T10:00:00Z",
+    "updated_at": "2026-01-17T10:00:00Z"
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440011",
+    "codigo": "E11",
+    "descripcion": "Diabetes mellitus no insulinodependiente",
+    "created_at": "2026-01-17T10:00:00Z",
+    "updated_at": "2026-01-17T10:00:00Z"
+  }
+]
+```
+
+**Ejemplos:**
+- `?query=A00` → Busca códigos que empiezan con "A00"
+- `?query=cólera` → Busca "cólera" en descripción
+- `?query=j00` → Normaliza a "J00" y busca
+
+**Errores:**
+- `422`: Query menor a 3 caracteres
+
+### 10.2 Obtener Código CIE-10 Exacto
+
+**Endpoint**: `GET /catalogos/cie10/{codigo}`
+
+**Descripción**: Obtener código específico (con normalización).
+
+**Permisos**: Público
+
+**Request:**
+```http
+GET /catalogos/cie10/A00.0
+```
+
+**Response (200):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440001",
+  "codigo": "A00.0",
+  "descripcion": "Cólera debido a Vibrio cholerae 01, biotipo cholerae",
+  "created_at": "2026-01-17T10:00:00Z",
+  "updated_at": "2026-01-17T10:00:00Z"
+}
+```
+
+**Normalización:**
+- `a00` → `A00` (uppercase)
+- `A00.0` → `A00.0` (mantiene formato)
+
+**Errores:**
+- `404`: Código no encontrado
+
+### 10.3 Listar Códigos CIE-10 (Paginado)
+
+**Endpoint**: `GET /catalogos/cie10/all/list?skip=0&limit=100`
+
+**Permisos**: `ADMIN`, `AUDITOR`
+
+**Query Params:**
+- `skip`: offset (default 0)
+- `limit`: límite (default 100, max 500)
+
+**Response (200):**
+```json
+[
+  {
+    "id": "uuid",
+    "codigo": "A00",
+    "descripcion": "Cólera",
+    "created_at": "2026-01-17T10:00:00Z",
+    "updated_at": "2026-01-17T10:00:00Z"
+  }
+]
+```
+
+### 10.4 Estadísticas del Catálogo
+
+**Endpoint**: `GET /catalogos/cie10/stats/count`
+
+**Permisos**: Público
+
+**Response (200):**
+```json
+{
+  "count": 22000
+}
+```
+
+**Nota**: El catálogo completo CIE-10 contiene aproximadamente 22,000 códigos.
+
+---
+
+## 11. Módulo de Integraciones
+
+### 11.1 Sincronizar Empresas desde Sistema Externo
 
 **Endpoint**: `POST /integraciones/sincronizar-empresas`
 
@@ -1072,13 +1358,13 @@ tipo_documento: INCAPACIDAD_MEDICA
 }
 ```
 
-### 9.2 Sincronizar Empleados
+### 11.2 Sincronizar Empleados
 
 **Endpoint**: `POST /integraciones/sincronizar-empleados`
 
 **Similar a sincronizar empresas**
 
-### 9.3 Webhook para Notificaciones
+### 11.3 Webhook para Notificaciones
 
 **Endpoint**: `POST /integraciones/webhook/siniestros`
 
@@ -1110,9 +1396,9 @@ tipo_documento: INCAPACIDAD_MEDICA
 }
 ```
 
-## 10. Módulo de Reportes
+## 12. Módulo de Reportes
 
-### 10.1 Reporte de Incapacidades
+### 12.1 Reporte de Incapacidades
 
 **Endpoint**: `GET /reportes/incapacidades`
 
@@ -1125,7 +1411,7 @@ tipo_documento: INCAPACIDAD_MEDICA
 **Response (200):**
 - Archivo descargable con reporte
 
-### 10.2 Reporte de Auditoría
+### 12.2 Reporte de Auditoría
 
 **Endpoint**: `GET /reportes/auditoria`
 
@@ -1138,9 +1424,9 @@ tipo_documento: INCAPACIDAD_MEDICA
 
 **Response (200):** (archivo de reporte)
 
-## 11. Health Check y Monitoreo
+## 13. Health Check y Monitoreo
 
-### 11.1 Health Check
+### 13.1 Health Check
 
 **Endpoint**: `GET /health`
 
@@ -1160,7 +1446,7 @@ tipo_documento: INCAPACIDAD_MEDICA
 }
 ```
 
-### 11.2 Métricas
+### 13.2 Métricas
 
 **Endpoint**: `GET /metrics`
 
@@ -1173,21 +1459,21 @@ tipo_documento: INCAPACIDAD_MEDICA
 api_requests_total{method="GET",endpoint="/incapacidades"} 1234
 ```
 
-## 12. Documentación Interactiva
+## 14. Documentación Interactiva
 
-### 12.1 Swagger UI
+### 14.1 Swagger UI
 
 **Endpoint**: `GET /docs`
 
 Interfaz interactiva OpenAPI/Swagger
 
-### 12.2 ReDoc
+### 14.2 ReDoc
 
 **Endpoint**: `GET /redoc`
 
 Documentación alternativa
 
-### 12.3 OpenAPI Schema
+### 14.3 OpenAPI Schema
 
 **Endpoint**: `GET /openapi.json`
 

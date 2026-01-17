@@ -43,6 +43,15 @@ class Incapacidad(BaseModel):
     empresa_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("empresa.id"), nullable=True)
     afiliado_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("afiliado.id"), nullable=True)
     
+    # Solicitante (persona que radica la incapacidad)
+    solicitante_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("solicitante.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Solicitante que radicó la incapacidad"
+    )
+    
     # Siniestro (solo para ARL)
     siniestro_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("siniestro.id"))
     numero_siniestro: Mapped[Optional[str]] = mapped_column(String(50))
@@ -62,6 +71,18 @@ class Incapacidad(BaseModel):
     # Diagnóstico
     diagnostico_cie10: Mapped[Optional[str]] = mapped_column(String(10))
     descripcion_diagnostico: Mapped[Optional[str]] = mapped_column(Text)
+    
+    # Datos del médico tratante
+    nombre_medico: Mapped[Optional[str]] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="Nombre completo del médico tratante"
+    )
+    registro_medico: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Registro médico profesional"
+    )
     
     # Entidades de salud
     eps: Mapped[Optional[str]] = mapped_column(String(255))
@@ -102,6 +123,7 @@ class Incapacidad(BaseModel):
     empleado: Mapped[Optional["Empleado"]] = relationship("Empleado", back_populates="incapacidades")
     empresa: Mapped[Optional["Empresa"]] = relationship("Empresa", back_populates="incapacidades")
     afiliado: Mapped[Optional["Afiliado"]] = relationship("Afiliado", back_populates="incapacidades")
+    solicitante: Mapped[Optional["Solicitante"]] = relationship("Solicitante", back_populates="incapacidades")
     siniestro: Mapped[Optional["Siniestro"]] = relationship("Siniestro", back_populates="incapacidades", foreign_keys=[siniestro_id])
     documentos: Mapped[list["Documento"]] = relationship("Documento", back_populates="incapacidad", cascade="all, delete-orphan")
     # Nota: historial_estados ahora es polimórfico - usar historial_estado_service.get_incapacidad_history()
