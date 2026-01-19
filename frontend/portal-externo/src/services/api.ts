@@ -1,4 +1,6 @@
 import axios from 'axios';
+import type { Solicitante, SolicitanteCreate, SolicitanteUpdate, SearchSolicitanteParams } from '@/types/solicitante';
+import type { CatalogoCIE10, SearchCIE10Params, CIE10Stats } from '@/types/catalogoCIE10';
 
 /**
  * Instancia de Axios configurada para comunicarse con el backend
@@ -76,5 +78,44 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * API de Solicitantes
+ */
+export const solicitantesApi = {
+  create: (data: SolicitanteCreate) => 
+    api.post<Solicitante>('/solicitantes', data),
+  
+  search: (params: SearchSolicitanteParams) => 
+    api.get<Solicitante[]>('/solicitantes/search', { params }),
+  
+  getById: (id: string) => 
+    api.get<Solicitante>(`/solicitantes/${id}`),
+  
+  update: (id: string, data: SolicitanteUpdate) => 
+    api.put<Solicitante>(`/solicitantes/${id}`, data),
+  
+  delete: (id: string) => 
+    api.delete(`/solicitantes/${id}`),
+};
+
+/**
+ * API de Catálogo CIE-10
+ */
+export const catalogoCIE10Api = {
+  search: (params: SearchCIE10Params) => 
+    api.get<CatalogoCIE10[]>('/catalogos/cie10', { params }),
+  
+  getByCodigo: (codigo: string) => 
+    api.get<CatalogoCIE10>(`/catalogos/cie10/${codigo}`),
+  
+  list: (skip: number = 0, limit: number = 100) => 
+    api.get<CatalogoCIE10[]>('/catalogos/cie10/all/list', { 
+      params: { skip, limit } 
+    }),
+  
+  stats: () => 
+    api.get<CIE10Stats>('/catalogos/cie10/stats/count'),
+};
 
 export default api;

@@ -1,13 +1,15 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { differenceInDays, addDays } from 'date-fns';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { CIE10Autocomplete } from '@/components/shared/CIE10Autocomplete';
+import type { CatalogoCIE10 } from '@/types/catalogoCIE10';
 import {
   getDatosIncapacidadSchema,
   type DatosIncapacidadARL,
@@ -28,6 +30,7 @@ export function DatosIncapacidadForm({
   onContinue,
 }: DatosIncapacidadFormProps) {
   const schema = getDatosIncapacidadSchema(tipo);
+  const [selectedCIE10, setSelectedCIE10] = useState<CatalogoCIE10 | null>(null);
 
   const {
     register,
@@ -56,6 +59,15 @@ export function DatosIncapacidadForm({
       }
     }
   }, [fecha_inicio, fecha_fin, setValue, dias_totales]);
+
+  // Actualizar valor en formulario cuando se selecciona CIE-10
+  useEffect(() => {
+    if (selectedCIE10) {
+      setValue('diagnostico_cie10', selectedCIE10.codigo);
+    } else {
+      setValue('diagnostico_cie10', '');
+    }
+  }, [selectedCIE10, setValue]);
 
   const onSubmit = (data: any) => {
     onContinue(data);
@@ -136,27 +148,56 @@ export function DatosIncapacidadForm({
       )}
 
       {/* Diagnóstico CIE-10 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          label="Código CIE-10"
-          {...register('diagnostico_cie10')}
-          error={errors.diagnostico_cie10?.message as string}
-          placeholder="Ej: A00, J00.1 (opcional)"
-          helperText="Código según clasificación internacional de enfermedades"
-          maxLength={10}
-        />
-        <div className="md:col-span-1" />
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Diagnóstico Médico
+        </h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Código CIE-10 <span className="text-red-500">*</span>
+            </label>
+            <CIE10Autocomplete
+              value={selectedCIE10}
+              onChange={setSelectedCIE10}
+              error={errors.diagnostico_cie10?.message as string}
+            />
+          </div>
+
+          <Textarea
+            label="Descripción del Diagnóstico (Opcional)"
+            {...register('descripcion_diagnostico')}
+            error={errors.descripcion_diagnostico?.message as string}
+            placeholder="Describa detalladamente el diagnóstico médico..."
+            maxCount={500}
+            showCount
+            rows={4}
+          />
+        </div>
       </div>
 
-      <Textarea
-        label="Descripción del Diagnóstico"
-        {...register('descripcion_diagnostico')}
-        error={errors.descripcion_diagnostico?.message as string}
-        placeholder="Describa detalladamente el diagnóstico médico (opcional)..."
-        maxCount={500}
-        showCount
-        rows={4}
-      />
+      {/* Datos del Médico Tratante */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Datos del Médico Tratante (Opcional)
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
+            label="Nombre del Médico"
+            {...register('nombre_medico')}
+            error={errors.nombre_medico?.message as string}
+            placeholder="Ej: Dr. Juan Pérez"
+            helperText="Nombre completo del médico que emitió la incapacidad"
+          />
+          <Input
+            label="Registro Médico"
+            {...register('registro_medico')}
+            error={errors.registro_medico?.message as string}
+            placeholder="Ej: RM-12345"
+            helperText="Número de registro profesional del médico"
+          />
+        </div>
+      </div>
 
       {/* Información IPS/EPS */}
       <div className="border-t pt-6">

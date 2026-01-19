@@ -157,6 +157,10 @@ export interface CreateIncapacidadDTO {
   ips?: string;
   eps?: string;
   observaciones?: string;
+  // NUEVOS: Solicitante y Médico
+  solicitante_id?: string;
+  nombre_medico?: string;
+  registro_medico?: string;
 }
 
 export interface CreateIncapacidadARLDTO {

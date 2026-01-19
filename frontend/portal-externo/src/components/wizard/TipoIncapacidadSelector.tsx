@@ -18,6 +18,7 @@ type TipoIncapacidadFormData = z.infer<typeof tipoIncapacidadSchema>;
 
 export interface TipoIncapacidadSelectorProps {
   onContinue: (tipo: string) => void;
+  onBack?: () => void;
 }
 
 interface TipoOption {
@@ -49,7 +50,7 @@ const tipoOptions: TipoOption[] = [
  * Componente para seleccionar el tipo de incapacidad (ARL o SALUD)
  * Primer paso del wizard de radicación
  */
-export function TipoIncapacidadSelector({ onContinue }: TipoIncapacidadSelectorProps) {
+export function TipoIncapacidadSelector({ onContinue, onBack }: TipoIncapacidadSelectorProps) {
   const {
     watch,
     setValue,
@@ -147,12 +148,22 @@ export function TipoIncapacidadSelector({ onContinue }: TipoIncapacidadSelectorP
       </div>
 
       {/* Continue Button */}
-      <div className="flex justify-end pt-4">
+      <div className="flex justify-between pt-4">
+        {onBack && (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={onBack}
+          >
+            Atrás
+          </Button>
+        )}
         <Button
           type="submit"
           size="lg"
           disabled={!isValid}
-          className="min-w-[200px]"
+          className="min-w-[200px] ml-auto"
         >
           Continuar
           <ChevronRight className="ml-2 w-5 h-5" />

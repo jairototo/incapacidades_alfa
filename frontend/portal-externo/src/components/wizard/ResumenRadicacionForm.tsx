@@ -21,7 +21,7 @@ export function ResumenRadicacionForm({
   onSubmit,
   isSubmitting = false,
 }: ResumenRadicacionFormProps) {
-  const { tipo, datosPersonales, datosIncapacidad, documentos } = wizardData;
+  const { solicitante, tipo, datosPersonales, datosIncapacidad, documentos } = wizardData;
 
   // Helper para formatear fechas
   const formatDate = (date: Date | string | undefined) => {
@@ -67,7 +67,39 @@ export function ResumenRadicacionForm({
         </p>
       </div>
 
-      {/* Sección 1: Tipo de Incapacidad */}
+      {/* Sección 1: Datos del Solicitante */}
+      {solicitante && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <User className="h-5 w-5 text-purple-600" />
+            <h3 className="text-lg font-semibold text-gray-900">
+              Datos del Solicitante
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <span className="text-sm font-medium text-gray-600">Correo Electrónico:</span>
+              <p className="text-base text-gray-900 mt-1">{solicitante.correo}</p>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Nombres:</span>
+              <p className="text-base text-gray-900 mt-1">{solicitante.nombres}</p>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Apellidos:</span>
+              <p className="text-base text-gray-900 mt-1">{solicitante.apellidos}</p>
+            </div>
+            {solicitante.telefono && (
+              <div>
+                <span className="text-sm font-medium text-gray-600">Teléfono:</span>
+                <p className="text-base text-gray-900 mt-1">{solicitante.telefono}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Sección 2: Tipo de Incapacidad */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <div className="flex items-center gap-3 mb-4">
           <Briefcase className="h-5 w-5 text-blue-600" />
@@ -226,9 +258,25 @@ export function ResumenRadicacionForm({
           </div>
           {datosIncapacidad?.descripcion_diagnostico && (
             <div className="md:col-span-2">
-              <span className="text-sm font-medium text-gray-600">Descripción:</span>
+              <span className="text-sm font-medium text-gray-600">Descripción del Diagnóstico:</span>
               <p className="text-base text-gray-900 mt-1">
                 {datosIncapacidad.descripcion_diagnostico}
+              </p>
+            </div>
+          )}
+          {datosIncapacidad && 'nombre_medico' in datosIncapacidad && datosIncapacidad.nombre_medico && (
+            <div>
+              <span className="text-sm font-medium text-gray-600">Médico Tratante:</span>
+              <p className="text-base text-gray-900 mt-1">
+                {datosIncapacidad.nombre_medico}
+              </p>
+            </div>
+          )}
+          {datosIncapacidad && 'registro_medico' in datosIncapacidad && datosIncapacidad.registro_medico && (
+            <div>
+              <span className="text-sm font-medium text-gray-600">Registro Médico:</span>
+              <p className="text-base text-gray-900 mt-1">
+                {datosIncapacidad.registro_medico}
               </p>
             </div>
           )}

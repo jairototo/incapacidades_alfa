@@ -1,4 +1,4 @@
-# Fase 2: Integración Frontend - Solicitante y Catálogo CIE-10
+# Fase 2: Integración Frontend Portal Externo - Solicitante y Catálogo CIE-10
 
 **Fecha**: 17 de enero de 2026  
 **Duración estimada**: 3 días  

@@ -161,6 +161,20 @@ export const datosIncapacidadBaseSchema = z.object({
     .number()
     .positive('El valor por día debe ser un número positivo')
     .optional(),
+  // NUEVOS: Datos del médico tratante
+  nombre_medico: z
+    .string()
+    .min(2, 'El nombre del médico debe tener al menos 2 caracteres')
+    .max(200, 'El nombre del médico no puede exceder 200 caracteres')
+    .optional()
+    .or(z.literal('')),
+  registro_medico: z
+    .string()
+    .min(3, 'El registro médico debe tener al menos 3 caracteres')
+    .max(50, 'El registro médico no puede exceder 50 caracteres')
+    .regex(/^[a-zA-Z0-9\-]+$/, 'El registro médico solo puede contener letras, números y guiones')
+    .optional()
+    .or(z.literal('')),
 }).refine(
   (data) => data.fecha_fin >= data.fecha_inicio,
   {

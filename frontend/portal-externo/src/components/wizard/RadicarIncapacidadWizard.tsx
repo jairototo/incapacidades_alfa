@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Stepper } from './Stepper';
+import { DatosSolicitanteForm } from './DatosSolicitanteForm';
 import { TipoIncapacidadSelector } from './TipoIncapacidadSelector';
 import { DatosPersonalesForm } from './DatosPersonalesForm';
 import { DatosIncapacidadForm } from './DatosIncapacidadForm';
@@ -9,10 +10,12 @@ import { ConfirmacionExitosa } from './ConfirmacionExitosa';
 import { useCreateIncapacidad, transformWizardToDTO } from '@/services/incapacidadService';
 import { uploadMultipleDocumentos } from '@/services/documentoService';
 import { useToast } from '@/hooks/use-toast';
+import type { Solicitante } from '@/types/solicitante';
 import type { DatosPersonalesFormData } from './DatosPersonalesForm';
 import type { DatosIncapacidadARL, DatosIncapacidadSalud, DocumentosFormData } from '@/schemas/radicacionSchema';
 
 export interface WizardFormData {
+  solicitante?: Solicitante;
   tipo?: string;
   datosPersonales?: DatosPersonalesFormData;
   datosIncapacidad?: DatosIncapacidadARL | DatosIncapacidadSalud;
@@ -21,10 +24,10 @@ export interface WizardFormData {
 
 /**
  * Componente principal del wizard de radicación de incapacidades
- * Maneja el estado y navegación entre los 5 pasos
+ * Maneja el estado y navegación entre los 6 pasos (0-5)
  */
 export function RadicarIncapacidadWizard() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<WizardFormData>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [numeroRadicacion, setNumeroRadicacion] = useState<string>('');
@@ -33,11 +36,32 @@ export function RadicarIncapacidadWizard() {
   const { toast } = useToast();
   const createIncapacidadMutation = useCreateIncapacidad();
 
+  // Paso 0: Datos del Solicitante
+  const handleSolicitanteBack = () => {
+    toast({
+      title: 'Cancelar radicación',
+      description: '¿Está seguro de que desea cancelar?',
+      variant: 'default',
+    });
+    // TODO: Implementar confirmación de cancelación
+  };
+
+  const handleSolicitanteContinue = (solicitante: Solicitante) => {
+    setFormData({ ...formData, solicitante });
+    setCurrentStep(1);
+  };
+
+  // Paso 1: Tipo de Incapacidad
   const handleTipoContinue = (tipo: string) => {
     setFormData({ ...formData, tipo });
     setCurrentStep(2);
   };
 
+  const handleTipoBack = () => {
+    setCurrentStep(0);
+  };
+
+  // Paso 2: Datos Personales
   const handleDatosPersonalesBack = () => {
     setCurrentStep(1);
   };
@@ -47,6 +71,7 @@ export function RadicarIncapacidadWizard() {
     setCurrentStep(3);
   };
 
+  // Paso 3: Datos de Incapacidad
   const handleDatosIncapacidadBack = () => {
     setCurrentStep(2);
   };
@@ -56,6 +81,7 @@ export function RadicarIncapacidadWizard() {
     setCurrentStep(4);
   };
 
+  // Paso 4: Documentos
   const handleDocumentosBack = () => {
     setCurrentStep(3);
   };
@@ -65,6 +91,7 @@ export function RadicarIncapacidadWizard() {
     setCurrentStep(5);
   };
 
+  // Paso 5: Resumen
   const handleResumenBack = () => {
     setCurrentStep(4);
   };
@@ -75,11 +102,16 @@ export function RadicarIncapacidadWizard() {
     try {
       // 1. Transformar datos del wizard al formato DTO del backend
       const incapacidadDTO = transformWizardToDTO(formData);
+      
+      // 2. Agregar solicitante_id si existe
+      if (formData.solicitante) {
+        incapacidadDTO.solicitante_id = formData.solicitante.id;
+      }
 
-      // 2. Crear incapacidad en el backend
+      // 3. Crear incapacidad en el backend
       const incapacidadCreada = await createIncapacidadMutation.mutateAsync(incapacidadDTO);
 
-      // 3. Subir documentos si existen
+      // 4. Subir documentos si existen
       if (formData.documentos) {
         const documentosParaSubir = [];
         
@@ -130,7 +162,7 @@ export function RadicarIncapacidadWizard() {
         }
       }
 
-      // 4. Mostrar confirmación exitosa
+      // 5. Mostrar confirmación exitosa
       setNumeroRadicacion(incapacidadCreada.numero);
       setShowConfirmacion(true);
 
@@ -161,7 +193,7 @@ export function RadicarIncapacidadWizard() {
   const handleRadicarOtra = () => {
     // Reset completo del wizard
     setFormData({});
-    setCurrentStep(1);
+    setCurrentStep(0);
     setShowConfirmacion(false);
     setNumeroRadicacion('');
   };
@@ -201,14 +233,26 @@ export function RadicarIncapacidadWizard() {
 
             {/* Stepper */}
             <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-              <Stepper currentStep={currentStep} totalSteps={5} />
+              <Stepper currentStep={currentStep} totalSteps={6} />
             </div>
 
             {/* Wizard Content */}
             <div className="bg-white rounded-lg shadow-sm p-8">
+              {/* Paso 0: Datos del Solicitante */}
+              {currentStep === 0 && (
+                <DatosSolicitanteForm
+                  initialData={formData.solicitante}
+                  onNext={handleSolicitanteContinue}
+                  onBack={handleSolicitanteBack}
+                />
+              )}
+
               {/* Paso 1: Tipo de Incapacidad */}
               {currentStep === 1 && (
-                <TipoIncapacidadSelector onContinue={handleTipoContinue} />
+                <TipoIncapacidadSelector 
+                  onContinue={handleTipoContinue}
+                  onBack={handleTipoBack}
+                />
               )}
 
               {/* Paso 2: Datos Personales */}
@@ -258,7 +302,7 @@ export function RadicarIncapacidadWizard() {
                     Paso 2: Datos Personales
                   </h2>
                   <p className="text-gray-500 italic">
-                    Este paso se implementará en la siguiente fase
+                    Debe seleccionar el tipo de incapacidad primero
                   </p>
                   <button
                     onClick={() => setCurrentStep(1)}
@@ -276,7 +320,7 @@ export function RadicarIncapacidadWizard() {
                     Paso {currentStep}
                   </h2>
                   <p className="text-gray-500 italic">
-                    Este paso se implementará en las siguientes fases
+                    Este paso no existe. Máximo 6 pasos (0-5)
                   </p>
                   <button
                     onClick={() => setCurrentStep(5)}
