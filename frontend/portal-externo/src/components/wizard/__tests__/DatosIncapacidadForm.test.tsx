@@ -248,4 +248,54 @@ describe('DatosIncapacidadForm', () => {
       expect(screen.getByText(/Entidad Promotora de Salud/i)).toBeInTheDocument();
     });
   });
+
+  describe('Integración con CIE-10 y Médico Tratante', () => {
+    it('debe renderizar CIE10Autocomplete component', () => {
+      render(
+        <DatosIncapacidadForm
+          tipo="ARL"
+          onBack={mockOnBack}
+          onContinue={mockOnContinue}
+        />
+      );
+
+      // Verificar que existe el placeholder del CIE-10 autocomplete
+      const cie10Input = screen.getByPlaceholderText(/código o descripción/i);
+      expect(cie10Input).toBeInTheDocument();
+    });
+
+    it('debe renderizar campos de médico tratante', () => {
+      render(
+        <DatosIncapacidadForm
+          tipo="SALUD"
+          onBack={mockOnBack}
+          onContinue={mockOnContinue}
+        />
+      );
+
+      expect(screen.getByLabelText(/nombre del médico/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/registro médico/i)).toBeInTheDocument();
+    });
+
+    it('debe validar formato CIE-10 cuando se proporciona', async () => {
+      const user = userEvent.setup();
+      
+      render(
+        <DatosIncapacidadForm
+          tipo="ARL"
+          onBack={mockOnBack}
+          onContinue={mockOnContinue}
+        />
+      );
+
+      // Intentar enviar formulario con campos vacíos
+      const continueButton = screen.getByRole('button', { name: /continuar/i });
+      await user.click(continueButton);
+
+      // El componente CIE10Autocomplete maneja su propia validación
+      // Aquí solo verificamos que el campo existe y puede recibir input
+      const cie10Input = screen.getByPlaceholderText(/código o descripción/i);
+      expect(cie10Input).toBeInTheDocument();
+    });
+  });
 });

@@ -338,4 +338,60 @@ describe('ResumenRadicacionForm', () => {
       expect(noSpecifiedTexts.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  describe('Integración con Solicitante y Médico', () => {
+    it('debe mostrar sección de solicitante cuando existe', () => {
+      const dataWithSolicitante: WizardFormData = {
+        ...mockWizardDataARL,
+        solicitante: {
+          id: '123e4567-e89b-12d3-a456-426614174002',
+          correo: 'solicitante@example.com',
+          nombres: 'Carlos',
+          apellidos: 'Ramírez Solano',
+          telefono: '3201234567',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      };
+
+      render(
+        <ResumenRadicacionForm
+          wizardData={dataWithSolicitante}
+          onBack={vi.fn()}
+          onSubmit={vi.fn()}
+        />
+      );
+
+      // Verificar que existe la sección de solicitante
+      expect(screen.getByText(/datos del solicitante/i)).toBeInTheDocument();
+      expect(screen.getByText('solicitante@example.com')).toBeInTheDocument();
+      expect(screen.getByText('Carlos')).toBeInTheDocument();
+      expect(screen.getByText('Ramírez Solano')).toBeInTheDocument();
+      expect(screen.getByText('3201234567')).toBeInTheDocument();
+    });
+
+    it('debe mostrar datos del médico tratante cuando existen', () => {
+      const dataWithMedico: WizardFormData = {
+        ...mockWizardDataSalud,
+        datosIncapacidad: {
+          ...mockWizardDataSalud.datosIncapacidad,
+          nombre_medico: 'Dra. Ana López',
+          registro_medico: 'RM-12345678',
+        },
+      };
+
+      render(
+        <ResumenRadicacionForm
+          wizardData={dataWithMedico}
+          onBack={vi.fn()}
+          onSubmit={vi.fn()}
+        />
+      );
+
+      // Verificar que existe el label de Médico Tratante
+      expect(screen.getByText(/médico tratante/i)).toBeInTheDocument();
+      expect(screen.getByText('Dra. Ana López')).toBeInTheDocument();
+      expect(screen.getByText('RM-12345678')).toBeInTheDocument();
+    });
+  });
 });
