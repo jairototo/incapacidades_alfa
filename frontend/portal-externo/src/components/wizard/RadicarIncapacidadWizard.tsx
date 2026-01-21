@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Stepper } from './Stepper';
 import { DatosSolicitanteForm } from './DatosSolicitanteForm';
 import { TipoIncapacidadSelector } from './TipoIncapacidadSelector';
@@ -33,6 +34,7 @@ export function RadicarIncapacidadWizard() {
   const [numeroRadicacion, setNumeroRadicacion] = useState<string>('');
   const [showConfirmacion, setShowConfirmacion] = useState(false);
 
+  const navigate = useNavigate();
   const { toast } = useToast();
   const createIncapacidadMutation = useCreateIncapacidad();
 
@@ -199,12 +201,7 @@ export function RadicarIncapacidadWizard() {
   };
 
   const handleConsultarEstado = () => {
-    // TODO: Implementar en Fase 2 - redireccionar a consulta
-    toast({
-      title: 'Próximamente',
-      description: 'La consulta de estado estará disponible en la siguiente fase',
-      variant: 'default',
-    });
+    navigate('/consultar');
   };
 
   return (
