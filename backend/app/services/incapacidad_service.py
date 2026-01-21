@@ -164,6 +164,7 @@ class IncapacidadService:
         db: AsyncSession,
         tipo: Optional[TipoIncapacidad] = None,
         estado: Optional[EstadoIncapacidad] = None,
+        numero: Optional[str] = None,
         empleado_id: Optional[UUID] = None,
         afiliado_id: Optional[UUID] = None,
         empresa_id: Optional[UUID] = None,
@@ -179,7 +180,7 @@ class IncapacidadService:
             db: Sesión de base de datos
             tipo: Filtrar por tipo
             estado: Filtrar por estado
-            empleado_id: Filtrar por empleado
+            numero: Filtrar por número de incapacidad
             afiliado_id: Filtrar por afiliado
             empresa_id: Filtrar por empresa
             fecha_inicio_desde: Fecha mínima
@@ -194,6 +195,7 @@ class IncapacidadService:
             db,
             tipo=tipo,
             estado=estado,
+            numero=numero,
             empleado_id=empleado_id,
             afiliado_id=afiliado_id,
             empresa_id=empresa_id,

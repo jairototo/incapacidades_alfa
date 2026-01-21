@@ -66,6 +66,7 @@ async def create_incapacidad(
 async def list_incapacidades(
     tipo: Optional[TipoIncapacidad] = Query(None, description="Filtrar por tipo (ARL/SALUD)"),
     estado: Optional[EstadoIncapacidad] = Query(None, description="Filtrar por estado"),
+    numero: Optional[str] = Query(None, description="Filtrar por número de incapacidad"),
     empleado_id: Optional[UUID] = Query(None, description="Filtrar por empleado"),
     afiliado_id: Optional[UUID] = Query(None, description="Filtrar por afiliado"),
     empresa_id: Optional[UUID] = Query(None, description="Filtrar por empresa"),
@@ -81,6 +82,7 @@ async def list_incapacidades(
     Filtros disponibles:
     - tipo: ARL o SALUD
     - estado: RADICADA, EN_AUDITORIA, OBSERVADA, APROBADA, RECHAZADA, EN_PAGO, PAGADA, CANCELADA
+    - número: Número único de incapacidad
     - empleado_id: UUID del empleado (para ARL)
     - afiliado_id: UUID del afiliado (para SALUD)
     - empresa_id: UUID de la empresa (para ARL)
@@ -92,6 +94,7 @@ async def list_incapacidades(
         db,
         tipo=tipo,
         estado=estado,
+        numero=numero,
         empleado_id=empleado_id,
         afiliado_id=afiliado_id,
         empresa_id=empresa_id,

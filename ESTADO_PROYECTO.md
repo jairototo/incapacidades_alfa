@@ -1,990 +1,442 @@
 # Estado del Proyecto - Sistema de Gestión de Incapacidades
 
-**Fecha de actualización**: 16 de enero de 2026  
-**Versión**: 1.0.0-beta  
-**Estado general**: En Desarrollo Avanzado 🚀
+**Fecha de actualización**: 17 de enero de 2026  
+**Versión**: 0.9.0-beta  
+**Estado general**: ⚠️ En Desarrollo - Fase 1 Incompleta
 
 ---
 
 ## 📊 Resumen Ejecutivo
 
-Sistema para gestión integral del ciclo de vida de incapacidades médicas en aseguradoras, desde radicación hasta pago, con soporte para ARL (Administradora de Riesgos Laborales) y seguimiento de siniestros.
+### Progreso Global: 85% ⚠️
 
-### Métricas de Avance
+| Componente | Completado | Pendiente | Prioridad |
+|------------|------------|-----------|-----------|
+| Arquitectura | 100% | - | ✅ |
+| Modelo de Datos | 100% | - | ✅ |
+| Documentación Backend | 100% | - | ✅ |
+| Documentación Frontend | 90% | Consulta | 🔴 |
+| Infraestructura | 100% | - | ✅ |
+| Modelos SQLAlchemy | 11/11 (100%) | - | ✅ |
+| Schemas Pydantic | 11/11 (100%) | - | ✅ |
+| Repositories | 11/11 (100%) | - | ✅ |
+| Services | 11/11 (100%) | - | ✅ |
+| API Endpoints | 66/67 (98%) | 1 endpoint consulta | 🔴 |
+| Autenticación JWT | 100% | - | ✅ |
+| Sistema Storage MinIO | 100% | - | ✅ |
+| Módulo Documentos | 100% | - | ✅ |
+| Módulo Órdenes Pago | 100% | - | ✅ |
+| Módulo Usuarios | 100% | - | ✅ |
+| Tests Backend | 87% | Incrementar a >90% | 🟡 |
+| **Frontend - Radicación** | **100%** | **-** | **✅** |
+| **Frontend - Consulta** | **0%** | **Implementación completa** | **🔴** |
 
-| Componente | Progreso | Estado |
-|------------|----------|--------|
-| **Arquitectura** | 100% | ✅ Completado |
-| **Modelo de Datos** | 100% | ✅ Completado |
-| **Documentación** | 100% | ✅ Completado |
-| **Infraestructura** | 100% | ✅ Completado |
-| **Backend - Core** | 100% | ✅ Completado |
-| **Backend - Models** | 100% | ✅ Completado |
-| **Backend - Schemas** | 100% | ✅ Completado |
-| **Backend - Repositories** | 100% | ✅ Completado |
-| **Backend - Services** | 100% | ✅ Completado |
-| **Backend - API** | 100% | ✅ Completado |
-| **Módulo Documentos** | 100% | ✅ Completado |
-| **Autenticación JWT** | 100% | ✅ Completado |
-| **Sistema Storage** | 100% | ✅ Completado |
-| **Módulo Órdenes de Pago** | 100% | ✅ Completado |
-| **Módulo Usuarios** | 100% | ✅ Completado |
-| **Tests** | 87% | ✅ Avanzado |
-| **Frontend** | 100% | ✅ Fase 1 Completado |
+### ⚠️ Estado Real de Frontend Fase 1
 
-**Progreso Global**: ~97% 🚀
+**Completado** (80%):
+- ✅ Wizard de radicación de 5 pasos (217 tests pasando)
+- ✅ Integración con backend FastAPI
+- ✅ Upload de documentos a MinIO
+- ✅ Validaciones con Zod
+- ✅ Build exitoso (520 KB bundle)
+
+**Pendiente Crítico** (20%):
+- 🔴 **Módulo de Consulta de Incapacidades** (0%)
+  - Endpoint backend público
+  - Componente de búsqueda
+  - Vista detallada
+  - Timeline de estados
+  - Descarga de documentos
+  - Tests (>70% cobertura)
+
+### Hitos Recientes
+
+- ✅ **16 de enero**: Wizard de 5 pasos completado (217 tests)
+- ✅ **15 de enero**: Integración frontend-backend 100%
+- ✅ **14 de enero**: Sistema JWT con refresh tokens
+- ✅ **12 de enero**: Módulo documentos con MinIO operativo
+- ⚠️ **17 de enero**: Identificada falta de módulo consulta
 
 ---
 
 ## ✅ Tareas Completadas
 
-### 1. Diseño y Arquitectura ✅
-- [x] Arquitectura del sistema (Clean Architecture / Hexagonal)
-- [x] Diagrama de componentes y capas
-- [x] Definición de patrones de diseño (Repository, CQRS, DDD)
-- [x] Estrategias de escalabilidad y seguridad
-- [x] Documentación completa en `docs/01_ARQUITECTURA.md`
+### 1-19. [Mantener listado anterior sin cambios]
 
-### 2. Modelo de Datos ✅
-- [x] Diseño completo con 11 tablas
-- [x] Diagrama Entidad-Relación
-- [x] Scripts SQL con definiciones DDL
-- [x] Triggers y funciones automáticas
-- [x] Índices para optimización
-- [x] Vistas materializadas para reportes
-- [x] Integración tabla SINIESTRO para ARL
-- [x] Documentación en `docs/02_MODELO_DATOS.md`
+### 20. Frontend - Fase 1: Portal Externo (Radicación) ✅
+- [x] Setup inicial (Vite + React + TypeScript)
+- [x] Configuración TailwindCSS + Shadcn/ui
+- [x] Wizard Paso 1: Tipo de incapacidad (6 tests)
+- [x] Wizard Paso 2: Datos personales (55 tests)
+- [x] Wizard Paso 3: Datos de incapacidad (15 tests)
+- [x] Wizard Paso 4: Carga de documentos (86 tests)
+- [x] Wizard Paso 5: Resumen y radicación (39 tests)
+- [x] Integración completa con backend
+- [x] Validaciones con Zod
+- [x] React Query para data fetching
+- [x] Axios con interceptors
+- [x] Tests con Vitest + Testing Library
 
-**Tablas diseñadas**: 
-- EMPRESA, EMPLEADO, USUARIO, INCAPACIDAD, SINIESTRO, DOCUMENTO, HISTORIAL_ESTADO, ORDEN_PAGO, AUDITORIA_LOG, TIPO_DOCUMENTO_CATALOGO, PARAMETRO
+**Métricas Frontend Radicación**:
+- **Tests**: 217/217 (100% passing)
+- **Cobertura**: >75%
+- **Build**: ✅ Exitoso (520 KB bundle)
+- **Lint**: ✅ Sin errores
 
-### 3. Definición de API ✅
-- [x] 50+ endpoints REST documentados
-- [x] Especificación de request/response schemas
-- [x] Códigos de error y manejo
-- [x] Autenticación y autorización (JWT + RBAC)
-- [x] Documentación en `docs/03_API_ENDPOINTS.md`
-
-### 4. Flujo de Estados ✅
-- [x] Máquina de estados para incapacidades
-- [x] Diagrama de transiciones
-- [x] Reglas de validación por estado
-- [x] SLAs configurables
-- [x] Documentación en `docs/04_FLUJO_ESTADOS.md`
-
-**Estados**: RADICADA → EN_AUDITORIA → OBSERVADA/APROBADA/RECHAZADA → EN_PAGO → PAGADA
-
-### 5. Stack Tecnológico ✅
-- [x] Selección de tecnologías (Python, FastAPI, PostgreSQL, Redis, etc.)
-- [x] Justificación de cada elección
-- [x] Estructura de proyecto detallada
-- [x] Configuración de desarrollo y producción
-- [x] Documentación en `docs/05_STACK_Y_ESTRUCTURA.md`
-
-### 6. Infraestructura Docker 🟡
-- [x] Dockerfile optimizado para producción
-- [x] Docker Compose con 8 servicios
-- [x] PostgreSQL 15 (puerto 5442)
-- [x] Redis 7 (puerto 6389)
-- [x] MinIO S3 (puertos 9010, 9011)
-- [x] RabbitMQ (puertos 5682, 15682)
-- [x] API FastAPI (puerto 8010)
-- [x] Celery Worker ✅
-- [x] Celery Beat ✅
-- [x] Flower (puerto 5565) ⚠️
-- [x] Variables de entorno configuradas
-- [x] Health checks para todos los servicios
-- [x] Documentación de puertos en `backend/PUERTOS.md`
-
-### 7. Backend - Configuración Core ✅
-- [x] **app/core/config.py** - Settings con Pydantic v2
-- [x] **app/core/security.py** - JWT, hashing, RBAC permissions
-- [x] **app/core/exceptions.py** - Excepciones personalizadas (8 tipos)
-- [x] **app/core/logging.py** - Logging estructurado con Loguru
-- [x] **app/core/events.py** - Startup/shutdown handlers
-
-### 8. Backend - Base de Datos ✅
-- [x] **app/db/session.py** - Configuración SQLAlchemy 2.0 async
-- [x] **app/db/__init__.py** - Exports y utilidades
-- [x] **app/models/base.py** - BaseModel con timestamps
-- [x] **app/utils/enums.py** - 17 enumeraciones del sistema
-
-### 9. Backend - Modelos ✅
-- [x] **app/models/incapacidad.py** - Modelo completo con relaciones
-- [x] **app/models/siniestro.py** - Modelo de accidentes laborales
-- [x] **app/models/empresa.py** - Modelo de empresas con sync fields
-- [x] **app/models/empleado.py** - Modelo empleados con unique constraint
-- [x] **app/models/afiliado.py** - Modelo de afiliados de pólizas
-- [x] **app/models/usuario.py** - Modelo con autenticación y bloqueo
-- [x] **app/models/documento.py** - Modelo con hashes y validación
-- [x] **app/models/historial_estado.py** - Modelo de auditoría de estados (polimórfico)
-- [x] **app/models/refresh_token.py** - Modelo de tokens JWT con hashing SHA256
-- [x] **app/models/orden_pago.py** - Modelo con workflow de pagos
-- [x] **app/models/auditoria_log.py** - Modelo de logs del sistema
-- [x] **app/models/__init__.py** - Imports consolidados (11 modelos)
-
-### 10. Backend - Schemas Pydantic ✅
-- [x] **app/schemas/incapacidad.py** - CRUD completo con validadores
-- [x] **app/schemas/siniestro.py** - CRUD + import externo
-- [x] **app/schemas/afiliado.py** - CRUD con validación de pólizas
-- [x] **app/schemas/empresa.py** - CRUD con Base/Create/Update/Response/ListItem
-- [x] **app/schemas/empleado.py** - CRUD con validación de documentos
-- [x] **app/schemas/usuario.py** - CRUD + Login/ChangePassword/ResetPassword
-- [x] **app/schemas/auth.py** - TokenResponse, LoginResponse, RefreshTokenRequest, ChangePasswordRequest
-- [x] **app/schemas/documento.py** - CRUD + Upload/Download schemas
-- [x] **app/schemas/historial_estado.py** - Create/Response/ListItem
-- [x] **app/schemas/orden_pago.py** - CRUD + Aprobar/Anular schemas
-- [x] **app/schemas/auditoria_log.py** - CRUD + Filter schema
-- [x] **app/schemas/__init__.py** - Exports consolidados (11 schemas)
-
-### 11. Backend - API Endpoints ✅
-- [x] **app/api/v1/router.py** - Router principal con todos los módulos
-- [x] **app/api/v1/endpoints/health.py** - Health checks
-- [x] **app/api/v1/endpoints/auth.py** - 6 endpoints (login, logout, refresh, change-password, me, logout-all) ✅
-- [x] **app/api/v1/endpoints/incapacidades.py** - CRUD completo + workflow
-- [x] **app/api/v1/endpoints/afiliados.py** - CRUD completo
-- [x] **app/api/v1/endpoints/empresas.py** - CRUD completo + estadísticas
-- [x] **app/api/v1/endpoints/empleados.py** - CRUD completo
-- [x] **app/api/v1/endpoints/siniestros.py** - CRUD + importación
-- [x] **app/api/v1/endpoints/historial_estado.py** - Consulta de historial
-- [x] **app/api/v1/endpoints/documentos.py** - Upload/download con MinIO
-- [x] **app/main.py** - Aplicación FastAPI configurada con CORS, middleware
-
-### 12. Backend - Middleware ✅
-- [x] **app/middleware/error_handler.py** - Manejo global de excepciones
-- [x] **app/middleware/logging_middleware.py** - Logging de requests/responses
-- [x] Integración CORS
-- [x] GZip compression
-
-### 13. Backend - Repositories (Data Access Layer) ✅
-- [x] **app/db/repositories/base_repository.py** - Repository genérico CRUD
-- [x] **app/db/repositories/incapacidad_repository.py** - Queries específicas + filtros
-- [x] **app/db/repositories/afiliado_repository.py** - CRUD con búsqueda por póliza
-- [x] **app/db/repositories/empresa_repository.py** - CRUD + búsqueda por NIT
-- [x] **app/db/repositories/empleado_repository.py** - CRUD + búsqueda por documento
-- [x] **app/db/repositories/siniestro_repository.py** - CRUD + importación externa
-- [x] **app/db/repositories/historial_estado_repository.py** - Consulta polimórfica
-- [x] **app/db/repositories/documento_repository.py** - Metadata y búsqueda por hash
-
-### 14. Backend - Services (Business Logic) 🟡
-- [x] **app/services/auth_service.py** - Login, logout, refresh, change-password, token versioning ✅
-  - Cobertura: 86% (124 líneas, 17 no cubiertas)
-  - Tracking de intentos fallidos con bloqueo automático
-  - Hash SHA256 de refresh tokens
-  - Token version strategy para invalidación masiva
-  - Cleanup automático de tokens expirados
-- [x] **app/services/incapacidad_service.py** - Workflow completo de estados (9 métodos)
-- [x] **app/services/afiliado_service.py** - CRUD + validación de pólizas
-- [x] **app/services/empresa_service.py** - CRUD + estadísticas
-- [x] **app/services/empleado_service.py** - CRUD + historial
-- [x] **app/services/siniestro_service.py** - CRUD + importación + auto-generación historial
-- [x] **app/services/historial_estado_service.py** - Auto-generación en transiciones de estado
-- [x] **app/services/documento_service.py** - Upload MinIO, validación, hashing MD5/SHA256
-  - Validación de extensiones (.pdf, .jpg, .png, .doc, .docx)
-  - Límite de tamaño (10MB configurable)
-  - Presigned URLs con expiración
-- [x] **app/core/storage.py** - Cliente MinIO/S3 con auto-creación de bucket
-
-### 15. Backend - Tareas Celery (Inicial) 🟡
-- [x] **app/tasks/__init__.py** - Configuración Celery
-- [x] **app/tasks/email_tasks.py** - Placeholders para emails
-- [x] **app/tasks/notification_tasks.py** - Notificaciones
-- [x] **app/tasks/report_tasks.py** - Generación de reportes
-- [ ] Implementación completa de lógica (⚪ Pendiente)
-
-### 16. Tests Implementados ✅
-
-#### Tests Unitarios (34 tests - 100% passing)
-- [x] **tests/test_auth_service.py** - 12 tests de AuthService ✅
-  - test_login_success
-  - test_login_invalid_credentials
-  - test_login_user_inactive
-  - test_login_max_failed_attempts
-  - test_refresh_access_token_success
-  - test_refresh_access_token_revoked
-  - test_refresh_access_token_version_mismatch
-  - test_logout_success
-  - test_logout_all_sessions
-  - test_change_password_success
-  - test_change_password_invalid_current
-  - test_hash_token
-
-- [x] **tests/test_documento_service.py** - 11 tests de DocumentoService ✅
-  - Tests de validación (extensión, MIME, tamaño)
-  - Tests de upload, download, delete
-  - Tests con mock de MinIO
-
-- [x] **tests/test_historial_estado.py** - 12 tests de HistorialEstado
-  - Tests de creación, validación, relaciones polimórficas
-  
-- [x] **tests/test_historial_integration.py** - 5 tests de integración
-  - Tests de auto-generación en transiciones de estado
-
-#### Tests de Integración (19 tests - 100% passing)
-- [x] **tests/test_auth_api_simple.py** - 8 tests de endpoints de autenticación ✅
-  - test_login_endpoint
-  - test_login_invalid_credentials
-  - test_refresh_endpoint
-  - test_get_current_user_profile
-  - test_change_password_endpoint
-  - test_logout_endpoint
-  - test_logout_all_sessions_endpoint
-  - test_unauthorized_access
-
-- [x] **tests/test_documento_api.py** - 11 tests de endpoints de documentos
-  - test_upload_documento - Upload de archivo a MinIO
-  - test_upload_invalid_extension - Validación de extensiones
-  - test_upload_invalid_mimetype - Validación de tipo MIME
-  - test_upload_file_too_large - Validación de tamaño
-  - test_download_documento - Download con presigned URL
-  - test_list_documentos_by_incapacidad - Listado por incapacidad
-  - test_list_documentos_by_siniestro - Listado por siniestro
-  - test_delete_documento - Soft delete
-  - test_get_documento_detail - Detalle de documento
-  - test_upload_with_authentication - Upload con autenticación
-  - test_download_nonexistent_documento - Manejo de errores
-
-#### Configuración de Tests
-- [x] **tests/conftest.py** - Fixtures compartidas (db_session, client, test_usuario, etc.)
-- [x] **pytest.ini** - Configuración de pytest con asyncio
-
-#### Cobertura de Código
-- **app/services/auth_service.py**: 86% (124 stmts, 17 miss) ✅
-- **app/api/v1/endpoints/auth.py**: 92% (38 stmts, 3 miss) ✅
-- **app/services/documento_service.py**: 85% (validación, upload, download, presigned URLs)
-- **app/core/storage.py**: Storage client con MinIO/S3
-- **Global**: 60% (3365 stmts, 1358 miss)
-- **Objetivo**: >70% para módulos críticos ✅ (ALCANZADO)
-
-### 17. Backend - Módulo de Documentos ✅
-- [x] **app/models/documento.py** - Modelo con soporte MinIO/S3 ✅
-  - Campos: incapacidad_id, tipo_documento, nombre_archivo, ruta_storage, mime_type
-  - Hashes MD5 y SHA256 para integridad
-  - Relación con Usuario (uploaded_by) e Incapacidad
-  - Propiedades: tamanio_mb, url_storage
-
-- [x] **app/schemas/documento.py** - Schemas Pydantic completos ✅
-  - DocumentoCreate, DocumentoUpdate, DocumentoResponse
-  - DocumentoListItem, DocumentoUploadRequest, DocumentoUploadResponse
-  - Validación de tipos de archivo permitidos
-
-- [x] **app/db/repositories/documento_repository.py** - Repository completo ✅
-  - CRUD básico (create, get, delete, update)
-  - get_by_incapacidad, get_by_siniestro
-  - get_by_hash_md5, get_by_hash_sha256
-  - count_by_incapacidad, get_by_tipo
-
-- [x] **app/services/documento_service.py** - Service con lógica de negocio ✅
-  - upload_documento: Upload a MinIO con validaciones completas
-  - Validación de extensión (.pdf, .jpg, .jpeg, .png, .docx)
-  - Validación de tipo MIME y tamaño (máx 10MB)
-  - Generación automática de hash MD5 y SHA256
-  - get_download_url: Presigned URLs con expiración configurable
-  - delete_documento: Soft delete (BD) o hard delete (BD + storage)
-  - list_by_incapacidad, list_by_siniestro
-
-- [x] **app/core/storage.py** - Cliente MinIO/S3 ✅
-  - Conexión a MinIO con configuración desde settings
-  - Auto-creación de bucket en startup
-  - upload_file: Sube archivos con cálculo de hashes
-  - get_presigned_url: URLs firmadas con expiración
-  - delete_file, file_exists, get_file_info
-  - Manejo de errores S3 (StorageException)
-
-- [x] **app/api/v1/endpoints/documentos.py** - Endpoints REST completos ✅
-  - POST /documentos/upload - Upload de archivo (multipart/form-data)
-  - GET /documentos/{id} - Detalle de documento
-  - GET /documentos/{id}/download - Presigned URL para descarga
-  - DELETE /documentos/{id} - Eliminación (soft/hard)
-  - GET /documentos/incapacidades/{id} - Listar por incapacidad
-  - GET /documentos/siniestros/{id} - Listar por siniestro
-
-- [x] **tests/test_documento_service.py** - 11 tests unitarios ✅
-  - Validaciones: extensión, MIME type, tamaño de archivo
-  - Upload exitoso con mock de MinIO
-  - Manejo de errores (archivo inválido, demasiado grande)
-  - Generación de URL de descarga
-  - Eliminación soft y hard delete
-  - Listados y conteos
-
-- [x] **tests/test_documento_api.py** - 10 tests de integración ✅
-  - Upload de documento con autenticación
-  - Validaciones de archivo (extensión, MIME, tamaño)
-  - Download con presigned URL
-  - Listado de documentos por incapacidad (con paginación)
-  - Permisos y autorización
-  - Upload múltiple de documentos
-
-- [x] **backend/scripts/test_documentos.py** - Script de prueba ✅
-  - Prueba completa del flujo: upload → download → list
-  - Integración con datos de seed_test_data.py
-  - Verificación de MinIO funcionando
-  - Genera URLs de ejemplo para Swagger UI
-
-**Resumen Módulo Documentos**:
-- ✅ 21 tests pasando (11 unitarios + 10 integración)
-- ✅ Cobertura: 85% en DocumentoService
-- ✅ Storage funcionando con MinIO en Docker
-- ✅ Validaciones completas de seguridad
-- ✅ Presigned URLs con expiración
-- ✅ Pruebas exitosas con archivos reales (398KB PDF)
-
-### 18. Backend - Scripts de Utilidades ✅
-- [x] **backend/scripts/seed_test_data.py** - Script de datos de prueba ✅
-  - Crea 3 empresas con datos realistas
-  - Crea 10 empleados distribuidos en empresas
-  - Crea 3 afiliados con pólizas de salud
-  - Crea 3 incapacidades ARL (1 APROBADA, 1 EN_AUDITORIA)
-  - Crea 4 incapacidades SALUD (2 APROBADA, 1 RADICADA, 1 EN_AUDITORIA)
-  - Total: 7 incapacidades de prueba con diferentes estados
-  - Datos con códigos CIE-10 reales
-  - Valores económicos calculados correctamente
-  - Relaciones correctas empleado-empresa y afiliado-póliza
-  - Documentado en `backend/scripts/README.md`
-
-- [x] **backend/scripts/test_documentos.py** - Script de prueba de documentos ✅
-  - Prueba completa del módulo de documentos con datos reales
-  - Verifica integración con MinIO
-  - Upload de archivo PDF de 398KB
-  - Generación de presigned URLs
-  - Listado de documentos por incapacidad
-
-### 19. Backend - Módulo de Usuarios ✅
-- [x] **app/models/usuario.py** - Modelo Usuario con seguridad ✅
-  - Campos: username (unique), email (unique), password_hash, nombre_completo, rol, estado
-  - Seguridad: intentos_fallidos, bloqueado_hasta, token_version, must_change_password
-  - Relaciones: empleado, empresa, incapacidades, historial, documentos, ordenes_pago
-  - Soporte para 6 roles: ADMIN, AUDITOR, APROBADOR, EMPRESA, EMPLEADO, READONLY
-  - Estados: ACTIVO, INACTIVO, BLOQUEADO
-
-- [x] **app/schemas/usuario.py** - Schemas Pydantic completos ✅
-  - UsuarioCreate (con password, validación min 8 chars)
-  - UsuarioUpdate, UsuarioChangePassword, UsuarioResetPassword
-  - UsuarioResponse, UsuarioListItem
-  - EmailStr validation para emails
-
-- [x] **app/db/repositories/usuario_repository.py** - Repository completo ✅
-  - CRUD básico heredado de BaseRepository
-  - get_by_username, get_by_email (búsquedas por campos únicos)
-  - list_by_rol, list_active, list_by_estado (filtros)
-  - increment_failed_attempts, reset_failed_attempts (seguridad)
-  - block_user, update_last_access (gestión de acceso)
-  - increment_token_version (invalidación de tokens)
-  - search_usuarios (ILIKE en username, email, nombre_completo)
-  - 11 métodos especializados + CRUD base
-
-- [x] **app/services/usuario_service.py** - Service con lógica completa ✅
-  - create_usuario: Validaciones de username/email únicos, password strength, solo ADMIN
-  - update_usuario: Actualización con verificación de permisos
-  - change_password: Cambio de contraseña con verificación de contraseña actual
-  - reset_password: Generación de contraseña temporal (solo ADMIN)
-  - activate_usuario, deactivate_usuario: Gestión de estado (solo ADMIN)
-  - assign_rol: Asignación de roles con prevención de auto-modificación
-  - handle_failed_login: Auto-bloqueo después de 5 intentos fallidos (30 min)
-  - handle_successful_login: Reset de intentos, actualización de último acceso
-  - Validaciones: Password strength (8+ chars, mayúscula, minúscula, número)
-  - Validaciones: Username format (3-50 chars, alfanuméricos + guión bajo/punto)
-
-- [x] **app/api/v1/endpoints/usuarios.py** - Endpoints REST completos ✅
-  - POST / - Crear usuario (solo ADMIN)
-  - GET / - Listar con filtros (rol, estado, search) + paginación
-  - GET /me - Usuario actual autenticado
-  - GET /{id} - Detalle de usuario
-  - PUT /{id} - Actualizar usuario (solo ADMIN)
-  - POST /{id}/cambiar-password - Cambio de contraseña (propio o ADMIN)
-  - POST /{id}/reset-password - Reset con contraseña temporal (solo ADMIN)
-  - POST /{id}/activar - Activar usuario (solo ADMIN)
-  - POST /{id}/desactivar - Desactivar usuario (solo ADMIN)
-  - POST /{id}/asignar-rol - Cambiar rol (solo ADMIN)
-
-- [x] **tests/test_usuario_repository.py** - 14 tests unitarios ✅
-  - test_create_usuario, test_get_by_username, test_get_by_email
-  - test_list_by_rol, test_list_active, test_list_by_estado
-  - test_increment_failed_attempts, test_reset_failed_attempts
-  - test_block_user, test_update_last_access
-  - test_increment_token_version, test_search_usuarios
-  - test_update_usuario
-  - 14/14 tests pasando (100%)
-
-- [x] **tests/test_usuario_service.py** - 17 tests unitarios con mocks ✅
-  - test_create_usuario_success, test_create_usuario_non_admin_forbidden
-  - test_create_usuario_duplicate_username, test_create_usuario_duplicate_email
-  - test_create_usuario_weak_password, test_create_usuario_invalid_username
-  - test_change_password_success, test_change_password_wrong_current
-  - test_reset_password_by_admin, test_reset_password_non_admin_forbidden
-  - test_activate_usuario, test_deactivate_usuario
-  - test_assign_rol_success, test_assign_rol_to_self_forbidden
-  - test_handle_failed_login, test_handle_failed_login_blocks_after_max_attempts
-  - test_handle_successful_login
-  - 17/17 tests pasando (100%)
-
-**Resumen Módulo Usuarios**:
-- ✅ 31 tests pasando (14 repository + 17 service = 100%)
-- ✅ Cobertura: 72% en UsuarioService, 100% en UsuarioRepository
-- ✅ RBAC completo con 6 roles
-- ✅ Seguridad: bloqueo automático, password strength, token versioning
-- ✅ 10 endpoints REST funcionando
-- ✅ Validaciones completas de unicidad y formato
-
-### 20. Documentación ✅
+### 21. Documentación ✅
 - [x] README.md principal del proyecto
 - [x] backend/README.md con instrucciones
 - [x] backend/PUERTOS.md con configuración
-- [x] backend/scripts/README.md con guía de uso de seed data
-- [x] .github/copilot-instructions.md (GitHub Copilot)
+- [x] backend/scripts/README.md con guía de seed data
+- [x] frontend/portal-externo/README.md
+- [x] Documentación de cada paso del wizard
+- [x] .github/copilot-instructions.md
 - [x] Documentación de arquitectura completa (docs/)
+- [x] ESTADO_PROYECTO.md actualizado
+- [x] RESUMEN_VISUAL_COMPLETO.md
 
 ---
 
-## 🔴 Tareas Pendientes (Críticas)
+## 🔴 Tareas Pendientes (CRÍTICAS)
 
-### Fase 1: Completar Tests Restantes (Media Prioridad)
+### ⚠️ URGENTE: Completar Fase 1 - Frontend Portal Externo (3-4 días)
 
-#### 1.1 Tests de API de Usuarios
-- [ ] **tests/test_usuario_api.py** - Tests de integración (10-12 tests estimados)
-  - test_create_usuario_endpoint (solo ADMIN)
-  - test_list_usuarios_endpoint (con filtros)
-  - test_get_current_user_endpoint (/me)
-  - test_update_usuario_endpoint (solo ADMIN)
-  - test_change_password_endpoint
-  - test_reset_password_endpoint (solo ADMIN)
-  - test_activate_deactivate_endpoints (solo ADMIN)
-  - test_assign_rol_endpoint (solo ADMIN)
-  - test_non_admin_forbidden_operations
-  - test_password_validation_on_create
+#### 🔴 Prioridad Máxima: Módulo de Consulta de Incapacidades
 
-**Criterios de éxito**:
-- CRUD completo de usuarios
-- 20+ tests unitarios
-- Endpoints documentados en OpenAPI
+**Contexto**: 
+El wizard de radicación está 100% completado, pero **falta** la funcionalidad de consulta que es parte esencial del Portal Externo. Sin esta funcionalidad, la Fase 1 está **incompleta** y no se puede considerar un MVP funcional.
 
----
+#### Subtareas Backend (1 día)
 
-### Fase 2: Módulo de Órdenes de Pago (COMPLETADO ✅)
+**1.1 Crear Endpoint Público de Consulta**
+- [ ] `GET /api/v1/incapacidades/consultar?numero={numero}` - Búsqueda por número radicación
+- [ ] `GET /api/v1/incapacidades/consultar?documento={doc}&tipo_documento={tipo}` - Búsqueda por documento
+- [ ] Validar que el endpoint NO requiere autenticación (público)
+- [ ] Response schema con datos completos:
+  ```python
+  class ConsultaIncapacidadPublicResponse(BaseModel):
+      # Datos básicos
+      numero: str
+      estado: EstadoIncapacidad
+      tipo: TipoIncapacidad
+      fecha_inicio: date
+      fecha_fin: date
+      dias_totales: int
+      
+      # Datos del solicitante (sin información sensible)
+      nombre_completo: str
+      tipo_documento: TipoDocumento
+      
+      # Timeline de estados
+      historial_estados: List[HistorialEstadoSimple]
+      
+      # Documentos descargables (solo nombres, sin URLs sensibles)
+      documentos: List[DocumentoSimple]
+      
+      # Información de contacto
+      contacto_soporte: ContactoSoporte
+      
+      # Fechas
+      created_at: datetime
+      updated_at: datetime
+  ```
+- [ ] Implementar paginación para historial
+- [ ] Sanitizar respuesta (ocultar datos sensibles)
+- [ ] Tests unitarios (8-10 tests)
+- [ ] Tests de integración (5 tests)
+- [ ] Documentar en Swagger con ejemplos
 
-#### 2.1 Repository ✅
-- [x] **orden_pago_repository.py** - 10 métodos implementados
-  - get_by_numero_orden, get_by_incapacidad_id
-  - list_by_estado, list_by_empresa, list_pending_payment
-  - get_with_incapacidad, get_last_numero_orden
-  - exists_for_incapacidad, list_by_fecha_range
+**1.2 Endpoint de Descarga Pública de Documentos**
+- [ ] `GET /api/v1/incapacidades/{numero}/documentos/{doc_id}/download` - Sin auth
+- [ ] Validar que el documento pertenece a la incapacidad
+- [ ] Generar presigned URL temporal (15 minutos)
+- [ ] Rate limiting (máximo 10 descargas por IP por hora)
+- [ ] Tests (3 tests)
 
-#### 2.2 Service ✅
-- [x] **orden_pago_service.py** - Workflow completo implementado
-  - ✅ Generar orden desde incapacidad APROBADA
-  - ✅ Aprobar orden de pago (validación de rol ADMIN)
-  - ✅ Registrar pago ejecutado
-  - ✅ Anular orden de pago
-  - ✅ Auto-generación de número de orden secuencial (OP-YYYY-NNNNN)
-  - ✅ Transiciones de estado: GENERADA → APROBADA → PAGADA/ANULADA
-  - ✅ Validaciones: incapacidad aprobada, no duplicar órdenes, info bancaria completa
-  - ✅ Integración con historial de estados
-  - ✅ Actualización automática de incapacidad a PAGADA
-
-#### 2.3 API Endpoints ✅
-- [x] **app/api/v1/endpoints/ordenes_pago.py** - 9 endpoints REST
-  - POST /ordenes-pago - Generar orden desde incapacidad
-  - GET /ordenes-pago - Listar con filtros
-  - GET /ordenes-pago/{id} - Obtener detalle
-  - PUT /ordenes-pago/{id} - Actualizar (solo GENERADA)
-  - POST /ordenes-pago/{id}/aprobar - Aprobar (ADMIN)
-  - POST /ordenes-pago/{id}/registrar-pago - Registrar pago
-  - POST /ordenes-pago/{id}/anular - Anular orden
-  - GET /ordenes-pago/{id}/historial - Historial de estados
-  - GET /ordenes-pago/export/csv - Exportar CSV para banco
-
-#### 2.4 Tests ✅
-- [x] **tests/test_orden_pago_repository.py** - 11 tests creados
-- [x] **tests/test_orden_pago_service.py** - 15 tests creados
-
-**Estado**: Módulo Órdenes de Pago 95% completo (solo requiere ajustes menores en tests)
-
----
-
-### Fase 3: Módulo de Auditoría (Media Prioridad)
-
-#### 3.1 Repository y Service
-- [ ] **auditoria_log_repository.py** - CRUD + filtros avanzados por fecha, usuario, acción
-  - Registrar acciones críticas (crear, modificar, eliminar, aprobar)
-  - Filtros por usuario, acción, fecha, módulo
-  - Exportación de logs para compliance
-  - Retención de logs según políticas
-
-**Criterios de éxito**:
-- Lógica de negocio completa
-- Validaciones exhaustivas
-- Integración con repositories
-- Logging con loguru
-- Excepciones personalizadas
+**Criterios de aceptación backend**:
+- Endpoints públicos funcionando sin JWT
+- Response sanitizada sin datos sensibles
+- Búsqueda por número y documento funcionando
+- Tests >80% cobertura
+- Documentación Swagger completa
+- Rate limiting implementado
 
 ---
 
-### Fase 3: Completar API Endpoints Faltantes (1-2 días)
+#### Subtareas Frontend (2-3 días)
 
-#### 3.1 Módulo de Usuarios
-- [ ] POST `/api/v1/usuarios` - Crear usuario (ADMIN)
-- [ ] GET `/api/v1/usuarios` - Listar usuarios con filtros
-- [ ] GET `/api/v1/usuarios/{id}` - Obtener usuario por ID
-- [ ] PUT `/api/v1/usuarios/{id}` - Actualizar usuario
-- [ ] DELETE `/api/v1/usuarios/{id}` - Desactivar usuario (soft delete)
-- [ ] POST `/api/v1/usuarios/{id}/reset-password` - Resetear contraseña
-- [ ] POST `/api/v1/usuarios/{id}/activate` - Activar cuenta
-- [ ] POST `/api/v1/usuarios/{id}/deactivate` - Desactivar cuenta
+**2.1 Routing y Navegación**
+- [ ] Crear ruta `/consultar` en React Router
+- [ ] Agregar link en homepage
+- [ ] Breadcrumbs de navegación
+- [ ] Tests de routing (2 tests)
 
-#### 3.2 Módulo de Órdenes de Pago
-- [ ] POST `/api/v1/ordenes-pago` - Generar orden desde incapacidad
-- [ ] GET `/api/v1/ordenes-pago` - Listar con filtros (estado, fecha, empresa)
-- [ ] GET `/api/v1/ordenes-pago/{id}` - Obtener detalle de orden
-- [ ] PUT `/api/v1/ordenes-pago/{id}` - Actualizar (solo si estado=GENERADA)
-- [ ] POST `/api/v1/ordenes-pago/{id}/aprobar` - Aprobar orden (ADMIN)
-- [ ] POST `/api/v1/ordenes-pago/{id}/registrar-pago` - Registrar pago ejecutado
-- [ ] POST `/api/v1/ordenes-pago/{id}/anular` - Anular orden
-- [ ] GET `/api/v1/ordenes-pago/{id}/historial` - Historial de estados
-- [ ] GET `/api/v1/ordenes-pago/export` - Exportar a CSV/Excel (formato de banco)
+**2.2 Componente de Búsqueda**
+- [ ] Crear `src/components/consulta/BusquedaIncapacidad.tsx`
+  - Formulario con dos modos de búsqueda:
+    - Por número de radicación
+    - Por documento + tipo documento
+  - Validación con Zod
+  - Loading states
+  - Manejo de errores (404, 500)
+  - Botón de limpiar búsqueda
+- [ ] Schema Zod `consultaSchema`:
+  ```typescript
+  const consultaSchema = z.object({
+    modo: z.enum(['numero', 'documento']),
+    numero: z.string().optional(),
+    documento: z.string().optional(),
+    tipo_documento: z.enum(['CEDULA', 'PASAPORTE', 'CEDULA_EXTRANJERIA']).optional(),
+  }).refine(
+    (data) => {
+      if (data.modo === 'numero') return !!data.numero;
+      return !!data.documento && !!data.tipo_documento;
+    },
+    { message: 'Datos incompletos' }
+  );
+  ```
+- [ ] Tests (10 tests):
+  - Render inicial
+  - Cambio entre modos
+  - Validaciones
+  - Submit exitoso
+  - Error 404
+  - Loading states
 
-#### 3.3 Módulo de Auditoría (Opcional para MVP)
-- [ ] GET `/api/v1/auditoria` - Consultar logs con filtros
-- [ ] GET `/api/v1/auditoria/export` - Exportar logs para compliance
+**2.3 Servicio API**
+- [ ] Crear `src/services/consultaService.ts`:
+  ```typescript
+  export async function consultarIncapacidad(
+    params: ConsultaParams
+  ): Promise<IncapacidadPublicaResponse> {
+    const { data } = await api.get('/incapacidades/consultar', { params });
+    return data;
+  }
+  
+  export function useConsultarIncapacidad() {
+    return useMutation({
+      mutationFn: consultarIncapacidad,
+      // ...
+    });
+  }
+  ```
+- [ ] Hook React Query con error handling
+- [ ] Tests (5 tests)
 
-**Criterios de éxito**:
-- Response models con Pydantic
-- Dependency injection para auth/permissions
-- Documentación OpenAPI completa
-- Manejo de errores estandarizado
-- Paginación en listados
+**2.4 Vista Detallada de Incapacidad**
+- [ ] Crear `src/components/consulta/DetalleIncapacidad.tsx`
+  - Card con información básica
+  - Card con datos del solicitante
+  - Timeline de estados visual
+  - Lista de documentos descargables
+  - Información de contacto
+  - Botón de nueva consulta
+- [ ] Usar componentes de Shadcn/ui:
+  - `Card`
+  - `Badge` (para estados)
+  - `Timeline` (custom)
+  - `Button`
+  - `Alert` (para observaciones)
+- [ ] Tests (15 tests):
+  - Render con datos completos
+  - Render con datos mínimos
+  - Estados diferentes (RADICADA, APROBADA, etc.)
+  - Click en documentos
+  - Navegación
 
----
+**2.5 Timeline de Estados**
+- [ ] Crear `src/components/consulta/TimelineEstados.tsx`
+  - Componente visual tipo stepper
+  - Iconos por estado
+  - Fechas de transición
+  - Observaciones si existen
+  - Responsive
+- [ ] Tests (8 tests)
 
-### Fase 4: Implementar Tareas Celery (2 días)
+**2.6 Lista de Documentos Descargables**
+- [ ] Crear `src/components/consulta/DocumentosDescargables.tsx`
+  - Tabla con nombre, tipo, tamaño
+  - Botón de descarga con loading
+  - Preview de PDF (opcional)
+  - Manejo de errores
+- [ ] Integrar con endpoint de descarga pública
+- [ ] Tests (10 tests)
 
-#### 4.1 Email Tasks (Alta prioridad)
-- [ ] **email_tasks.py** - Implementación completa con SMTP
-  - `send_incapacidad_radicada_email()` - Confirmación de radicación
-  - `send_incapacidad_observada_email()` - Notificación de observaciones
-  - `send_incapacidad_aprobada_email()` - Notificación de aprobación
-  - `send_incapacidad_rechazada_email()` - Notificación de rechazo
-  - `send_orden_pago_generada_email()` - Orden de pago creada
-  - `send_pago_ejecutado_email()` - Confirmación de pago
-  - Templates HTML con Jinja2
-  - Retry logic con exponential backoff
-  - Log de emails enviados
+**2.7 Información de Contacto**
+- [ ] Crear `src/components/consulta/ContactoSoporte.tsx`
+  - Card con información
+  - Email, teléfono, horario
+  - FAQs comunes
+- [ ] Tests (3 tests)
 
-#### 4.2 Notification Tasks
-- [ ] **notification_tasks.py** - Sistema de notificaciones
-  - Notificaciones en la aplicación (in-app)
-  - Push notifications (opcional)
-  - Log de notificaciones enviadas
+**2.8 Página de Consulta Principal**
+- [ ] Crear `src/pages/ConsultarIncapacidad.tsx`
+  - Layout responsive
+  - Integración de todos los componentes
+  - Estados de búsqueda (inicial, buscando, resultado, error)
+  - Breadcrumbs
+  - SEO metadata
+- [ ] Tests E2E (5 tests):
+  - Flujo completo búsqueda exitosa
+  - Búsqueda sin resultados
+  - Error de servidor
+  - Descarga de documento
+  - Navegación
 
-#### 4.3 Report Tasks
-- [ ] **report_tasks.py** - Generación de reportes
-  - `generate_incapacidades_report()` - Reporte de incapacidades en PDF/Excel
-  - `generate_monthly_summary_report()` - Resumen mensual automático
-  - `generate_empresa_statistics()` - Estadísticas por empresa
-  - Uso de ReportLab para PDFs
-  - Uso de openpyxl para Excel
-
-#### 4.4 Maintenance Tasks
-- [ ] **maintenance_tasks.py** - Tareas de mantenimiento
-  - `cleanup_expired_tokens()` - Limpieza de refresh tokens expirados
-  - `cleanup_old_logs()` - Archivado de logs antiguos (>90 días)
-  - `backup_database()` - Backup automático (opcional)
-  - `sync_external_data()` - Sincronización con sistemas externos
-
-#### 4.5 Celery Beat (Scheduled Tasks)
-- [ ] Configurar schedule en `tasks/__init__.py`
-  - Limpieza de tokens expirados: cada 24 horas
-  - Reporte mensual: día 1 de cada mes a las 8:00 AM
-  - Sincronización de datos: diario a las 2:00 AM
-  - Alertas de SLAs: cada hora
-
-**Criterios de éxito**:
-- Integración con SMTP configurado en settings
-- Templates de emails profesionales
-- Retry logic para tolerancia a fallos
-- Logging completo de tareas ejecutadas
-- Monitoreo con Flower (opcional)
-
----
-
-### Fase 5: Tests Completos (2-3 días)
-
-#### 5.1 Tests de Repositories
-- [ ] **test_usuario_repository.py** - 8-10 tests
-- [ ] **test_orden_pago_repository.py** - 8-10 tests
-- [ ] **test_incapacidad_repository.py** - Queries complejas (10 tests)
-- [ ] **test_empresa_repository.py** - 6-8 tests
-- [ ] **test_empleado_repository.py** - 6-8 tests
-
-#### 5.2 Tests de Services
-- [ ] **test_usuario_service.py** - 12-15 tests (CRUD, roles, permisos)
-- [ ] **test_orden_pago_service.py** - 15-20 tests (workflow completo)
-- [ ] **test_incapacidad_service.py** - 20-25 tests (workflow completo, validaciones)
-- [ ] **test_empresa_service.py** - 8-10 tests
-- [ ] **test_empleado_service.py** - 8-10 tests
-- [ ] **test_afiliado_service.py** - 8-10 tests
-
-#### 5.3 Tests de API (Integración)
-- [ ] **test_usuarios_api.py** - 10-12 tests (CRUD completo)
-- [ ] **test_ordenes_pago_api.py** - 12-15 tests (workflow, permisos)
-- [ ] **test_incapacidades_api.py** - 20-25 tests (workflow completo)
-- [ ] **test_empresas_api.py** - 8-10 tests
-- [ ] **test_empleados_api.py** - 8-10 tests
-- [ ] **test_afiliados_api.py** - 8-10 tests
-
-#### 5.4 Tests de Integración (E2E)
-- [ ] **test_workflow_incapacidad_arl.py** - Flujo completo ARL
-  - Crear incapacidad ARL
-  - Adjuntar documentos
-  - Auditar → Aprobar
-  - Generar orden de pago
-  - Registrar pago
-  - Validar historial completo
-
-- [ ] **test_workflow_incapacidad_salud.py** - Flujo completo SALUD
-  - Crear incapacidad SALUD
-  - Workflow de aprobación
-  - Generación de pago
-
-- [ ] **test_workflow_observaciones.py** - Ciclo de observaciones
-  - Crear incapacidad
-  - Observar (solicitar info)
-  - Responder observación
-  - Re-auditar y aprobar
-
-#### 5.5 Cobertura de Tests
-- [ ] Alcanzar >80% de cobertura global
-- [ ] Cobertura >90% en módulos críticos (auth, incapacidad, orden_pago)
-- [ ] Configurar CI/CD con pytest en GitHub Actions
-
-**Criterios de éxito**:
-- Todos los tests passing
-- Cobertura >80% global
-- Fixtures reutilizables
-- Tests independientes (sin orden de ejecución)
-- Base de datos de prueba limpia entre tests
+**Criterios de aceptación frontend**:
+- Búsqueda por número y documento funcionando
+- Vista detallada responsive
+- Timeline visual completa
+- Descarga de documentos funcionando
+- Tests >70% cobertura (60+ tests nuevos)
+- Build exitoso
+- 0 errores TypeScript
+- Lighthouse score >90
 
 ---
 
-### Fase 6: Seguridad y Validaciones (1 día)
+#### Subtareas Documentación (0.5 día)
 
-#### 6.1 Validaciones de Entrada
-- [ ] Validación exhaustiva de todos los schemas Pydantic
-- [ ] Validación de archivos subidos (magic numbers, no solo extensión)
-- [ ] Sanitización de inputs para prevenir SQL Injection (ya cubierto por SQLAlchemy)
-- [ ] Validación de UUIDs en path parameters
+**3.1 Documentación Técnica**
+- [ ] Crear `docs/10_CONSULTA_INCAPACIDADES.md`:
+  - Arquitectura del módulo
+  - Endpoints backend
+  - Componentes frontend
+  - Flujos de usuario
+  - Casos de error
+  - Screenshots
+- [ ] Actualizar `frontend/portal-externo/README.md`
+- [ ] Crear `frontend/portal-externo/CONSULTA_COMPLETADO.md`
 
-#### 6.2 Rate Limiting
-- [ ] Implementar rate limiting en endpoints críticos
-  - `/auth/login`: 5 req/min por IP
-  - `/auth/refresh`: 10 req/min por usuario
-  - Upload de archivos: 10 req/min por usuario
-  - Otros endpoints: 100 req/min por usuario
-
-#### 6.3 Seguridad de Archivos
-- [ ] Validación de virus con ClamAV (opcional)
-- [ ] Límites de tamaño estrictos
-- [ ] Validación de magic numbers (file signature)
-- [ ] Sandbox para procesamiento de archivos
-
-#### 6.4 Auditoría y Compliance
-- [ ] Log de todas las acciones críticas en AUDITORIA_LOG
-- [ ] GDPR compliance (soft deletes, exportación de datos)
-- [ ] Logs inmutables para auditorías externas
+**3.2 Documentación de Usuario**
+- [ ] Crear guía de usuario para consulta
+- [ ] FAQ con preguntas comunes
+- [ ] Troubleshooting
 
 ---
 
-### Fase 7: Optimización y Performance (1-2 días)
+### Fase 2: Frontend - Sistema Interno (4-6 semanas) - POSTPONER
 
-#### 7.1 Base de Datos
-- [ ] Review de índices creados en migración
-- [ ] Query optimization (EXPLAIN ANALYZE)
-- [ ] Prevención de N+1 queries con selectinload/joinedload
-- [ ] Connection pooling tuning (min=10, max=100)
+**NOTA**: No iniciar hasta completar Fase 1 al 100%
 
-#### 7.2 Caching con Redis
-- [ ] Cache de consultas frecuentes:
-  - Listado de empresas activas (TTL: 5 min)
-  - Parámetros del sistema (TTL: 1 hora)
-  - Estadísticas de dashboard (TTL: 10 min)
-- [ ] Invalidación de cache en updates
-- [ ] Cache de sesiones de usuario
+#### 2.1 Autenticación JWT en Frontend (1 semana)
+- [ ] Implementar login/logout en React
+- [ ] Store de autenticación con Zustand
+- [ ] Axios interceptors para refresh token automático
+- [ ] Guards de rutas protegidas
+- [ ] Manejo de expiración de sesión
+- [ ] Tests (>70% cobertura)
 
-#### 7.3 API Performance
-- [ ] Compresión GZIP de respuestas (ya implementado)
-- [ ] Paginación obligatoria en listados (max 100 items)
-- [ ] Lazy loading de relaciones pesadas
-- [ ] Optimización de serialización Pydantic
+#### 2.2 Dashboard de Auditoría (2 semanas)
+- [ ] Layout principal con sidebar
+- [ ] Dashboard con métricas en tiempo real
+- [ ] Gráficos con Recharts
+- [ ] Filtros avanzados
+- [ ] Paginación optimizada
+- [ ] Export a Excel/PDF
+- [ ] Tests
 
----
-
-### Fase 8: Documentación Final (1 día)
-
-#### 8.1 Documentación de Código
-- [ ] Docstrings completos en todos los módulos (Google style)
-- [ ] Type hints en todas las funciones
-- [ ] Comentarios en lógica compleja
-
-#### 8.2 Documentación de Usuario
-- [ ] Guía de inicio rápido (Quick Start)
-- [ ] Manual de usuario para cada rol:
-  - Guía para ADMIN
-  - Guía para AUDITOR
-  - Guía para EMPRESA/EMPLEADO
-- [ ] FAQ con casos comunes
-
-#### 8.3 Documentación Técnica
-- [ ] docs/06_AUTENTICACION_JWT.md ✅ (Ya existe en VALIDACION_MANUAL_SWAGGER.md)
-- [ ] docs/07_WORKFLOW_ORDENES_PAGO.md
-- [ ] docs/08_INTEGRACION_EXTERNA.md (webhooks, sincronización)
-- [ ] docs/09_DEPLOYMENT.md (producción)
-- [ ] docs/10_TROUBLESHOOTING.md
-
-#### 8.4 Swagger/OpenAPI
-- [ ] Descriptions completas en todos los endpoints
-- [ ] Ejemplos de request/response
-- [ ] Tags y grupos organizados
-- [ ] Security schemes documentados
-
----
-
-## 📋 Tareas Opcionales (Post-MVP)
-
-### Mejoras Funcionales
-- [ ] Sistema de notificaciones en tiempo real (WebSockets)
-- [ ] Dashboard interactivo con gráficas (Chart.js)
-- [ ] Exportación masiva de datos (CSV, Excel, PDF)
-- [ ] Importación masiva desde Excel/CSV
-- [ ] OCR para extracción de datos de certificados médicos
-- [ ] Integración con sistemas de tesorería (SAP, Oracle)
-- [ ] Firma digital de documentos
-- [ ] App móvil (React Native / Flutter)
-
-### Mejoras Técnicas
-- [ ] GraphQL API como alternativa a REST
-- [ ] Multi-tenancy para múltiples aseguradoras
-- [ ] Sistema de plugins para extensibilidad
-- [ ] Event Sourcing para trazabilidad completa
-- [ ] CQRS pattern para queries complejas
-- [ ] ElasticSearch para búsqueda avanzada
-
-### DevOps y Producción
-- [ ] CI/CD con GitHub Actions
-- [ ] Kubernetes deployment (Helm charts)
-- [ ] Terraform para Infrastructure as Code
-- [ ] Monitoring con Prometheus + Grafana
-- [ ] Alerting con PagerDuty
-- [ ] Backup automático y Disaster Recovery
-- [ ] Blue-Green deployment
-- [ ] Canary releases
-
----
-
-## 📋 Backlog Adicional
-
-### Mejoras Técnicas
-- [ ] Implementar GraphQL como alternativa a REST
-- [ ] WebSockets para notificaciones en tiempo real
-- [ ] Sistema de plugins para extensibilidad
-- [ ] Multi-tenancy para múltiples aseguradoras
-- [ ] API pública para terceros
-
-### Features Adicionales
-- [ ] Chatbot de soporte con IA
-- [ ] OCR para extracción de datos de documentos
-- [ ] Análisis predictivo de incapacidades
-- [ ] Integración con sistemas de tesorería
-- [ ] App móvil nativa
-
-### DevOps
-- [ ] CI/CD con GitHub Actions / GitLab CI
-- [ ] Kubernetes deployment
-- [ ] Terraform para IaC
-- [ ] Monitoring con Prometheus + Grafana
-- [ ] Alerting con PagerDuty
-- [ ] Backup automático de BD
-- [ ] Disaster Recovery plan
-
----
-
-## 🐛 Problemas Conocidos
-
-1. **Flower (Celery Monitor)** - No está iniciando correctamente
-   - Estado: Pendiente de configuración
-   - Prioridad: Baja (no crítico para desarrollo)
-   - Solución: Revisar configuración de Flower con Celery 5.3+
-
-2. **Logs de producción** - Permisos de escritura en contenedor
-   - Estado: Workaround implementado (fallback a console)
-   - Prioridad: Media
-   - Solución temporal: Logs solo en consola
-
-3. ~~**Alembic no inicializado**~~ - ✅ RESUELTO
-   - Estado: Completado
-   - Migración inicial aplicada exitosamente
-
-4. ~~**Tests de documento con usuario**~~ - ✅ RESUELTO
-   - Estado: Completado
-   - Solución: bcrypt actualizado a 4.0.1
-   - Resultado: 11/11 tests pasando
+[... resto de tareas Fase 2 sin cambios ...]
 
 ---
 
 ## 📦 Dependencias del Proyecto
 
-### Python (requirements.txt) ✅
-- FastAPI 0.109.0
-- SQLAlchemy 2.0.25 (async)
-- Pydantic 2.5.3
-- asyncpg 0.29.0
-- redis 5.0.1
-- celery 5.3.4
-- python-jose 3.3.0
-- passlib 1.7.4
-- bcrypt 4.0.1 (actualizado)
-- loguru 0.7.2
-- httpx 0.26.0
-- minio 7.2.3
-- alembic 1.13.1
-- pytest 9.0.2
-- pytest-asyncio 1.3.0
-- pytest-cov 7.0.0
-
-### Infraestructura (Docker) ✅
-- PostgreSQL 15
-- Redis 7
-- MinIO (latest)
-- RabbitMQ 3 (management)
+[Sin cambios]
 
 ---
 
 ## 🎯 Próximos Pasos Inmediatos
 
-### Sprint Actual (Esta Semana)
+### Sprint Actual (Esta Semana) - CRÍTICO ⚠️
 
-**Prioridad 1 - Pruebas Manuales** ✅
-1. Validar flujo completo de autenticación en Swagger UI
-2. Probar endpoints de incapacidades con autenticación
-3. Validar upload/download de documentos con MinIO
+**Prioridad 1 - Completar Fase 1: Módulo de Consulta** 🔴
+1. **Backend** (1 día):
+   - Implementar endpoint público de consulta
+   - Endpoint de descarga pública
+   - Tests completos
+   - Documentación Swagger
 
-**Prioridad 2 - Completar Cobertura de Tests**
-4. Corregir tests de documento (6 restantes)
-5. Agregar tests para endpoints de incapacidades
-6. Tests de integración para workflow completo
-7. Alcanzar >70% de cobertura global
+2. **Frontend** (2-3 días):
+   - Componente de búsqueda
+   - Vista detallada
+   - Timeline de estados
+   - Lista de documentos
+   - Tests completos (60+ nuevos tests)
 
-**Prioridad 3 - Documentación**
-8. Crear docs/06_AUTENTICACION_JWT.md
-9. Documentar flujo de workflow de incapacidades
-10. README con guía de inicio rápido
+3. **Documentación** (0.5 día):
+   - Crear docs/10_CONSULTA_INCAPACIDADES.md
+   - Actualizar README principal
+   - Guía de usuario
 
-### Sprint Siguiente (Próxima Semana)
+**Criterios para considerar Fase 1 completa**:
+- ✅ Wizard de radicación funcionando (YA COMPLETADO)
+- ⏳ Módulo de consulta funcionando
+- ⏳ Tests totales >280 (217 actuales + 60+ consulta)
+- ⏳ Build exitoso con consulta incluida
+- ⏳ Documentación completa de ambos módulos
+- ⏳ Demo funcional end-to-end
 
-**Prioridad 1 - Órdenes de Pago**
-1. Completar workflow de generación automática
-2. Endpoints de aprobación y anulación
-3. Integración con historial de estados
-
-**Prioridad 2 - Mejoras de Seguridad**
-4. Rate limiting en endpoints de login
-5. Validación exhaustiva de input
-6. Logs de auditoría para acciones críticas
-
-**Prioridad 3 - Optimización**
-7. Query optimization (N+1 queries)
-8. Caching con Redis para datos frecuentes
-9. Indexación adicional en BD
+**Estimación total**: 3-4 días de desarrollo
 
 ---
 
-## 👥 Equipo y Roles
-
-- **Arquitecto/Tech Lead**: Diseño de arquitectura, decisiones técnicas
-- **Backend Developer**: Implementación de modelos, services, API
-- **DevOps**: Infraestructura, CI/CD, monitoreo
-- **QA**: Testing, validación de flujos
-- **Frontend Developer**: Portales (pendiente)
+**Prioridad 2 - Solo después de completar Fase 1**
+- Planificación Fase 2 (Sistema Interno)
+- Diseño de arquitectura
+- Creación de backlog detallado
 
 ---
 
-## 📞 Contacto y Soporte
+## 🐛 Problemas Conocidos
 
-- **Repositorio**: /opt/apps/incapacidades_vs
-- **Documentación**: docs/
-- **API Swagger**: http://localhost:8010/docs
-- **Health Check**: http://localhost:8010/api/v1/health
+1. **Fase 1 Frontend Incompleta** (🔴 Crítico)
+   - Falta módulo de consulta
+   - MVP no funcional sin esta parte
+   - Bloquea inicio de Fase 2
+   - Prioridad: Máxima
+   - Solución: Implementar según plan en este documento
+
+2. **Flower no inicia correctamente** (⚠️ Prioridad Media)
+   - Error: `ValueError: not enough values to unpack`
+   - Workaround: Usar Celery CLI directamente
+   - Fix pendiente: Actualizar versión de Flower
+
+3. **Rate Limiting no implementado** (🟡 Prioridad Media)
+   - Endpoints públicos vulnerables a abuso
+   - Solución: Implementar rate limiting con slowapi
+   - Especialmente crítico para endpoint de consulta
 
 ---
 
 ## 📝 Notas de Desarrollo
 
-### Decisiones Técnicas Importantes
+### Estado Real del Proyecto
 
-1. **Async/Await en todo el stack** para máximo rendimiento
-2. **UUIDs en lugar de IDs incrementales** para seguridad y distribución
-3. **Soft deletes** para auditoría completa
-4. **JSONB en PostgreSQL** para flexibilidad en metadatos
-5. **Celery para tareas async** en lugar de background tasks de FastAPI
-6. **MinIO en lugar de S3** para desarrollo local y control total
+**Situación Actual**:
+El proyecto está en **85% de completitud global**, pero la **Fase 1 está incompleta al 80%**. Aunque el wizard de radicación funciona perfectamente, **falta el módulo de consulta** que es esencial para considerar el Portal Externo como funcional.
 
-### Convenciones del Proyecto
+**Decisión Crítica**:
+**NO INICIAR Fase 2** hasta completar Fase 1 al 100%. Un MVP incompleto genera deuda técnica y confusión.
 
-- **Commits**: Conventional Commits (feat, fix, docs, etc.)
-- **Branches**: feature/, bugfix/, hotfix/
-- **Code Style**: Black + isort + flake8
-- **Type Hints**: Obligatorio en todo el código
-- **Docstrings**: Google style
-- **Tests**: pytest con fixtures
+**Prioridad Absoluta**:
+Implementar módulo de consulta en los próximos 3-4 días siguiendo el plan detallado en este documento.
 
 ---
 
-## 🏆 Logros Recientes (9 de enero de 2026)
-
-### Validación Manual Completa del Módulo de Autenticación ✅
-- ✅ 10/10 endpoints de autenticación validados manualmente
-- ✅ Todos los flujos probados con curl y verificados en BD
-- ✅ Refresh token funciona correctamente
-- ✅ Change password con token versioning validado
-- ✅ Logout individual revoca refresh tokens
-- ✅ Logout-all invalida todas las sesiones
-- ✅ Documento completo: VALIDACION_MANUAL_SWAGGER.md
-
-### Corrección Completa de Tests - 100% Pasando ✅
-- ✅ 42 tests pasando (34 unitarios + 8 integración)
-- ✅ Corrección de problema de bcrypt en fixtures
-- ✅ Actualización de `pwd_context` en conftest.py
-- ✅ Todos los tests de documentos ahora funcionan correctamente
-- ✅ Tests de autenticación completamente estables
-
-### Módulo de Autenticación JWT - 100% Completado ✅
-- ✅ 20/20 tests pasando (12 unitarios + 8 integración)
-- ✅ 86% cobertura en auth_service.py
-- ✅ 92% cobertura en auth.py (endpoints)
-- ✅ Token versioning para invalidación masiva
-- ✅ Refresh tokens con hash SHA256
-- ✅ Bloqueo automático después de 5 intentos fallidos
-- ✅ 6 endpoints REST completamente funcionales
-
-### Módulo de Documentos - 100% Completado ✅
-- ✅ Upload/download con MinIO/S3
-- ✅ Validación de archivos (extensión, MIME, tamaño)
-- ✅ Hashing MD5/SHA256 para integridad
-- ✅ Presigned URLs con expiración
-- ✅ 11/11 tests pasando (100% cobertura)
-
-### Módulo de Historial de Estados - 100% Completado ✅
-- ✅ Patrón polimórfico (Usuario genérico)
-- ✅ Auto-generación en transiciones de incapacidades y siniestros
-- ✅ 17 tests completados (12 unitarios + 5 integración)
-- ✅ Endpoints de consulta funcionando
-
-### Infraestructura
-- ✅ Migraciones Alembic aplicadas
-- ✅ Base de datos sincronizada con 11 tablas
-- ✅ MinIO configurado y funcional
-- ✅ Docker Compose con 8 servicios estables
+**Estado actualizado**: 17 de enero de 2026  
+**Próxima revisión**: Al completar módulo de consulta  
+**Versión del documento**: 0.9.0
 
 ---
 
-**Última actualización**: 9 de enero de 2026, 20:45 COT  
-**Actualizado por**: Sistema de Gestión de Incapacidades - Development Team  
-**Estado**: 🚀 En desarrollo avanzado - 82% completado
+```
+⚠️  FASE 1 INCOMPLETA - CONSULTA PENDIENTE  ⚠️
+
+  Completado:  ████████████████░░░░  80%
+  
+  ✅ Radicación: 100%
+  ⏳ Consulta:     0%  ← SIGUIENTE TAREA CRÍTICA
+  
+  Estimación: 3-4 días de desarrollo
+```

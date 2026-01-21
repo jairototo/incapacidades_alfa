@@ -1,0 +1,35 @@
+name: Auto Documentation Update
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs: 
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth:  0
+      
+      - name: Analyze Changes
+        id: changes
+        run: |
+          echo "files=$(git diff --name-only HEAD~1 HEAD | tr '\n' ' ')" >> $GITHUB_OUTPUT
+      
+      - name: Update Documentation
+        run: |
+          # Aquí puedes agregar scripts personalizados
+          echo "Archivos modificados: ${{ steps.changes. outputs.files }}"
+      
+      - name:  Commit Documentation
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "docs: actualización automática de documentación"
+          file_pattern: "docs/* README.md CHANGELOG.md"

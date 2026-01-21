@@ -556,6 +556,7 @@ file: empresas.csv
 - `empleado_id`: filtro por empleado (solo ARL)
 - `afiliado_id`: filtro por afiliado (solo SALUD)
 - `estado`: RADICADA, EN_AUDITORIA, etc.
+- `numero`: filtro por numero
 - `tipo`: ARL, SALUD
 - `fecha_inicio_desde`: filtro de fecha
 - `fecha_inicio_hasta`: filtro de fecha
