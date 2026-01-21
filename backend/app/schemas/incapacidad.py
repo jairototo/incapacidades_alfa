@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -279,3 +279,82 @@ class EstadisticasIncapacidades(BaseModel):
     por_tipo: dict[str, int]
     por_mes: list[PorMes]
     top_empresas: list[TopEmpresa]
+
+
+# ========== SCHEMAS PARA CONSULTA PÚBLICA (SIN AUTENTICACIÓN) ==========
+
+class HistorialEstadoSimple(BaseModel):
+    """Versión simplificada del historial para consulta pública."""
+    estado: EstadoIncapacidad
+    fecha_cambio: datetime
+    observaciones: Optional[str] = None
+    
+    model_config = {"from_attributes": True}
+
+
+class DocumentoPublico(BaseModel):
+    """Información básica de documento para consulta pública."""
+    id: UUID
+    nombre_archivo: str
+    tipo_documento: str
+    tamanio_kb: int
+    fecha_upload: datetime
+    
+    model_config = {"from_attributes": True}
+
+
+class ConsultaIncapacidadPublicResponse(BaseModel):
+    """
+    Response para consulta pública de incapacidad.
+    
+    NOTA IMPORTANTE: Esta respuesta NO incluye datos sensibles como:
+    - Salarios o valores monetarios
+    - Cuentas bancarias
+    - Diagnósticos médicos detallados (solo código CIE-10)
+    - Datos personales completos de auditores
+    - IDs de usuarios internos
+    """
+    # Identificación
+    numero: str = Field(..., description="Número de radicación único")
+    
+    # Estado y tipo
+    estado: EstadoIncapacidad = Field(..., description="Estado actual")
+    tipo: TipoIncapacidad = Field(..., description="ARL o SALUD")
+    
+    # Fechas de la incapacidad
+    fecha_inicio: date = Field(..., description="Fecha de inicio de incapacidad")
+    fecha_fin: date = Field(..., description="Fecha de fin de incapacidad")
+    dias_totales: int = Field(..., description="Días totales de incapacidad")
+    
+    # Datos del solicitante (sanitizados)
+    nombre_completo: str = Field(..., description="Nombre completo del solicitante")
+    tipo_documento: str = Field(..., description="Tipo de documento (sin número)")
+    
+    # Información médica básica (sanitizada)
+    diagnostico_cie10: Optional[str] = Field(None, description="Código CIE-10 del diagnóstico")
+    descripcion_diagnostico: Optional[str] = Field(None, description="Descripción general del diagnóstico")
+    eps: Optional[str] = Field(None, description="EPS del solicitante")
+    
+    # Timeline de estados
+    historial_estados: List[HistorialEstadoSimple] = Field(
+        default_factory=list,
+        description="Historial de cambios de estado ordenado cronológicamente"
+    )
+    
+    # Documentos descargables
+    documentos: List[DocumentoPublico] = Field(
+        default_factory=list,
+        description="Lista de documentos adjuntos (solo públicos)"
+    )
+    
+    # Observaciones públicas (si existen)
+    observaciones_publicas: Optional[str] = Field(
+        None,
+        description="Observaciones visibles para el solicitante (solo si está OBSERVADA)"
+    )
+    
+    # Metadata
+    created_at: datetime = Field(..., description="Fecha de radicación")
+    updated_at: datetime = Field(..., description="Última actualización")
+    
+    model_config = {"from_attributes": True}

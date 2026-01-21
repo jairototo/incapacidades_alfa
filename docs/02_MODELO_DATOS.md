@@ -819,6 +819,32 @@ CREATE TRIGGER trigger_registrar_cambio_estado
     EXECUTE FUNCTION registrar_cambio_estado();
 ```
 
+### 4.4 Registro Automático en Historial al momento de radicar una incapacidad
+```sql
+CREATE OR REPLACE FUNCTION registrar_radicacion_incapacidad()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO historial_estado (
+        incapacidad_id, 
+        estado_anterior, 
+        estado_nuevo,
+        cambiado_por_id
+    ) VALUES (
+        NEW.id,
+        NULL,
+        NEW.estado,
+        NEW.radicado_por_id
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_registrar_radicacion_incapacidad
+    AFTER INSERT ON incapacidad
+    FOR EACH ROW
+    EXECUTE FUNCTION registrar_radicacion_incapacidad();
+```
+
 ## 5. Vistas Útiles
 
 ### 5.1 Vista: Incapacidades con Información Completa
