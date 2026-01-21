@@ -5,7 +5,7 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, status, Body
+from fastapi import APIRouter, Depends, Query, Path, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -16,6 +16,7 @@ from app.schemas.incapacidad import (
     IncapacidadAuditar,
     ConsultaIncapacidadPublicResponse,
 )
+from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
 from app.services.incapacidad_service import incapacidad_service
 from app.services.historial_estado_service import historial_estado_service
@@ -167,6 +168,92 @@ async def consultar_incapacidad_publica(
         numero=numero,
         documento=documento,
         tipo_documento=tipo_documento
+    )
+    
+    return result
+
+
+@router.get(
+    "/{numero}/documentos/{documento_id}/download",
+    response_model=PresignedUrlResponse,
+    summary="Descargar documento público (sin autenticación)",
+    description="Genera URL de descarga temporal para un documento público",
+    tags=["incapacidades-publico"],
+    responses={
+        200: {
+            "description": "URL de descarga generada exitosamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "url": "http://localhost:9010/documentos/550e8400-e29b-41d4-a716-446655440000.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...",
+                        "expires_in": 900,
+                        "nombre_archivo": "incapacidad_medica.pdf",
+                        "tipo_documento": "INCAPACIDAD_MEDICA"
+                    }
+                }
+            }
+        },
+        404: {
+            "description": "Incapacidad o documento no encontrado",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Incapacidad INC-202601-000001 no encontrada"
+                    }
+                }
+            }
+        },
+        403: {
+            "description": "Documento no público o no pertenece a la incapacidad",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Este tipo de documento no es público"
+                    }
+                }
+            }
+        }
+    }
+)
+async def descargar_documento_publico(
+    numero: str = Path(
+        ...,
+        description="Número de radicación de la incapacidad",
+        example="INC-ARL-20260117-0001"
+    ),
+    documento_id: UUID = Path(
+        ...,
+        description="ID del documento a descargar"
+    ),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Genera URL de descarga temporal (15 minutos) para documento público **SIN AUTENTICACIÓN**.
+    
+    ## Validaciones:
+    - El documento debe pertenecer a la incapacidad especificada
+    - El tipo de documento debe ser público (INCAPACIDAD_MEDICA, CEDULA, HISTORIA_CLINICA)
+    
+    ## Retorna:
+    - URL pre-firmada válida por 15 minutos
+    - Metadata del documento (nombre, tipo)
+    
+    ## Tipos de documentos públicos:
+    - `INCAPACIDAD_MEDICA`: Documento médico de incapacidad
+    - `CEDULA`: Cédula de ciudadanía o documento de identidad
+    - `HISTORIA_CLINICA`: Historia clínica relacionada
+    
+    ## Tipos de documentos NO públicos:
+    - `SOPORTE_PAGO`: Requiere autenticación
+    - `OTROS`: Requiere autenticación
+    
+    ## Rate limiting:
+    - Máximo 10 descargas por hora por IP
+    """
+    result = await incapacidad_service.descargar_documento_publico(
+        db=db,
+        numero=numero,
+        documento_id=documento_id
     )
     
     return result

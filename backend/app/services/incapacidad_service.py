@@ -1,18 +1,20 @@
 """
 Service para lógica de negocio de Incapacidad con workflow de estados.
 """
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict
 from uuid import UUID
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.core.exceptions import (
     NotFoundException,
     BadRequestException,
     InvalidStateException,
-    ConflictException
+    ConflictException,
+    ForbiddenException
 )
 from app.db.repositories.incapacidad_repository import incapacidad_repository
 from app.db.repositories.empleado_repository import empleado_repository
@@ -20,15 +22,19 @@ from app.db.repositories.afiliado_repository import afiliado_repository
 from app.db.repositories.empresa_repository import empresa_repository
 from app.services.historial_estado_service import historial_estado_service
 from app.models.incapacidad import Incapacidad
+from app.models.documento import Documento
 from app.schemas.incapacidad import IncapacidadCreate, IncapacidadUpdate
+from app.schemas.documento import PresignedUrlResponse
 from app.utils.enums import (
     EstadoIncapacidad,
     TipoIncapacidad,
     EstadoEmpleado,
     EstadoAfiliado,
     EstadoEmpresa,
-    Prioridad
+    Prioridad,
+    TipoDocumentoArchivo
 )
+from app.core.storage import storage_backend
 
 
 # Matriz de transiciones de estados permitidas
@@ -64,6 +70,14 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
     ],
     EstadoIncapacidad.CANCELADA: []
 }
+
+
+# Tipos de documentos públicos permitidos para descarga sin autenticación
+TIPOS_DOCUMENTOS_PUBLICOS = [
+    TipoDocumentoArchivo.INCAPACIDAD_MEDICA,
+    TipoDocumentoArchivo.CEDULA,
+    TipoDocumentoArchivo.HISTORIA_CLINICA,
+]
 
 
 class IncapacidadService:
@@ -940,6 +954,77 @@ class IncapacidadService:
             "created_at": incapacidad.created_at.isoformat(),
             "updated_at": incapacidad.updated_at.isoformat()
         }
+
+    async def descargar_documento_publico(
+        self,
+        db: AsyncSession,
+        numero: str,
+        documento_id: UUID
+    ) -> PresignedUrlResponse:
+        """
+        Genera URL de descarga pública para documento sin autenticación.
+        
+        Validaciones:
+        1. Incapacidad existe
+        2. Documento existe
+        3. Documento pertenece a la incapacidad
+        4. Tipo de documento es público
+        
+        Args:
+            db: Sesión de base de datos
+            numero: Número de radicación de la incapacidad
+            documento_id: ID del documento
+            
+        Returns:
+            PresignedUrlResponse con URL temporal (15 minutos)
+            
+        Raises:
+            NotFoundException: Si incapacidad o documento no existen
+            PermissionException: Si documento no pertenece o no es público
+        """
+        # 1. Buscar incapacidad por número
+        incapacidad = await self.repository.get_by_numero(db, numero)
+        if not incapacidad:
+            raise NotFoundException(f"Incapacidad {numero} no encontrada")
+        
+        # 2. Buscar documento
+        stmt = select(Documento).where(Documento.id == documento_id)
+        result = await db.execute(stmt)
+        documento = result.scalar_one_or_none()
+        
+        if not documento:
+            raise NotFoundException(f"Documento {documento_id} no encontrado")
+        
+        # 3. Validar que el documento pertenece a la incapacidad
+        if documento.incapacidad_id != incapacidad.id:
+            raise ForbiddenException(
+                "El documento no pertenece a esta incapacidad"
+            )
+        
+        # 4. Validar que el tipo de documento es público
+        if documento.tipo_documento not in TIPOS_DOCUMENTOS_PUBLICOS:
+            raise ForbiddenException(
+                "Este tipo de documento no es público"
+            )
+        
+        # 5. Generar presigned URL (15 minutos = 900 segundos)
+        try:
+            presigned_url = storage_backend.get_presigned_url(
+                object_path=documento.ruta_storage,
+                expires=timedelta(minutes=15)
+            )
+        except Exception as e:
+            raise BadRequestException(
+                f"Error generando URL de descarga: {str(e)}"
+            )
+        
+        # 6. Construir response
+        return PresignedUrlResponse(
+            url=presigned_url,
+            expires_in=900,  # 15 minutos en segundos
+            nombre_archivo=documento.nombre_archivo,
+            tipo_documento=documento.tipo_documento
+        )
 
 
 # Singleton instance

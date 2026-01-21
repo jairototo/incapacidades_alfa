@@ -75,3 +75,13 @@ class DocumentoUploadResponse(BaseModel):
     """Schema para respuesta de carga exitosa."""
     documento: DocumentoResponse
     url_descarga: Optional[str] = Field(None, description="URL temporal para descargar")
+
+
+class PresignedUrlResponse(BaseModel):
+    """Response con URL pre-firmada para descarga de documento."""
+    url: str = Field(..., description="URL pre-firmada para descarga")
+    expires_in: int = Field(..., description="Segundos hasta expiración (900 = 15 minutos)")
+    nombre_archivo: str = Field(..., description="Nombre del archivo")
+    tipo_documento: str = Field(..., description="Tipo de documento")
+    
+    model_config = ConfigDict(from_attributes=True)

@@ -51,11 +51,6 @@ class TestConsultaPublica:
         # Verificar que tiene estructuras requeridas
         assert "historial_estados" in data
         assert "documentos" in data
-        assert "contacto_soporte" in data
-        
-        # Verificar datos de contacto
-        assert data["contacto_soporte"]["email"] == "[email protected]"
-        assert data["contacto_soporte"]["telefono"] == "+57 (1) 234-5678"
         
         # Verificar fechas
         assert "created_at" in data
@@ -405,31 +400,6 @@ class TestConsultaPublica:
             assert isinstance(doc["tamanio_kb"], int)
             assert doc["tamanio_kb"] > 0
 
-    async def test_contacto_soporte_siempre_presente(
-        self,
-        client: AsyncClient,
-        test_incapacidad
-    ):
-        """La información de contacto debe estar siempre presente."""
-        response = await client.get(
-            "/api/v1/incapacidades/consultar",
-            params={"numero": test_incapacidad.numero}
-        )
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        assert "contacto_soporte" in data
-        contacto = data["contacto_soporte"]
-        
-        assert contacto["email"]
-        assert contacto["telefono"]
-        assert contacto["horario"]
-        assert contacto["mensaje"]
-        
-        # Verificar que el email existe (la verificación detallada se hace en otros tests)
-        assert contacto["email"].count("@") >= 1 or "@" in contacto["email"]
-
     async def test_response_tiene_todas_claves_requeridas(
         self,
         client: AsyncClient,
@@ -456,7 +426,6 @@ class TestConsultaPublica:
             "tipo_documento",
             "historial_estados",
             "documentos",
-            "contacto_soporte",
             "created_at",
             "updated_at"
         ]
