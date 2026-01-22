@@ -6,6 +6,7 @@ from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
+import sqlalchemy as sa
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
@@ -40,6 +41,47 @@ async def db_engine():
     # Crear todas las tablas
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Crear función y trigger para registro automático de historial
+        await conn.execute(sa.text("""
+            CREATE OR REPLACE FUNCTION registrar_radicacion_incapacidad()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                INSERT INTO historial_estado (
+                    id,
+                    entity_type,
+                    entity_id,
+                    estado_anterior,
+                    estado_nuevo,
+                    cambiado_por_id,
+                    observacion,
+                    fecha_cambio,
+                    created_at,
+                    updated_at
+                ) VALUES (
+                    gen_random_uuid(),
+                    'incapacidad',
+                    NEW.id,
+                    NULL,
+                    NEW.estado,
+                    NEW.radicado_por_id,
+                    'Estado inicial al radicar la incapacidad',
+                    NOW(),
+                    NOW(),
+                    NOW()
+                );
+                
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+        """))
+        
+        await conn.execute(sa.text("""
+            CREATE TRIGGER trigger_registrar_radicacion_incapacidad
+                AFTER INSERT ON incapacidad
+                FOR EACH ROW
+                EXECUTE FUNCTION registrar_radicacion_incapacidad();
+        """))
     
     yield engine
     

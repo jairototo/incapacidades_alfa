@@ -1,18 +1,20 @@
 """
 Service para lógica de negocio de Incapacidad con workflow de estados.
 """
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict
 from uuid import UUID
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.core.exceptions import (
     NotFoundException,
     BadRequestException,
     InvalidStateException,
-    ConflictException
+    ConflictException,
+    ForbiddenException
 )
 from app.db.repositories.incapacidad_repository import incapacidad_repository
 from app.db.repositories.empleado_repository import empleado_repository
@@ -20,15 +22,19 @@ from app.db.repositories.afiliado_repository import afiliado_repository
 from app.db.repositories.empresa_repository import empresa_repository
 from app.services.historial_estado_service import historial_estado_service
 from app.models.incapacidad import Incapacidad
+from app.models.documento import Documento
 from app.schemas.incapacidad import IncapacidadCreate, IncapacidadUpdate
+from app.schemas.documento import PresignedUrlResponse
 from app.utils.enums import (
     EstadoIncapacidad,
     TipoIncapacidad,
     EstadoEmpleado,
     EstadoAfiliado,
     EstadoEmpresa,
-    Prioridad
+    Prioridad,
+    TipoDocumentoArchivo
 )
+from app.core.storage import storage_backend
 
 
 # Matriz de transiciones de estados permitidas
@@ -64,6 +70,14 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
     ],
     EstadoIncapacidad.CANCELADA: []
 }
+
+
+# Tipos de documentos públicos permitidos para descarga sin autenticación
+TIPOS_DOCUMENTOS_PUBLICOS = [
+    TipoDocumentoArchivo.INCAPACIDAD_MEDICA,
+    TipoDocumentoArchivo.CEDULA,
+    TipoDocumentoArchivo.HISTORIA_CLINICA,
+]
 
 
 class IncapacidadService:
@@ -744,6 +758,273 @@ class IncapacidadService:
         
         # Si llega aquí, usar UUID como fallback
         return f"{prefix}-{fecha_str}-{str(uuid.uuid4())[:8].upper()}"
+
+    async def consultar_incapacidad_publica(
+        self,
+        db: AsyncSession,
+        numero: Optional[str] = None,
+        documento: Optional[str] = None,
+        tipo_documento: Optional[str] = None
+    ) -> dict:
+        """
+        Consultar incapacidad de forma pública (sin autenticación).
+        
+        Este método está diseñado para permitir consultas públicas sin autenticación,
+        sanitizando todos los datos sensibles antes de retornarlos.
+        
+        Args:
+            db: Sesión de base de datos
+            numero: Número de radicación (opcional)
+            documento: Número de documento (opcional)
+            tipo_documento: Tipo de documento (opcional)
+            
+        Returns:
+            Diccionario con datos sanitizados de la incapacidad
+            
+        Raises:
+            BadRequestException: Si los parámetros son inválidos
+            NotFoundException: Si no se encuentra la incapacidad
+        """
+        from sqlalchemy.orm import selectinload
+        from sqlalchemy import select
+        from app.models.empleado import Empleado
+        from app.models.afiliado import Afiliado
+        from app.core.logging import logger
+        
+        # Validar parámetros
+        if not numero and not (documento and tipo_documento):
+            raise BadRequestException(
+                "Debe proporcionar número de radicación O documento + tipo_documento"
+            )
+        
+        # Log de consulta (para auditoría)
+        logger.info(
+            f"Consulta pública de incapacidad",
+            extra={
+                "numero": numero,
+                "tiene_documento": bool(documento),
+                "tipo_documento": tipo_documento
+            }
+        )
+        
+        # Buscar incapacidad con eager loading
+        query = select(Incapacidad).options(
+            selectinload(Incapacidad.empleado),
+            selectinload(Incapacidad.afiliado),
+            selectinload(Incapacidad.empresa),
+            selectinload(Incapacidad.documentos)
+        )
+        
+        if numero:
+            # Búsqueda por número de radicación
+            query = query.where(Incapacidad.numero == numero.upper().strip())
+        else:
+            # Búsqueda por documento
+            # Intentar buscar en empleado primero
+            empleado_query = query.join(Incapacidad.empleado).where(
+                Empleado.numero_documento == documento.strip()
+            )
+            # Si se proporciona tipo_documento, filtrar también por eso
+            if tipo_documento:
+                empleado_query = empleado_query.where(Empleado.tipo_documento == tipo_documento)
+            
+            result = await db.execute(empleado_query)
+            incapacidad = result.scalar_one_or_none()
+            
+            # Si no se encuentra en empleado, buscar en afiliado
+            if not incapacidad:
+                afiliado_query = query.join(Incapacidad.afiliado).where(
+                    Afiliado.numero_documento == documento.strip()
+                )
+                # Si se proporciona tipo_documento, filtrar también por eso
+                if tipo_documento:
+                    afiliado_query = afiliado_query.where(Afiliado.tipo_documento == tipo_documento)
+                
+                result = await db.execute(afiliado_query)
+                incapacidad = result.scalar_one_or_none()
+                
+            if not incapacidad:
+                raise NotFoundException(
+                    "No se encontró ninguna incapacidad con los datos proporcionados"
+                )
+            
+            # Retornar datos sanitizados directamente
+            return await self._sanitize_incapacidad_publica(incapacidad, db)
+        
+        # Si es búsqueda por número, ejecutar query
+        result = await db.execute(query)
+        incapacidad = result.scalar_one_or_none()
+        
+        if not incapacidad:
+            raise NotFoundException(
+                "No se encontró ninguna incapacidad con los datos proporcionados"
+            )
+        
+        # Sanitizar y retornar datos
+        return await self._sanitize_incapacidad_publica(incapacidad, db)
+
+    async def _sanitize_incapacidad_publica(self, incapacidad: Incapacidad, db: AsyncSession) -> dict:
+        """
+        Sanitiza los datos de una incapacidad para consulta pública.
+        
+        Elimina todos los datos sensibles:
+        - Valores monetarios (salario_base, valor_dia, valor_total)
+        - Cuentas bancarias
+        - Números de documento completos
+        - IDs de usuarios internos
+        - Datos de auditores
+        
+        Args:
+            incapacidad: Incapacidad a sanitizar
+            db: Sesión de base de datos para consultas
+            
+        Returns:
+            Diccionario con datos públicos sanitizados
+        """
+        # Obtener nombre completo del solicitante
+        if incapacidad.empleado:
+            nombre_completo = f"{incapacidad.empleado.nombres} {incapacidad.empleado.apellidos}"
+            tipo_doc = incapacidad.empleado.tipo_documento.value if hasattr(incapacidad.empleado.tipo_documento, 'value') else str(incapacidad.empleado.tipo_documento)
+        elif incapacidad.afiliado:
+            nombre_completo = f"{incapacidad.afiliado.nombres} {incapacidad.afiliado.apellidos}"
+            tipo_doc = incapacidad.afiliado.tipo_documento.value if hasattr(incapacidad.afiliado.tipo_documento, 'value') else str(incapacidad.afiliado.tipo_documento)
+        else:
+            nombre_completo = "Solicitante"
+            tipo_doc = "N/A"
+        
+        # Filtrar solo documentos públicos (no incluir documentos sensibles internos)
+        documentos_publicos = []
+        for doc in incapacidad.documentos:
+            tipo_doc_value = doc.tipo_documento.value if hasattr(doc.tipo_documento, 'value') else str(doc.tipo_documento)
+            if tipo_doc_value in ["INCAPACIDAD_MEDICA", "CEDULA", "HISTORIA_CLINICA"]:
+                documentos_publicos.append({
+                    "id": str(doc.id),
+                    "nombre_archivo": doc.nombre_archivo,
+                    "tipo_documento": tipo_doc_value,
+                    "tamanio_kb": doc.tamanio_bytes // 1024,
+                    "fecha_upload": doc.created_at.isoformat()
+                })
+        
+        # Cargar historial de estados usando el servicio polimórfico
+        historial_completo = await historial_estado_service.get_incapacidad_history(
+            db=db,
+            incapacidad_id=incapacidad.id
+        )
+        
+        # Construir historial ordenado cronológicamente
+        historial = [
+            {
+                "estado": h.estado_nuevo.value if hasattr(h.estado_nuevo, 'value') else str(h.estado_nuevo),
+                "fecha_cambio": h.created_at.isoformat(),
+                # Solo incluir observaciones si el estado es OBSERVADA
+                "observaciones": h.observacion if str(h.estado_nuevo) == "OBSERVADA" else None
+            }
+            for h in historial_completo
+        ]
+        
+        # Determinar observaciones públicas (solo si está OBSERVADA)
+        observaciones_publicas = None
+        estado_actual = incapacidad.estado.value if hasattr(incapacidad.estado, 'value') else str(incapacidad.estado)
+        if estado_actual == "OBSERVADA" and historial:
+            # Buscar la última observación del estado OBSERVADA
+            for h in reversed(historial):
+                if h.get("observaciones"):
+                    observaciones_publicas = h["observaciones"]
+                    break
+        
+        # Construir response sanitizada
+        return {
+            "numero": incapacidad.numero,
+            "estado": incapacidad.estado.value if hasattr(incapacidad.estado, 'value') else str(incapacidad.estado),
+            "tipo": incapacidad.tipo.value if hasattr(incapacidad.tipo, 'value') else str(incapacidad.tipo),
+            "fecha_inicio": incapacidad.fecha_inicio.isoformat(),
+            "fecha_fin": incapacidad.fecha_fin.isoformat(),
+            "dias_totales": incapacidad.dias_totales,
+            "nombre_completo": nombre_completo,
+            "tipo_documento": tipo_doc,
+            # Información médica básica (sin detalles sensibles)
+            "diagnostico_cie10": incapacidad.diagnostico_cie10,
+            "descripcion_diagnostico": incapacidad.descripcion_diagnostico,
+            "eps": incapacidad.eps,
+            # Listas
+            "historial_estados": historial,
+            "documentos": documentos_publicos,
+            "observaciones_publicas": observaciones_publicas,
+            # Metadata
+            "created_at": incapacidad.created_at.isoformat(),
+            "updated_at": incapacidad.updated_at.isoformat()
+        }
+
+    async def descargar_documento_publico(
+        self,
+        db: AsyncSession,
+        numero: str,
+        documento_id: UUID
+    ) -> PresignedUrlResponse:
+        """
+        Genera URL de descarga pública para documento sin autenticación.
+        
+        Validaciones:
+        1. Incapacidad existe
+        2. Documento existe
+        3. Documento pertenece a la incapacidad
+        4. Tipo de documento es público
+        
+        Args:
+            db: Sesión de base de datos
+            numero: Número de radicación de la incapacidad
+            documento_id: ID del documento
+            
+        Returns:
+            PresignedUrlResponse con URL temporal (15 minutos)
+            
+        Raises:
+            NotFoundException: Si incapacidad o documento no existen
+            PermissionException: Si documento no pertenece o no es público
+        """
+        # 1. Buscar incapacidad por número
+        incapacidad = await self.repository.get_by_numero(db, numero)
+        if not incapacidad:
+            raise NotFoundException(f"Incapacidad {numero} no encontrada")
+        
+        # 2. Buscar documento
+        stmt = select(Documento).where(Documento.id == documento_id)
+        result = await db.execute(stmt)
+        documento = result.scalar_one_or_none()
+        
+        if not documento:
+            raise NotFoundException(f"Documento {documento_id} no encontrado")
+        
+        # 3. Validar que el documento pertenece a la incapacidad
+        if documento.incapacidad_id != incapacidad.id:
+            raise ForbiddenException(
+                "El documento no pertenece a esta incapacidad"
+            )
+        
+        # 4. Validar que el tipo de documento es público
+        if documento.tipo_documento not in TIPOS_DOCUMENTOS_PUBLICOS:
+            raise ForbiddenException(
+                "Este tipo de documento no es público"
+            )
+        
+        # 5. Generar presigned URL (15 minutos = 900 segundos)
+        try:
+            presigned_url = storage_backend.get_presigned_url(
+                object_path=documento.ruta_storage,
+                expires=timedelta(minutes=15)
+            )
+        except Exception as e:
+            raise BadRequestException(
+                f"Error generando URL de descarga: {str(e)}"
+            )
+        
+        # 6. Construir response
+        return PresignedUrlResponse(
+            url=presigned_url,
+            expires_in=900,  # 15 minutos en segundos
+            nombre_archivo=documento.nombre_archivo,
+            tipo_documento=documento.tipo_documento
+        )
 
 
 # Singleton instance

@@ -5,7 +5,7 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, status, Body
+from fastapi import APIRouter, Depends, Query, Path, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -14,13 +14,253 @@ from app.schemas.incapacidad import (
     IncapacidadUpdate,
     IncapacidadInDB,
     IncapacidadAuditar,
+    ConsultaIncapacidadPublicResponse,
 )
+from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
 from app.services.incapacidad_service import incapacidad_service
 from app.services.historial_estado_service import historial_estado_service
 from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
+from app.core.exceptions import BadRequestException
 
 router = APIRouter()
+
+
+# ========== ENDPOINTS PÚBLICOS (SIN AUTENTICACIÓN) ==========
+
+@router.get(
+    "/consultar",
+    response_model=ConsultaIncapacidadPublicResponse,
+    summary="Consultar incapacidad pública (sin autenticación)",
+    description="Permite consultar el estado de una incapacidad por número o documento",
+    tags=["incapacidades-publico"],
+    responses={
+        200: {
+            "description": "Incapacidad encontrada",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "numero": "INC-ARL-20260117-0001",
+                        "estado": "EN_AUDITORIA",
+                        "tipo": "ARL",
+                        "fecha_inicio": "2026-01-10",
+                        "fecha_fin": "2026-01-20",
+                        "dias_totales": 11,
+                        "nombre_completo": "Juan Pérez García",
+                        "tipo_documento": "CC",
+                        "diagnostico_cie10": "S06.0",
+                        "descripcion_diagnostico": "Conmoción cerebral",
+                        "eps": "EPS Salud Total",
+                        "historial_estados": [
+                            {
+                                "estado": "RADICADA",
+                                "fecha_cambio": "2026-01-10T09:00:00",
+                                "observaciones": None
+                            },
+                            {
+                                "estado": "EN_AUDITORIA",
+                                "fecha_cambio": "2026-01-11T14:30:00",
+                                "observaciones": None
+                            }
+                        ],
+                        "documentos": [
+                            {
+                                "id": "550e8400-e29b-41d4-a716-446655440000",
+                                "nombre_archivo": "incapacidad_medica.pdf",
+                                "tipo_documento": "INCAPACIDAD_MEDICA",
+                                "tamanio_kb": 450,
+                                "fecha_upload": "2026-01-10T09:05:00"
+                            }
+                        ],
+                        "observaciones_publicas": None,
+                        "created_at": "2026-01-10T09:00:00",
+                        "updated_at": "2026-01-11T14:30:00"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Parámetros inválidos",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Debe proporcionar número de radicación O documento + tipo_documento"
+                    }
+                }
+            }
+        },
+        404: {
+            "description": "Incapacidad no encontrada",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "No se encontró ninguna incapacidad con los datos proporcionados"
+                    }
+                }
+            }
+        }
+    }
+)
+async def consultar_incapacidad_publica(
+    numero: Optional[str] = Query(
+        None,
+        description="Número de radicación (ej: INC-ARL-20260117-0001)",
+        min_length=10,
+        max_length=50
+    ),
+    documento: Optional[str] = Query(
+        None,
+        description="Número de documento de identidad",
+        min_length=5,
+        max_length=20
+    ),
+    tipo_documento: Optional[str] = Query(
+        None,
+        description="Tipo de documento (CC, CE, TI, PASAPORTE, PEP)"
+    ),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Consulta pública de incapacidad **SIN AUTENTICACIÓN**.
+    
+    ## Dos modos de búsqueda:
+    
+    ### 1. Por número de radicación:
+    - **Parámetro**: `numero` (ej: INC-ARL-20260117-0001)
+    
+    **Ejemplo**:
+    ```
+    GET /api/v1/incapacidades/consultar?numero=INC-ARL-20260117-0001
+    ```
+    
+    ### 2. Por documento de identidad:
+    - **Parámetros**: `documento` + `tipo_documento`
+    
+    **Ejemplo**:
+    ```
+    GET /api/v1/incapacidades/consultar?documento=1234567890&tipo_documento=CC
+    ```
+    
+    ## Retorna:
+    - Información básica de la incapacidad
+    - Timeline de estados (historial completo)
+    - Lista de documentos descargables (solo públicos)
+    - Observaciones del auditor (si las hay)
+    - Información de contacto para soporte
+    
+    ## Nota de seguridad:
+    - Los datos sensibles están **sanitizados**
+    - No se incluyen: valores monetarios, cuentas bancarias, IDs internos
+    - Solo se muestran documentos públicos: INCAPACIDAD_MEDICA, CEDULA, HISTORIA_CLINICA
+    
+    ## Rate limiting:
+    - Máximo 20 requests por minuto por IP
+    """
+    # Validar parámetros
+    if not numero and not (documento and tipo_documento):
+        raise BadRequestException(
+            "Debe proporcionar número de radicación O documento + tipo_documento"
+        )
+    
+    # Consultar incapacidad
+    result = await incapacidad_service.consultar_incapacidad_publica(
+        db=db,
+        numero=numero,
+        documento=documento,
+        tipo_documento=tipo_documento
+    )
+    
+    return result
+
+
+@router.get(
+    "/{numero}/documentos/{documento_id}/download",
+    response_model=PresignedUrlResponse,
+    summary="Descargar documento público (sin autenticación)",
+    description="Genera URL de descarga temporal para un documento público",
+    tags=["incapacidades-publico"],
+    responses={
+        200: {
+            "description": "URL de descarga generada exitosamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "url": "http://localhost:9010/documentos/550e8400-e29b-41d4-a716-446655440000.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...",
+                        "expires_in": 900,
+                        "nombre_archivo": "incapacidad_medica.pdf",
+                        "tipo_documento": "INCAPACIDAD_MEDICA"
+                    }
+                }
+            }
+        },
+        404: {
+            "description": "Incapacidad o documento no encontrado",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Incapacidad INC-202601-000001 no encontrada"
+                    }
+                }
+            }
+        },
+        403: {
+            "description": "Documento no público o no pertenece a la incapacidad",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Este tipo de documento no es público"
+                    }
+                }
+            }
+        }
+    }
+)
+async def descargar_documento_publico(
+    numero: str = Path(
+        ...,
+        description="Número de radicación de la incapacidad",
+        example="INC-ARL-20260117-0001"
+    ),
+    documento_id: UUID = Path(
+        ...,
+        description="ID del documento a descargar"
+    ),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Genera URL de descarga temporal (15 minutos) para documento público **SIN AUTENTICACIÓN**.
+    
+    ## Validaciones:
+    - El documento debe pertenecer a la incapacidad especificada
+    - El tipo de documento debe ser público (INCAPACIDAD_MEDICA, CEDULA, HISTORIA_CLINICA)
+    
+    ## Retorna:
+    - URL pre-firmada válida por 15 minutos
+    - Metadata del documento (nombre, tipo)
+    
+    ## Tipos de documentos públicos:
+    - `INCAPACIDAD_MEDICA`: Documento médico de incapacidad
+    - `CEDULA`: Cédula de ciudadanía o documento de identidad
+    - `HISTORIA_CLINICA`: Historia clínica relacionada
+    
+    ## Tipos de documentos NO públicos:
+    - `SOPORTE_PAGO`: Requiere autenticación
+    - `OTROS`: Requiere autenticación
+    
+    ## Rate limiting:
+    - Máximo 10 descargas por hora por IP
+    """
+    result = await incapacidad_service.descargar_documento_publico(
+        db=db,
+        numero=numero,
+        documento_id=documento_id
+    )
+    
+    return result
+
+
+# ========== ENDPOINTS PROTEGIDOS (CON AUTENTICACIÓN) ==========
+
 
 
 @router.post(
