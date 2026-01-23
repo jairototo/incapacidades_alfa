@@ -11,7 +11,7 @@ Sistema de gestión de incapacidades para aseguradora con cobertura de ARL y pó
 │                        CAPA DE PRESENTACIÓN                      │
 ├──────────────────────────────┬──────────────────────────────────┤
 │     Portal Externo           │      Sistema Interno             │
-│   (React 18 + TypeScript)    │    (React 18 + TypeScript)       │
+│   (React 18 + TypeScript)    │    (React 19 + TypeScript)       │
 │                              │                                  │
 │  - Radicación (sin auth)     │  - Autenticación JWT             │
 │  - Consulta por número       │  - Dashboard auditoría           │
@@ -149,28 +149,134 @@ Sistema de gestión de incapacidades para aseguradora con cobertura de ARL y pó
 
 **Propósito**: Dashboard de auditoría y gestión completa para usuarios internos.
 
-**Tecnologías**:
-- React 18 + TypeScript
-- Vite (build tool)
-- TailwindCSS + Shadcn/ui
+**Tecnologías Core**:
+- **React 19.2** + TypeScript 5.3+ 
+- Vite 5.0+ (build tool)
+- TailwindCSS 3.4+ + Shadcn/ui (UI framework)
 - Zustand (state management global)
-- React Query (server state)
-- TanStack Table (tablas avanzadas)
+- React Query (@tanstack/react-query v5)
+- TanStack Table v8 (tablas avanzadas)
 - Recharts (gráficas y dashboards)
-- React Hook Form + Zod
+- React Hook Form + Zod (formularios y validación)
+- React Router v6 (routing)
+- Axios (HTTP client con interceptores)
 - Socket.io client (notificaciones real-time)
 
-**Funcionalidades**:
-- Autenticación JWT con refresh tokens
-- Dashboard con métricas y KPIs
-- Gestión completa de incapacidades (CRUD + workflow)
+**React 19 - Características Habilitadas**:
+- ✅ **Actions**: `useActionState` para manejo de formularios con estado de servidor
+- ✅ **use() hook**: Consumo de promesas y context de forma directa
+- ✅ **Refs as props**: Sin necesidad de `forwardRef`
+- ✅ **useOptimistic**: UI optimista para actualizaciones inmediatas
+- ✅ **useFormStatus**: Estado de formularios en progreso
+- ✅ **Concurrent Features**: Transitions automáticas y Suspense mejorado
+- ✅ **Document Metadata**: Manejo nativo de `<title>` y `<meta>` tags
+- ✅ **Resource Loading**: Precarga optimizada de assets
+- ❌ **NO usar**: `forwardRef` (deprecado), componentes de clase (legacy)
+
+**Estructura de Carpetas** (`frontend/sistema-interno/`):
+```
+src/
+├── app/ # Configuración de la app
+│ ├── providers.tsx # React Query, Auth, Theme providers
+│ └── router.tsx # React Router v6 configuration
+├── components/ # Componentes reutilizables
+│ ├── ui/ # Shadcn/ui components
+│ ├── forms/ # Form components con useActionState
+│ ├── tables/ # TanStack Table wrappers
+│ └── layouts/ # Layouts (Dashboard, Auth)
+├── features/ # Módulos por funcionalidad
+│ ├── auth/ # Login, permisos, guards
+│ ├── incapacidades/ # CRUD + workflow incapacidades
+│ ├── ordenes-pago/ # Gestión de pagos
+│ ├── usuarios/ # Administración usuarios
+│ └── dashboard/ # Métricas y analytics
+├── hooks/ # Custom hooks
+│ ├── useAuth.ts
+│ ├── usePermissions.ts
+│ └── useOptimisticUpdate.ts
+├── lib/ # Utilidades
+│ ├── api.ts # Axios instance con interceptores
+│ ├── queryClient.ts # React Query config
+│ └── utils.ts # Helpers generales
+├── stores/ # Zustand stores
+│ ├── authStore.ts # Estado de autenticación
+│ └── uiStore.ts # Estado UI (sidebar, theme)
+└── types/ # TypeScript types/interfaces
+└── api.ts # Tipos de la API
+```
+**Funcionalidades Principales**:
+- Autenticación JWT con refresh tokens automáticos
+- Gestión completa de incapacidades (workflow de estados)
 - Auditoría de incapacidades (aprobar/rechazar/observar)
-- Gestión de órdenes de pago
+- Gestión de órdenes de pago con estados
+- Dashboard con métricas y KPIs en tiempo real
 - CRUD de usuarios, empresas, empleados, afiliados
-- Reportes personalizados con filtros
+- Reportes personalizados con filtros avanzados
 - Exportación a Excel y PDF
 - Sistema de permisos RBAC por rol
-- Notificaciones en tiempo real
+- Notificaciones en tiempo real vía WebSockets
+- UI optimista para mejor UX
+
+**Patrones React 19**:
+(https://react.dev/blog/2024/12/05/react-19#whats-new-in-react-19) 
+```typescript
+// ✅ Actions con useActionState (reemplaza useState + onSubmit)
+import { useActionState } from 'react';
+
+function LoginForm() {
+  const [state, formAction, isPending] = useActionState(loginAction, null);
+  
+  return (
+    <form action={formAction}>
+      <input name="email" required />
+      <input name="password" type="password" required />
+      <button disabled={isPending}>
+        {isPending ? 'Iniciando sesión...' : 'Ingresar'}
+      </button>
+      {state?.error && <p>{state.error}</p>}
+    </form>
+  );
+}
+
+// ✅ use() hook para promesas
+import { use, Suspense } from 'react';
+
+function IncapacidadDetail({ incapacidadPromise }) {
+  const incapacidad = use(incapacidadPromise);
+  return <div>{incapacidad.numero}</div>;
+}
+
+// Wrapper con Suspense
+<Suspense fallback={<Loading />}>
+  <IncapacidadDetail incapacidadPromise={fetchIncapacidad(id)} />
+</Suspense>
+
+// ✅ Refs as props (sin forwardRef)
+function CustomInput({ ref, ...props }: { ref?: React.Ref<HTMLInputElement> }) {
+  return <input ref={ref} {...props} />;
+}
+
+// ✅ useOptimistic para actualizaciones optimistas
+import { useOptimistic } from 'react';
+
+function IncapacidadEstado({ incapacidad }) {
+  const [optimisticEstado, setOptimisticEstado] = useOptimistic(
+    incapacidad.estado,
+    (currentState, newState) => newState
+  );
+
+  async function handleChangeEstado(newEstado) {
+    setOptimisticEstado(newEstado);
+    await updateEstado(incapacidad.id, newEstado);
+  }
+
+  return (
+    <Badge estado={optimisticEstado}>
+      {optimisticEstado}
+    </Badge>
+  );
+}
+```
 
 **Roles de Usuario**:
 - ADMIN: Acceso completo

@@ -1476,6 +1476,6 @@ Documentación alternativa
 
 ### 14.3 OpenAPI Schema
 
-**Endpoint**: `GET /openapi.json`
+**Endpoint**: `GET /api/v1/openapi.json`
 
 Esquema OpenAPI 3.0 en JSON
