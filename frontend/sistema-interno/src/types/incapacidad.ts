@@ -132,3 +132,40 @@ export interface PaginatedResponse<T> {
   skip: number;
   limit: number;
 }
+
+/**
+ * Request para auditar incapacidad
+ * POST /api/v1/incapacidades/{id}/auditar
+ */
+export interface IncapacidadAuditarRequest {
+  accion: 'SOLICITAR_INFORMACION' | 'APROBAR_PARA_PAGO' | 'RECHAZAR';
+  observaciones: string; // mínimo 10 caracteres
+}
+
+/**
+ * Request para rechazar incapacidad
+ * POST /api/v1/incapacidades/{id}/rechazar
+ */
+export interface IncapacidadRechazarRequest {
+  motivo: string; // mínimo 10 caracteres
+}
+
+/**
+ * Request para consulta pública
+ * GET /api/v1/incapacidades/consultar
+ */
+export interface ConsultaPublicaParams {
+  numero?: string;
+  documento?: string;
+  tipo_documento?: string;
+}
+
+/**
+ * Response con URL pre-firmada para descarga de documento
+ */
+export interface PresignedUrlResponse {
+  url: string;
+  expires_in: number;
+  nombre_archivo: string;
+  tipo_documento: string;
+}
