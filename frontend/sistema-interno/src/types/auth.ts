@@ -1,5 +1,8 @@
 import { RolUsuario, EstadoUsuario } from './enums';
 
+// Re-exportar enums para facilitar imports
+export { RolUsuario, EstadoUsuario } from './enums';
+
 /**
  * Usuario autenticado
  */
@@ -14,6 +17,9 @@ export interface User {
   created_at: string;
   updated_at: string;
 }
+
+// Alias para compatibilidad
+export type Usuario = User;
 
 /**
  * Tokens JWT

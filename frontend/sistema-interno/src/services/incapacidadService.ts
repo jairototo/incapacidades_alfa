@@ -17,7 +17,7 @@ export const incapacidadService = {
    * Query params: skip, limit
    */
   async list(filtros: IncapacidadFiltros = {}): Promise<Incapacidad[]> {
-    const { data } = await api.get<Incapacidad[]>('/incapacidades', {
+    const { data } = await api.get<Incapacidad[]>('/incapacidades/', {
       params: {
         skip: filtros.skip || 0,
         limit: filtros.limit || 100,

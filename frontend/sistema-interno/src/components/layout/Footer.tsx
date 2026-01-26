@@ -1,0 +1,18 @@
+/**
+ * Footer del sistema interno
+ * Muestra información de copyright y versión
+ */
+export function Footer() {
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="h-12 bg-white border-t border-slate-200 flex items-center justify-between px-6">
+      <p className="text-sm text-slate-600">
+        © {currentYear} Sistema de Gestión de Incapacidades. Todos los derechos reservados.
+      </p>
+      <p className="text-xs text-slate-500">
+        Versión 1.0.0
+      </p>
+    </footer>
+  );
+}

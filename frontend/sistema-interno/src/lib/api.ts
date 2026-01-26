@@ -1,6 +1,8 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8010/api/v1';
+// En desarrollo usa el proxy de Vite (/api/v1)
+// En producción usa la URL completa del backend
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 /**
  * Cliente Axios configurado con interceptores JWT
