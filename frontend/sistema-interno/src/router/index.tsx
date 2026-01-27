@@ -6,6 +6,8 @@ import { UnauthorizedPage } from '@/pages/UnauthorizedPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { ConsultaPage } from '@/pages/incapacidades/ConsultaPage';
+import { PendientesPage } from '@/pages/incapacidades/PendientesPage';
+import { GestionarPage } from '@/pages/incapacidades/GestionarPage';
 import { RolUsuario } from '@/types/auth';
 
 /**
@@ -58,7 +60,11 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'pendientes',
-                element: <div className="p-6">Módulo Pendientes de Auditoría (Placeholder)</div>,
+                element: <PendientesPage />,
+              },
+              {
+                path: ':id/gestionar',
+                element: <GestionarPage />,
               },
             ],
           },

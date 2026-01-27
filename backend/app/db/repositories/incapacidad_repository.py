@@ -6,6 +6,7 @@ from uuid import UUID
 from datetime import date
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.repositories.base_repository import BaseRepository
 from app.models.incapacidad import Incapacidad
@@ -18,6 +19,40 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
     def __init__(self):
         """Inicializa el repository con el modelo Incapacidad."""
         super().__init__(Incapacidad)
+
+    async def get_by_id_with_relations(
+        self,
+        db: AsyncSession,
+        incapacidad_id: UUID
+    ) -> Optional[Incapacidad]:
+        """
+        Obtiene una incapacidad por ID con todas sus relaciones cargadas.
+        
+        Carga eager loading de:
+        - empleado (si es ARL)
+        - empresa (si es ARL)
+        - afiliado (si es SALUD)
+        - siniestros del empleado (si es ARL)
+        
+        Args:
+            db: Sesión de base de datos
+            incapacidad_id: ID de la incapacidad
+            
+        Returns:
+            Incapacidad con relaciones cargadas, None si no existe
+        """
+        query = (
+            select(Incapacidad)
+            .where(Incapacidad.id == incapacidad_id)
+            .options(
+                selectinload(Incapacidad.empleado),
+                selectinload(Incapacidad.empresa),
+                selectinload(Incapacidad.afiliado),
+            )
+        )
+        
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
 
     async def get_by_numero(
         self,
@@ -295,6 +330,83 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
             Incapacidad.prioridad.desc(),
             Incapacidad.fecha_radicacion.asc()
         ).offset(skip).limit(limit)
+        
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
+    async def listar_pendientes(
+        self,
+        db: AsyncSession,
+        estados: List[EstadoIncapacidad],
+        tipo: Optional[TipoIncapacidad] = None,
+        prioridad: Optional[Prioridad] = None,
+        empresa_nit: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Incapacidad]:
+        """
+        Listar incapacidades pendientes con filtros y ordenamiento por prioridad.
+        
+        Orden: 
+        1. Prioridad (URGENTE → ALTA → NORMAL → BAJA)
+        2. Antigüedad (created_at ASC - más antiguas primero)
+        
+        Args:
+            db: Sesión de base de datos
+            estados: Lista de estados pendientes
+            tipo: Filtro opcional por tipo (ARL/SALUD)
+            prioridad: Filtro opcional por prioridad
+            empresa_nit: Filtro opcional por NIT de empresa (solo ARL)
+            skip: Offset para paginación
+            limit: Límite de resultados
+            
+        Returns:
+            Lista de incapacidades ordenadas por prioridad y antigüedad
+        """
+        from sqlalchemy import case
+        from sqlalchemy.orm import selectinload
+        from app.models.empresa import Empresa
+        from app.models.empleado import Empleado
+        from app.models.afiliado import Afiliado
+        
+        # Query base con eager loading
+        query = (
+            select(Incapacidad)
+            .where(Incapacidad.estado.in_(estados))
+            .options(
+                selectinload(Incapacidad.empleado).selectinload(Empleado.empresa),
+                selectinload(Incapacidad.afiliado),
+                selectinload(Incapacidad.empresa)
+            )
+        )
+        
+        # Filtros opcionales
+        if tipo:
+            query = query.where(Incapacidad.tipo == tipo)
+        
+        if prioridad:
+            query = query.where(Incapacidad.prioridad == prioridad)
+        
+        if empresa_nit:
+            # Join con empresa para filtrar por NIT
+            query = query.join(Empresa).where(Empresa.nit == empresa_nit)
+        
+        # Ordenamiento por prioridad custom
+        prioridad_order = case(
+            (Incapacidad.prioridad == Prioridad.URGENTE, 1),
+            (Incapacidad.prioridad == Prioridad.ALTA, 2),
+            (Incapacidad.prioridad == Prioridad.NORMAL, 3),
+            (Incapacidad.prioridad == Prioridad.BAJA, 4),
+            else_=5
+        )
+        
+        query = query.order_by(
+            prioridad_order,
+            Incapacidad.created_at.asc()  # Más antiguas primero
+        )
+        
+        # Paginación
+        query = query.offset(skip).limit(limit)
         
         result = await db.execute(query)
         return list(result.scalars().all())

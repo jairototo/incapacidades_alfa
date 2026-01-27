@@ -99,13 +99,13 @@ export interface HistorialEstado {
  */
 export interface Documento {
   id: string;
-  nombre_archivo: string;
   tipo_documento: string;
-  extension: string;
+  nombrer_original: string; // nombre_original
+  extension: string; // mime_type
   tamano_bytes: number;
   mime_type: string;
   uploaded_by: string;
-  uploaded_at: string;
+  created_at: string; // created_at
 }
 
 /**
@@ -168,4 +168,25 @@ export interface PresignedUrlResponse {
   expires_in: number;
   nombre_archivo: string;
   tipo_documento: string;
+}
+
+/**
+ * Incapacidad Pendiente (para módulo de pendientes)
+ * Extiende Incapacidad con campos calculados de antigüedad
+ */
+export interface IncapacidadPendiente extends Incapacidad {
+  dias_desde_radicacion: number;
+  dias_en_estado_actual: number;
+}
+
+/**
+ * Filtros para módulo de pendientes
+ */
+export interface FiltrosPendientes {
+  tipo?: TipoIncapacidad;
+  prioridad?: Prioridad;
+  empresa_nit?: string;
+  dias_antiguedad_min?: number;
+  skip?: number;
+  limit?: number;
 }

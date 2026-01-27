@@ -2,6 +2,8 @@ import api from '@/lib/api';
 import type {
   Incapacidad,
   IncapacidadFiltros,
+  IncapacidadPendiente,
+  FiltrosPendientes,
   HistorialEstado,
   Documento,
 } from '@/types/incapacidad';
@@ -32,6 +34,36 @@ export const incapacidadService = {
    */
   async getById(id: string): Promise<Incapacidad> {
     const { data } = await api.get<Incapacidad>(`/incapacidades/${id}`);
+    return data;
+  },
+
+  /**
+   * Listar incapacidades pendientes de auditoría
+   * GET /api/v1/incapacidades/pendientes
+   * Incluye: RADICADA, EN_AUDITORIA, OBSERVADA
+   * Ordenado por prioridad y antigüedad
+   */
+  async listarPendientes(filtros: FiltrosPendientes = {}): Promise<IncapacidadPendiente[]> {
+    // Filtrar parámetros inválidos (undefined, null, NaN, string vacío)
+    const paramsLimpios = Object.fromEntries(
+      Object.entries({
+        tipo: filtros.tipo,
+        prioridad: filtros.prioridad,
+        empresa_nit: filtros.empresa_nit,
+        dias_antiguedad_min: filtros.dias_antiguedad_min,
+        skip: filtros.skip ?? 0,
+        limit: filtros.limit ?? 100,
+      }).filter(([_, value]) => {
+        // Excluir undefined, null, NaN, y strings vacíos
+        if (value === undefined || value === null || value === '') return false;
+        if (typeof value === 'number' && isNaN(value)) return false;
+        return true;
+      })
+    );
+
+    const { data } = await api.get<IncapacidadPendiente[]>('/incapacidades/pendientes', {
+      params: paramsLimpios,
+    });
     return data;
   },
 
@@ -140,7 +172,8 @@ export const incapacidadService = {
    * GET /api/v1/incapacidades/{incapacidad_id}/documentos
    */
   async getDocumentos(id: string): Promise<Documento[]> {
-    const { data } = await api.get<Documento[]>(`/incapacidades/${id}/documentos`);
+    // const { data } = await api.get<Documento[]>(`/incapacidades/${id}/documentos`);
+    const { data } = await api.get<Documento[]>(`/documentos/incapacidades/${id}`);
     return data;
   },
 
@@ -181,5 +214,44 @@ export const incapacidadService = {
       `/documentos/${documentoId}/download-url`
     );
     return data.url;
+  },
+
+  /**
+   * Cambiar estado de incapacidad (método genérico)
+   * Utiliza el endpoint apropiado según el nuevo estado
+   */
+  async cambiarEstado(
+    id: string,
+    nuevoEstado: string,
+    observacion?: string
+  ): Promise<Incapacidad> {
+    switch (nuevoEstado) {
+      case 'EN_AUDITORIA':
+        return this.radicar(id);
+      
+      case 'APROBADA':
+        return this.aprobar(id);
+      
+      case 'RECHAZADA':
+        if (!observacion) {
+          throw new Error('Se requiere motivo para rechazar la incapacidad');
+        }
+        return this.rechazar(id, observacion);
+      
+      case 'OBSERVADA':
+        if (!observacion) {
+          throw new Error('Se requiere observación');
+        }
+        return this.auditar(id, 'SOLICITAR_INFORMACION', observacion);
+      
+      case 'EN_PAGO':
+        return this.enviarPago(id);
+      
+      case 'PAGADA':
+        return this.marcarPagada(id);
+      
+      default:
+        throw new Error(`Estado no válido: ${nuevoEstado}`);
+    }
   },
 };

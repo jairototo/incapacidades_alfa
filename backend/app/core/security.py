@@ -1,6 +1,8 @@
 """
 Seguridad: JWT, hashing de passwords, RBAC.
 """
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import Depends
@@ -19,12 +21,34 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verificar contraseña."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """
+    Verificar contraseña.
+    
+    Bcrypt tiene un límite de 72 bytes para las contraseñas.
+    Si la contraseña es más larga, se trunca automáticamente.
+    """
+    # Truncar a 72 bytes (límite de bcrypt)
+    if len(plain_password.encode('utf-8')) > 72:
+        plain_password = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except ValueError as e:
+        logger.error(f"Error verificando contraseña: {e}")
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    """Generar hash de contraseña."""
+    """
+    Generar hash de contraseña.
+    
+    Bcrypt tiene un límite de 72 bytes para las contraseñas.
+    Si la contraseña es más larga, se trunca automáticamente.
+    """
+    # Truncar a 72 bytes (límite de bcrypt)
+    if len(password.encode('utf-8')) > 72:
+        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    
     return pwd_context.hash(password)
 
 
@@ -145,6 +169,57 @@ class Permissions:
     CONFIGURE_SYSTEM = "configurar_sistema"
 
 
+# Dependencies para FastAPI
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+
+
+async def get_current_user(
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+) -> "Usuario":
+    """
+    Obtiene el usuario actual desde el token JWT.
+    
+    Args:
+        db: Sesión de base de datos
+        token: Token JWT
+        
+    Returns:
+        Usuario autenticado
+        
+    Raises:
+        UnauthorizedException: Si el token es inválido o el usuario no existe
+    """
+    from sqlalchemy import select
+    from app.models.usuario import Usuario
+    
+    payload = decode_token(token)
+    user_id: str = payload.get("sub")
+    token_version: int = payload.get("token_version", 0)
+    
+    if user_id is None:
+        raise UnauthorizedException("Token inválido")
+    
+    try:
+        result = await db.execute(select(Usuario).where(Usuario.id == user_id))
+        user = result.scalar_one_or_none()
+    except Exception as e:
+        logger.error(f"Error al obtener usuario: {e}")
+        raise UnauthorizedException("Error al validar token")
+    
+    if user is None:
+        raise UnauthorizedException("Usuario no encontrado")
+    
+    if not user.is_active:
+        raise UnauthorizedException("Usuario inactivo o bloqueado")
+    
+    # Verificar versión del token
+    if user.token_version != token_version:
+        raise UnauthorizedException("Token invalidado")
+    
+    return user
+
+
 class PermissionChecker:
     """Verificador de permisos basado en roles."""
     
@@ -200,12 +275,14 @@ class PermissionChecker:
         """
         self.required_permissions = required_permissions
     
-    async def __call__(self, current_user: "Usuario") -> bool:
+    async def __call__(self, current_user=Depends(get_current_user)) -> bool:
         """
         Verifica si el usuario tiene los permisos requeridos.
         
+        FastAPI inyecta automáticamente current_user usando la dependencia get_current_user.
+        
         Args:
-            current_user: Usuario actual
+            current_user: Usuario actual (inyectado automáticamente)
             
         Returns:
             True si tiene permisos
@@ -235,53 +312,3 @@ class PermissionChecker:
         """Obtener todos los permisos de un rol."""
         return cls.PERMISSIONS.get(rol, [])
 
-
-# Dependencies para FastAPI
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
-
-
-async def get_current_user(
-    db: AsyncSession = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
-) -> "Usuario":
-    """
-    Obtiene el usuario actual desde el token JWT.
-    
-    Args:
-        db: Sesión de base de datos
-        token: Token JWT
-        
-    Returns:
-        Usuario autenticado
-        
-    Raises:
-        UnauthorizedException: Si el token es inválido o el usuario no existe
-    """
-    from sqlalchemy import select
-    from app.models.usuario import Usuario
-    
-    payload = decode_token(token)
-    user_id: str = payload.get("sub")
-    token_version: int = payload.get("token_version", 0)
-    
-    if user_id is None:
-        raise UnauthorizedException("Token inválido")
-    
-    try:
-        result = await db.execute(select(Usuario).where(Usuario.id == user_id))
-        user = result.scalar_one_or_none()
-    except Exception as e:
-        logger.error(f"Error al obtener usuario: {e}")
-        raise UnauthorizedException("Error al validar token")
-    
-    if user is None:
-        raise UnauthorizedException("Usuario no encontrado")
-    
-    if not user.is_active:
-        raise UnauthorizedException("Usuario inactivo o bloqueado")
-    
-    # Verificar versión del token
-    if user.token_version != token_version:
-        raise UnauthorizedException("Token invalidado")
-    
-    return user

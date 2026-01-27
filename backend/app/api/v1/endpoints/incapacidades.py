@@ -1,6 +1,8 @@
 """
 API endpoints para gestión de Incapacidades.
 """
+from __future__ import annotations
+
 from typing import List, Optional
 from uuid import UUID
 from datetime import date
@@ -15,13 +17,21 @@ from app.schemas.incapacidad import (
     IncapacidadInDB,
     IncapacidadAuditar,
     ConsultaIncapacidadPublicResponse,
+    IncapacidadPendienteResponse,
+    IncapacidadDetalleResponse,
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
+from app.schemas.empleado import EmpleadoResponse
+from app.schemas.empresa import EmpresaResponse
+from app.schemas.afiliado import AfiliadoResponse
+from app.schemas.siniestro import SiniestroInDB
 from app.services.incapacidad_service import incapacidad_service
 from app.services.historial_estado_service import historial_estado_service
 from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
 from app.core.exceptions import BadRequestException
+from app.core.security import get_current_user, PermissionChecker, Permissions
+from app.models.usuario import Usuario
 
 router = APIRouter()
 
@@ -262,6 +272,57 @@ async def descargar_documento_publico(
 # ========== ENDPOINTS PROTEGIDOS (CON AUTENTICACIÓN) ==========
 
 
+@router.get(
+    "/pendientes",
+    response_model=List[IncapacidadPendienteResponse],
+    summary="Listar incapacidades pendientes de auditoría",
+    description="Obtiene incapacidades en estados RADICADA, EN_AUDITORIA, OBSERVADA ordenadas por prioridad y antigüedad",
+    tags=["incapacidades-auditoria"]
+)
+async def listar_incapacidades_pendientes(
+    db: AsyncSession = Depends(get_db),
+    tipo: Optional[TipoIncapacidad] = Query(None, description="Filtrar por tipo (ARL/SALUD)"),
+    prioridad: Optional[Prioridad] = Query(None, description="Filtrar por prioridad"),
+    empresa_nit: Optional[str] = Query(None, description="Filtrar por NIT de empresa (solo ARL)"),
+    dias_antiguedad_min: Optional[int] = Query(None, ge=0, description="Días mínimos desde radicación"),
+    skip: int = Query(0, ge=0, description="Offset para paginación"),
+    limit: int = Query(100, ge=1, le=500, description="Límite de resultados"),
+    current_user: Usuario = Depends(get_current_user)
+) -> List[IncapacidadPendienteResponse]:
+    """
+    Listar incapacidades pendientes de auditoría.
+    
+    Filtra automáticamente por estados: RADICADA, EN_AUDITORIA, OBSERVADA.
+    Ordena por prioridad (URGENTE → ALTA → NORMAL → BAJA) y luego por antigüedad.
+    
+    ## Filtros disponibles:
+    - **tipo**: ARL o SALUD
+    - **prioridad**: URGENTE, ALTA, NORMAL, BAJA
+    - **empresa_nit**: NIT de empresa (solo para incapacidades ARL)
+    - **dias_antiguedad_min**: Días mínimos desde que fue radicada
+    
+    ## Campos calculados en respuesta:
+    - **dias_desde_radicacion**: Días transcurridos desde la radicación
+    - **dias_en_estado_actual**: Días que lleva en el estado actual
+    
+    ## Ordenamiento:
+    1. Por prioridad descendente (URGENTE primero)
+    2. Por antigüedad ascendente (más antiguas primero)
+    
+    ## Permisos requeridos:
+    - INCAPACIDAD_READ (roles: AUDITOR, APROBADOR, ADMIN)
+    """
+    incapacidades = await incapacidad_service.listar_pendientes(
+        db=db,
+        tipo=tipo,
+        prioridad=prioridad,
+        empresa_nit=empresa_nit,
+        dias_antiguedad_min=dias_antiguedad_min,
+        skip=skip,
+        limit=limit
+    )
+    return incapacidades
+
 
 @router.post(
     "/",
@@ -347,25 +408,60 @@ async def list_incapacidades(
 
 @router.get(
     "/{incapacidad_id}",
-    response_model=IncapacidadInDB,
-    summary="Obtener incapacidad",
-    description="Obtiene una incapacidad por su ID"
+    response_model=IncapacidadDetalleResponse,
+    summary="Obtener incapacidad detallada",
+    description="Obtiene una incapacidad por su ID con objetos completos de relaciones",
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_READ]))]
 )
 async def get_incapacidad(
     incapacidad_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
 ):
     """
-    Obtiene una incapacidad específica por ID.
+    Obtiene una incapacidad específica por ID con información completa.
     
-    Retorna toda la información de la incapacidad incluyendo:
-    - Datos de la incapacidad
-    - Relaciones (empleado/afiliado/empresa según tipo)
-    - Fechas y valores
-    - Estado actual
+    **Requiere autenticación JWT** y permisos de lectura de incapacidades.
+    
+    Retorna:
+    - **Datos completos de la incapacidad**
+    - **Empleado completo** (si es tipo ARL)
+    - **Empresa completa** (si es tipo ARL)
+    - **Afiliado completo** (si es tipo SALUD)
+    - **Lista de siniestros del empleado** (si es tipo ARL)
+    - Fechas, valores y estados
     - Información de auditoría
+    
+    Ejemplo de uso:
+    ```
+    GET /api/v1/incapacidades/550e8400-e29b-41d4-a716-446655440000
+    Headers: Authorization: Bearer <jwt_token>
+    ```
     """
-    return await incapacidad_service.get_incapacidad(db, incapacidad_id)
+    # Obtener incapacidad con relaciones cargadas
+    incapacidad = await incapacidad_service.get_incapacidad(db, incapacidad_id, with_relations=True)
+    
+    # Convertir a dict base usando IncapacidadInDB
+    incap_dict = IncapacidadInDB.model_validate(incapacidad).model_dump()
+    
+    # Agregar objetos relacionados convertidos a schemas Pydantic
+    if incapacidad.empleado:
+        incap_dict["empleado"] = EmpleadoResponse.model_validate(incapacidad.empleado).model_dump()
+    
+    if incapacidad.empresa:
+        incap_dict["empresa"] = EmpresaResponse.model_validate(incapacidad.empresa).model_dump()
+    
+    if incapacidad.afiliado:
+        incap_dict["afiliado"] = AfiliadoResponse.model_validate(incapacidad.afiliado).model_dump()
+    
+    # Agregar siniestros del empleado (ya están en el objeto incapacidad desde el service)
+    if hasattr(incapacidad, 'siniestros_empleado') and incapacidad.siniestros_empleado:
+        incap_dict["siniestros_empleado"] = [
+            SiniestroInDB.model_validate(s).model_dump() 
+            for s in incapacidad.siniestros_empleado
+        ]
+    
+    return incap_dict
 
 
 @router.put(

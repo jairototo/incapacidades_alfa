@@ -46,7 +46,7 @@ const mockIncapacidades: Incapacidad[] = [
     diagnostico_descripcion: 'Fractura de muñeca',
     empleado: {
       id: '1',
-      tipo_documento: 'CC',
+      tipo_documento: 'CEDULA',
       numero_documento: '1234567890',
       nombres: 'Juan',
       apellidos: 'Pérez',
@@ -78,7 +78,7 @@ const mockIncapacidades: Incapacidad[] = [
     diagnostico_descripcion: 'Gripe',
     afiliado: {
       id: '2',
-      tipo_documento: 'CC',
+      tipo_documento: 'CEDULA',
       numero_documento: '9876543210',
       nombres: 'María',
       apellidos: 'García',

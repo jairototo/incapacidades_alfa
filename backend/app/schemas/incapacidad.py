@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Any
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -250,6 +250,45 @@ class IncapacidadListResponse(BaseModel):
     fecha_radicacion: datetime
     radicado_por: Optional[str]
     total_documentos: int
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadPendienteResponse(IncapacidadInDB):
+    """
+    Schema para incapacidad pendiente de auditoría con datos adicionales.
+    Incluye días desde radicación y días en estado actual.
+    
+    Nota: Las relaciones (empleado, empresa, afiliado) deben cargarse
+    mediante eager loading en el service layer.
+    """
+    dias_desde_radicacion: int = Field(..., description="Días desde que fue radicada")
+    dias_en_estado_actual: int = Field(..., description="Días en el estado actual")
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadDetalleResponse(IncapacidadInDB):
+    """
+    Schema de respuesta detallada con objetos completos de relaciones.
+    
+    Para uso en el endpoint GET /incapacidades/{incapacidad_id}
+    Incluye objetos completos en lugar de solo IDs:
+    - empleado: EmpleadoResponse completo
+    - empresa: EmpresaResponse completo
+    - afiliado: AfiliadoResponse completo
+    - siniestros_empleado: Lista de siniestros del empleado (para ARL)
+    """
+    # Objetos completos en lugar de IDs (usando Any para evitar imports circulares)
+    empleado: Optional[Any] = Field(None, description="Objeto empleado completo (para tipo ARL)")
+    empresa: Optional[Any] = Field(None, description="Objeto empresa completo (para tipo ARL)")
+    afiliado: Optional[Any] = Field(None, description="Objeto afiliado completo (para tipo SALUD)")
+    
+    # Lista de siniestros del empleado (solo para ARL)
+    siniestros_empleado: List[Any] = Field(
+        default_factory=list,
+        description="Lista de todos los siniestros del empleado (solo para tipo ARL)"
+    )
     
     model_config = {"from_attributes": True}
 

@@ -76,3 +76,43 @@ export function formatFileSize(bytes: number): string {
 export function formatFullName(nombres: string, apellidos: string): string {
   return `${nombres} ${apellidos}`.trim();
 }
+
+/**
+ * Formatear fecha de forma relativa (Hace X días/semanas/meses)
+ */
+export function formatRelativeDate(dateString: string | Date): string {
+  if (!dateString) return '-';
+  
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  
+  if (diffInDays === 0) return 'Hoy';
+  if (diffInDays === 1) return 'Ayer';
+  if (diffInDays < 7) return `Hace ${diffInDays} días`;
+  if (diffInDays < 30) {
+    const weeks = Math.floor(diffInDays / 7);
+    return `Hace ${weeks} ${weeks === 1 ? 'semana' : 'semanas'}`;
+  }
+  if (diffInDays < 365) {
+    const months = Math.floor(diffInDays / 30);
+    return `Hace ${months} ${months === 1 ? 'mes' : 'meses'}`;
+  }
+  const years = Math.floor(diffInDays / 365);
+  return `Hace ${years} ${years === 1 ? 'año' : 'años'}`;
+}
+
+/**
+ * Calcular días transcurridos desde una fecha
+ */
+export function getDiasDesde(dateString: string | Date): number {
+  if (!dateString) return 0;
+  
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  
+  return diffInDays;
+}
