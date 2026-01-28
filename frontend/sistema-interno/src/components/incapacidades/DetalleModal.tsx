@@ -444,19 +444,19 @@ export function DetalleModal({ open, onClose, incapacidadId }: DetalleModalProps
                         className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent transition-colors"
                       >
                         <div className="flex-1">
-                          <p className="font-medium">{doc.nombre_archivo}</p>
+                          <p className="font-medium">{doc.nombre_original}</p>
                           <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                             <span>{doc.tipo_documento}</span>
                             <span>•</span>
                             <span>{formatFileSize(doc.tamano_bytes)}</span>
                             <span>•</span>
-                            <span>{formatDate(doc.uploaded_at)}</span>
+                            <span>{formatDate(doc.created_at)}</span>
                           </div>
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDownloadDocument(doc.id, doc.nombre_archivo)}
+                          onClick={() => handleDownloadDocument(doc.id, doc.nombre_original)}
                         >
                           <Download className="h-4 w-4 mr-2" />
                           Descargar

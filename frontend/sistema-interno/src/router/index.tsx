@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { PublicRoute } from '@/components/auth/PublicRoute';
 import { AppShell } from '@/components/layout/AppShell';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { UnauthorizedPage } from '@/pages/UnauthorizedPage';
@@ -14,7 +15,7 @@ import { RolUsuario } from '@/types/auth';
  * Configuración de rutas del sistema
  * 
  * Estructura:
- * - Rutas públicas: /login, /unauthorized
+ * - Rutas públicas: /login (con PublicRoute), /unauthorized
  * - Rutas protegidas con AppShell: Todas las rutas internas
  * - Rutas protegidas con RBAC: Según rol del usuario
  * - Catch-all: 404 NotFound
@@ -23,13 +24,17 @@ export const router = createBrowserRouter([
   // Redirect raíz a dashboard
   {
     path: '/',
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/incapacidades/consulta" replace />,
   },
 
   // Rutas públicas
   {
     path: '/login',
-    element: <LoginPage />,
+    element: (
+      <PublicRoute>
+        <LoginPage />
+      </PublicRoute>
+    ),
   },
   {
     path: '/unauthorized',

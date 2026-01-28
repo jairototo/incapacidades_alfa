@@ -1,8 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuthStore } from '@/store/authStore';
 
 /**
  * Página de inicio de sesión del Sistema Interno
@@ -10,27 +7,15 @@ import { useAuthStore } from '@/store/authStore';
  * Features:
  * - Layout centrado con gradient background
  * - Card con logo y título
- * - Auto-redirect si el usuario ya está autenticado
  * - Footer con copyright
  * - Integración con LoginForm component
+ * 
+ * Note: El redirect después del login es manejado automáticamente por PublicRoute
+ * cuando detecta que isAuthenticated cambió a true en el authStore
  */
 export function LoginPage() {
-  const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuthStore();
-
-  // Auto-redirect si ya está autenticado
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      // Redirigir según rol del usuario
-      const redirectPath = getRedirectPath(user.rol);
-      navigate(redirectPath, { replace: true });
-    }
-  }, [isAuthenticated, user, navigate]);
-
-  const handleLoginSuccess = () => {
-    // El redirect se maneja automáticamente por el useEffect
-    // después de que LoginForm actualice el store
-  };
+  // No necesitamos callback de navegación
+  // PublicRoute maneja el redirect automáticamente después del login
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
@@ -53,7 +38,7 @@ export function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <LoginForm onSuccess={handleLoginSuccess} />
+          <LoginForm />
         </CardContent>
       </Card>
 
@@ -66,23 +51,4 @@ export function LoginPage() {
       </footer>
     </div>
   );
-}
-
-/**
- * Determina la ruta de redirección según el rol del usuario
- */
-function getRedirectPath(rol: string): string {
-  switch (rol) {
-    case 'ADMIN':
-    case 'AUDITOR':
-      return '/dashboard';
-    case 'APROBADOR':
-      return '/ordenes-pago';
-    case 'EMPRESA':
-      return '/incapacidades/consulta';
-    case 'EMPLEADO':
-      return '/incapacidades/mis-incapacidades';
-    default:
-      return '/dashboard';
-  }
 }

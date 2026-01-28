@@ -100,7 +100,7 @@ export interface HistorialEstado {
 export interface Documento {
   id: string;
   tipo_documento: string;
-  nombrer_original: string; // nombre_original
+  nombre_original: string; // nombre_original
   extension: string; // mime_type
   tamano_bytes: number;
   mime_type: string;
