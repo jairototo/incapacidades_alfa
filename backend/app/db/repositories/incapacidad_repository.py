@@ -1,14 +1,16 @@
 """
 Repository para operaciones de base de datos de Incapacidad.
 """
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import UUID
-from datetime import date
-from sqlalchemy import select, and_, or_
+from datetime import date, datetime, timedelta
+from sqlalchemy import select, and_, or_, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.repositories.base_repository import BaseRepository
 from app.models.incapacidad import Incapacidad
+from app.models.historial_estado import HistorialEstado
 from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
 
 
@@ -18,6 +20,40 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
     def __init__(self):
         """Inicializa el repository con el modelo Incapacidad."""
         super().__init__(Incapacidad)
+
+    async def get_by_id_with_relations(
+        self,
+        db: AsyncSession,
+        incapacidad_id: UUID
+    ) -> Optional[Incapacidad]:
+        """
+        Obtiene una incapacidad por ID con todas sus relaciones cargadas.
+        
+        Carga eager loading de:
+        - empleado (si es ARL)
+        - empresa (si es ARL)
+        - afiliado (si es SALUD)
+        - siniestros del empleado (si es ARL)
+        
+        Args:
+            db: Sesión de base de datos
+            incapacidad_id: ID de la incapacidad
+            
+        Returns:
+            Incapacidad con relaciones cargadas, None si no existe
+        """
+        query = (
+            select(Incapacidad)
+            .where(Incapacidad.id == incapacidad_id)
+            .options(
+                selectinload(Incapacidad.empleado),
+                selectinload(Incapacidad.empresa),
+                selectinload(Incapacidad.afiliado),
+            )
+        )
+        
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
 
     async def get_by_numero(
         self,
@@ -299,6 +335,202 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
         result = await db.execute(query)
         return list(result.scalars().all())
 
+    async def listar_pendientes(
+        self,
+        db: AsyncSession,
+        estados: List[EstadoIncapacidad],
+        tipo: Optional[TipoIncapacidad] = None,
+        prioridad: Optional[Prioridad] = None,
+        empresa_nit: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Incapacidad]:
+        """
+        Listar incapacidades pendientes con filtros y ordenamiento por prioridad.
+        
+        Orden: 
+        1. Prioridad (URGENTE → ALTA → NORMAL → BAJA)
+        2. Antigüedad (created_at ASC - más antiguas primero)
+        
+        Args:
+            db: Sesión de base de datos
+            estados: Lista de estados pendientes
+            tipo: Filtro opcional por tipo (ARL/SALUD)
+            prioridad: Filtro opcional por prioridad
+            empresa_nit: Filtro opcional por NIT de empresa (solo ARL)
+            skip: Offset para paginación
+            limit: Límite de resultados
+            
+        Returns:
+            Lista de incapacidades ordenadas por prioridad y antigüedad
+        """
+        from sqlalchemy import case
+        from sqlalchemy.orm import selectinload
+        from app.models.empresa import Empresa
+        from app.models.empleado import Empleado
+        from app.models.afiliado import Afiliado
+        
+        # Query base con eager loading
+        query = (
+            select(Incapacidad)
+            .where(Incapacidad.estado.in_(estados))
+            .options(
+                selectinload(Incapacidad.empleado).selectinload(Empleado.empresa),
+                selectinload(Incapacidad.afiliado),
+                selectinload(Incapacidad.empresa)
+            )
+        )
+        
+        # Filtros opcionales
+        if tipo:
+            query = query.where(Incapacidad.tipo == tipo)
+        
+        if prioridad:
+            query = query.where(Incapacidad.prioridad == prioridad)
+        
+        if empresa_nit:
+            # Join con empresa para filtrar por NIT
+            query = query.join(Empresa).where(Empresa.nit == empresa_nit)
+        
+        # Ordenamiento por prioridad custom
+        prioridad_order = case(
+            (Incapacidad.prioridad == Prioridad.URGENTE, 1),
+            (Incapacidad.prioridad == Prioridad.ALTA, 2),
+            (Incapacidad.prioridad == Prioridad.NORMAL, 3),
+            (Incapacidad.prioridad == Prioridad.BAJA, 4),
+            else_=5
+        )
+        
+        query = query.order_by(
+            prioridad_order,
+            Incapacidad.created_at.asc()  # Más antiguas primero
+        )
+        
+        # Paginación
+        query = query.offset(skip).limit(limit)
+        
+        result = await db.execute(query)
+        return list(result.scalars().all())
+    async def get_stats(
+        self,
+        db: AsyncSession,
+        empresa_id: Optional[UUID] = None,
+        tipo: Optional[TipoIncapacidad] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+    ) -> Dict[str, int]:
+        """
+        Calcular estadísticas de incapacidades con filtros opcionales.
+        
+        Usa queries SQL específicas por métrica para máxima eficiencia.
+        NO cargar objetos completos, solo COUNT().
+        
+        Args:
+            db: Sesión de base de datos
+            empresa_id: Filtrar por empresa (opcional)
+            tipo: Filtrar por tipo ARL/SALUD (opcional)
+            fecha_desde: Filtrar desde fecha (opcional)
+            fecha_hasta: Filtrar hasta fecha (opcional)
+            
+        Returns:
+            Dict con métricas: pendientes, auditadas_hoy, proximas_vencer, rechazadas_observadas
+        """
+        # Query base con filtros comunes
+        base_conditions = []
+        
+        if empresa_id:
+            base_conditions.append(Incapacidad.empresa_id == empresa_id)
+        if tipo:
+            base_conditions.append(Incapacidad.tipo == tipo)
+        if fecha_desde:
+            base_conditions.append(Incapacidad.created_at >= datetime.combine(fecha_desde, datetime.min.time()))
+        if fecha_hasta:
+            base_conditions.append(Incapacidad.created_at <= datetime.combine(fecha_hasta, datetime.max.time()))
+        
+        # Métrica 1: Pendientes (RADICADA o EN_AUDITORIA)
+        pendientes_query = select(func.count(Incapacidad.id)).where(
+            Incapacidad.estado.in_([EstadoIncapacidad.RADICADA, EstadoIncapacidad.EN_AUDITORIA]),
+            *base_conditions
+        )
+        result = await db.execute(pendientes_query)
+        pendientes = result.scalar() or 0
+        
+        # Métrica 2: Auditadas hoy
+        # JOIN con historial_estado para obtener cambios de estado de hoy
+        hoy = date.today()
+        auditadas_query = (
+            select(func.count(distinct(HistorialEstado.entity_id)))
+            .select_from(HistorialEstado)
+            .where(
+                HistorialEstado.entity_type == "incapacidad",
+                HistorialEstado.estado_nuevo.in_([
+                    EstadoIncapacidad.APROBADA.value,
+                    EstadoIncapacidad.RECHAZADA.value,
+                    EstadoIncapacidad.OBSERVADA.value
+                ]),
+                func.date(HistorialEstado.created_at) == hoy
+            )
+        )
+        
+        # Aplicar filtros de incapacidad si existen
+        if base_conditions:
+            auditadas_query = auditadas_query.join(
+                Incapacidad,
+                HistorialEstado.entity_id == Incapacidad.id
+            ).where(*base_conditions)
+        
+        result = await db.execute(auditadas_query)
+        auditadas_hoy = result.scalar() or 0
+        
+        # Métrica 3: Próximas a vencer (>7 días sin cambio)
+        siete_dias_atras = datetime.utcnow() - timedelta(days=7)
+        
+        # Subquery: última fecha de cambio por incapacidad
+        ultima_actualizacion_subquery = (
+            select(
+                HistorialEstado.entity_id,
+                func.max(HistorialEstado.created_at).label('ultima_actualizacion')
+            )
+            .where(HistorialEstado.entity_type == "incapacidad")
+            .group_by(HistorialEstado.entity_id)
+            .subquery()
+        )
+        
+        proximas_vencer_query = (
+            select(func.count(Incapacidad.id))
+            .select_from(Incapacidad)
+            .join(
+                ultima_actualizacion_subquery,
+                Incapacidad.id == ultima_actualizacion_subquery.c.entity_id
+            )
+            .where(
+                Incapacidad.estado.in_([
+                    EstadoIncapacidad.RADICADA,
+                    EstadoIncapacidad.EN_AUDITORIA,
+                    EstadoIncapacidad.OBSERVADA
+                ]),
+                ultima_actualizacion_subquery.c.ultima_actualizacion <= siete_dias_atras,
+                *base_conditions
+            )
+        )
+        
+        result = await db.execute(proximas_vencer_query)
+        proximas_vencer = result.scalar() or 0
+        
+        # Métrica 4: Rechazadas u Observadas
+        rechazadas_query = select(func.count(Incapacidad.id)).where(
+            Incapacidad.estado.in_([EstadoIncapacidad.RECHAZADA, EstadoIncapacidad.OBSERVADA]),
+            *base_conditions
+        )
+        result = await db.execute(rechazadas_query)
+        rechazadas_observadas = result.scalar() or 0
+        
+        return {
+            "pendientes": pendientes,
+            "auditadas_hoy": auditadas_hoy,
+            "proximas_vencer": proximas_vencer,
+            "rechazadas_observadas": rechazadas_observadas,
+        }
     async def get_aprobadas_pendientes_pago(
         self,
         db: AsyncSession,

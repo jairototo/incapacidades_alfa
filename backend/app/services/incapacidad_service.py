@@ -153,24 +153,43 @@ class IncapacidadService:
     async def get_incapacidad(
         self,
         db: AsyncSession,
-        incapacidad_id: UUID
+        incapacidad_id: UUID,
+        with_relations: bool = True
     ) -> Incapacidad:
         """
-        Obtiene una incapacidad por ID.
+        Obtiene una incapacidad por ID, opcionalmente con relaciones.
         
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
+            with_relations: Si True, carga todas las relaciones (empleado, empresa, afiliado)
             
         Returns:
-            Incapacidad encontrada
+            Incapacidad encontrada con relaciones cargadas si with_relations=True
             
         Raises:
             NotFoundException: Si la incapacidad no existe
         """
-        incapacidad = await self.repository.get_by_id(db, incapacidad_id)
+        if with_relations:
+            incapacidad = await self.repository.get_by_id_with_relations(db, incapacidad_id)
+        else:
+            incapacidad = await self.repository.get_by_id(db, incapacidad_id)
+            
         if not incapacidad:
             raise NotFoundException(f"Incapacidad con ID {incapacidad_id} no encontrada")
+        
+        # Si es ARL y tiene empleado, cargar sus siniestros
+        if with_relations and incapacidad.tipo == TipoIncapacidad.ARL and incapacidad.empleado_id:
+            from app.db.repositories.siniestro_repository import SiniestroRepository
+            siniestro_repo = SiniestroRepository()
+            # Cargar todos los siniestros del empleado
+            incapacidad.siniestros_empleado = await siniestro_repo.get_by_empleado(
+                db, 
+                incapacidad.empleado_id,
+                skip=0,
+                limit=100  # Limitar a 100 siniestros
+            )
+        
         return incapacidad
 
     async def list_incapacidades(
@@ -218,6 +237,79 @@ class IncapacidadService:
             skip=skip,
             limit=limit
         )
+
+    async def listar_pendientes(
+        self,
+        db: AsyncSession,
+        tipo: Optional[TipoIncapacidad] = None,
+        prioridad: Optional[Prioridad] = None,
+        empresa_nit: Optional[str] = None,
+        dias_antiguedad_min: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Dict]:
+        """
+        Listar incapacidades pendientes de auditoría con cálculos.
+        
+        Estados pendientes: RADICADA, EN_AUDITORIA, OBSERVADA
+        
+        Args:
+            db: Sesión de base de datos
+            tipo: Filtro por tipo (ARL/SALUD)
+            prioridad: Filtro por prioridad
+            empresa_nit: Filtro por NIT de empresa (solo ARL)
+            dias_antiguedad_min: Días mínimos desde radicación
+            skip: Offset para paginación
+            limit: Límite de resultados
+            
+        Returns:
+            Lista de incapacidades con días calculados
+        """
+        # Estados considerados pendientes
+        estados_pendientes = [
+            EstadoIncapacidad.RADICADA,
+            EstadoIncapacidad.EN_AUDITORIA,
+            EstadoIncapacidad.OBSERVADA
+        ]
+        
+        # Usar repository para obtener incapacidades filtradas
+        incapacidades = await self.repository.listar_pendientes(
+            db=db,
+            estados=estados_pendientes,
+            tipo=tipo,
+            prioridad=prioridad,
+            empresa_nit=empresa_nit,
+            skip=skip,
+            limit=limit
+        )
+        
+        # Enriquecer con cálculos
+        from datetime import timezone
+        ahora = datetime.now(timezone.utc)
+        resultados = []
+        
+        for incap in incapacidades:
+            # Calcular días desde radicación
+            dias_desde_radicacion = (ahora - incap.created_at).days
+            
+            # Calcular días en estado actual (usar updated_at como proxy)
+            dias_en_estado_actual = (ahora - incap.updated_at).days
+            
+            # Aplicar filtro de antigüedad si existe
+            if dias_antiguedad_min is not None and dias_desde_radicacion < dias_antiguedad_min:
+                continue
+            
+            # Convertir a dict y agregar campos calculados
+            incap_dict = {
+                **incap.__dict__,
+                'dias_desde_radicacion': dias_desde_radicacion,
+                'dias_en_estado_actual': dias_en_estado_actual
+            }
+            # Remover atributos internos de SQLAlchemy
+            incap_dict.pop('_sa_instance_state', None)
+            resultados.append(incap_dict)
+        
+        return resultados
 
     async def update_incapacidad(
         self,
@@ -758,6 +850,35 @@ class IncapacidadService:
         
         # Si llega aquí, usar UUID como fallback
         return f"{prefix}-{fecha_str}-{str(uuid.uuid4())[:8].upper()}"
+
+    async def get_stats(
+        self,
+        db: AsyncSession,
+        empresa_id: Optional[UUID] = None,
+        tipo: Optional[TipoIncapacidad] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+    ) -> Dict[str, int]:
+        """
+        Obtener estadísticas del dashboard.
+        
+        Args:
+            db: Sesión de base de datos
+            empresa_id: Filtrar por empresa (opcional)
+            tipo: Filtrar por tipo ARL/SALUD (opcional)
+            fecha_desde: Filtrar desde fecha (opcional)
+            fecha_hasta: Filtrar hasta fecha (opcional)
+        
+        Returns:
+            Dict con métricas: pendientes, auditadas_hoy, proximas_vencer, rechazadas_observadas
+        """
+        return await self.repository.get_stats(
+            db=db,
+            empresa_id=empresa_id,
+            tipo=tipo,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+        )
 
     async def consultar_incapacidad_publica(
         self,

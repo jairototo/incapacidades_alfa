@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -254,6 +254,45 @@ class IncapacidadListResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class IncapacidadPendienteResponse(IncapacidadInDB):
+    """
+    Schema para incapacidad pendiente de auditoría con datos adicionales.
+    Incluye días desde radicación y días en estado actual.
+    
+    Nota: Las relaciones (empleado, empresa, afiliado) deben cargarse
+    mediante eager loading en el service layer.
+    """
+    dias_desde_radicacion: int = Field(..., description="Días desde que fue radicada")
+    dias_en_estado_actual: int = Field(..., description="Días en el estado actual")
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadDetalleResponse(IncapacidadInDB):
+    """
+    Schema de respuesta detallada con objetos completos de relaciones.
+    
+    Para uso en el endpoint GET /incapacidades/{incapacidad_id}
+    Incluye objetos completos en lugar de solo IDs:
+    - empleado: EmpleadoResponse completo
+    - empresa: EmpresaResponse completo
+    - afiliado: AfiliadoResponse completo
+    - siniestros_empleado: Lista de siniestros del empleado (para ARL)
+    """
+    # Objetos completos en lugar de IDs (usando Any para evitar imports circulares)
+    empleado: Optional[Any] = Field(None, description="Objeto empleado completo (para tipo ARL)")
+    empresa: Optional[Any] = Field(None, description="Objeto empresa completo (para tipo ARL)")
+    afiliado: Optional[Any] = Field(None, description="Objeto afiliado completo (para tipo SALUD)")
+    
+    # Lista de siniestros del empleado (solo para ARL)
+    siniestros_empleado: List[Any] = Field(
+        default_factory=list,
+        description="Lista de todos los siniestros del empleado (solo para tipo ARL)"
+    )
+    
+    model_config = {"from_attributes": True}
+
+
 class EstadisticasIncapacidades(BaseModel):
     """Schema de estadísticas de incapacidades."""
     
@@ -356,5 +395,19 @@ class ConsultaIncapacidadPublicResponse(BaseModel):
     # Metadata
     created_at: datetime = Field(..., description="Fecha de radicación")
     updated_at: datetime = Field(..., description="Última actualización")
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadStatsResponse(BaseModel):
+    """Estadísticas del dashboard de incapacidades."""
+    pendientes: int = Field(..., description="Incapacidades en RADICADA o EN_AUDITORIA")
+    auditadas_hoy: int = Field(..., description="Incapacidades auditadas hoy (APROBADA/RECHAZADA/OBSERVADA)")
+    proximas_vencer: int = Field(..., description="Incapacidades con >7 días sin cambio de estado")
+    rechazadas_observadas: int = Field(..., description="Incapacidades en RECHAZADA u OBSERVADA")
+    
+    # Metadata opcional
+    fecha_calculo: datetime = Field(default_factory=datetime.utcnow)
+    filtros_aplicados: Optional[Dict[str, Any]] = None
     
     model_config = {"from_attributes": True}

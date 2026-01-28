@@ -80,7 +80,7 @@ class AuthService:
             UnauthorizedException: Si las credenciales son inválidas
         """
         # Buscar usuario
-        query = select(Usuario).where(Usuario.username == username)
+        query = select(Usuario).where(Usuario.email == username)
         result = await self.db.execute(query)
         user = result.scalar_one_or_none()
         

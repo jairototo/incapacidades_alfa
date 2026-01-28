@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%; /* fondo claro, neutro */
+    --foreground: 220 15% 18%; /* texto principal oscuro */
+
+    --card: 0 0% 100%; /* blanco para tarjetas */
+    --card-foreground: 220 15% 18%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 18%;
+
+    /* Azul corporativo (Seguros Alfa logo) */
+    --primary: 174.0 69% 38%;  
+    --primary-foreground: 210 40% 98%;
+    
+    /* Amarillo acento del logo */
+    --secondary: 47 97% 60%;
+    --secondary-foreground: 222 15% 15%;
+
+    /* Colores de apoyo */
+    --muted: 214 31% 92%;
+    --muted-foreground: 215 16% 46%;
+
+    /* Gris oscuro / neutral para acentos menores */
+    --accent: 220 15% 30%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Semánticos */
+    --destructive: 355 65% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Bordes / inputs */
+    --border: 214 25% 88%;
+    --input: 214 25% 90%;
+    --ring: 217 69% 23%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

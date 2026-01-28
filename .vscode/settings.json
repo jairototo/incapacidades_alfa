@@ -6,6 +6,13 @@
         "markdown": true,
         "scminput": false
     },
+    "typescript.tsserver.maxTsServerMemory": 1024,
+    "intelephense.files.exclude": [
+    "**/vendor/**",
+    "**/node_modules/**",
+    "**/storage/**"
+    ],
+    "intelephense.maxMemory": 512,
     "github.copilot.advanced":  {
         "customInstructions": ". github/copilot-instructions.md"
     }
