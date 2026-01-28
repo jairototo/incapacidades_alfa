@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from typing import List, Optional
 from uuid import UUID
-from datetime import date
+from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, Query, Path, status, Body
+from fastapi import APIRouter, Depends, Query, Path, status, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -19,6 +19,7 @@ from app.schemas.incapacidad import (
     ConsultaIncapacidadPublicResponse,
     IncapacidadPendienteResponse,
     IncapacidadDetalleResponse,
+    IncapacidadStatsResponse,
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
@@ -403,6 +404,71 @@ async def list_incapacidades(
         fecha_inicio_hasta=fecha_inicio_hasta,
         skip=skip,
         limit=limit
+    )
+
+
+@router.get(
+    "/stats",
+    response_model=IncapacidadStatsResponse,
+    summary="Estadísticas del dashboard",
+    description="Obtiene métricas estadísticas del dashboard de incapacidades",
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_READ]))],
+    tags=["incapacidades-dashboard"]
+)
+async def get_stats(
+    empresa_id: Optional[UUID] = Query(None, description="Filtrar por empresa"),
+    tipo: Optional[TipoIncapacidad] = Query(None, description="Filtrar por tipo (ARL/SALUD)"),
+    fecha_desde: Optional[date] = Query(None, description="Filtrar desde fecha (YYYY-MM-DD)"),
+    fecha_hasta: Optional[date] = Query(None, description="Filtrar hasta fecha (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+) -> IncapacidadStatsResponse:
+    """
+    Obtener estadísticas del dashboard de incapacidades.
+    
+    Métricas calculadas:
+    - **Pendientes**: Incapacidades en RADICADA o EN_AUDITORIA
+    - **Auditadas Hoy**: Incapacidades que cambiaron a APROBADA/RECHAZADA/OBSERVADA hoy
+    - **Próximas a Vencer**: Incapacidades con más de 7 días sin cambio de estado
+    - **Rechazadas/Observadas**: Incapacidades en RECHAZADA u OBSERVADA
+    
+    Filtros opcionales:
+    - empresa_id: ID de la empresa
+    - tipo: ARL o SALUD
+    - fecha_desde/fecha_hasta: Rango de fechas de creación
+    
+    Requiere permisos: INCAPACIDAD_READ
+    Roles permitidos: ADMIN, AUDITOR, APROBADOR
+    
+    Example:
+        GET /api/v1/incapacidades/stats?tipo=ARL&fecha_desde=2026-01-01
+    """
+    # Validar rango de fechas
+    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+        raise HTTPException(
+            status_code=400,
+            detail="fecha_desde debe ser menor o igual a fecha_hasta"
+        )
+    
+    # Obtener estadísticas
+    stats = await incapacidad_service.get_stats(
+        db=db,
+        empresa_id=empresa_id,
+        tipo=tipo,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    
+    # Construir response con metadata
+    return IncapacidadStatsResponse(
+        **stats,
+        fecha_calculo=datetime.utcnow(),
+        filtros_aplicados={
+            "empresa_id": str(empresa_id) if empresa_id else None,
+            "tipo": tipo.value if tipo else None,
+            "fecha_desde": fecha_desde.isoformat() if fecha_desde else None,
+            "fecha_hasta": fecha_hasta.isoformat() if fecha_hasta else None,
+        } if any([empresa_id, tipo, fecha_desde, fecha_hasta]) else None,
     )
 
 

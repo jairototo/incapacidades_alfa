@@ -1,15 +1,16 @@
 """
 Repository para operaciones de base de datos de Incapacidad.
 """
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import UUID
-from datetime import date
-from sqlalchemy import select, and_, or_
+from datetime import date, datetime, timedelta
+from sqlalchemy import select, and_, or_, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.repositories.base_repository import BaseRepository
 from app.models.incapacidad import Incapacidad
+from app.models.historial_estado import HistorialEstado
 from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
 
 
@@ -410,7 +411,126 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
         
         result = await db.execute(query)
         return list(result.scalars().all())
-
+    async def get_stats(
+        self,
+        db: AsyncSession,
+        empresa_id: Optional[UUID] = None,
+        tipo: Optional[TipoIncapacidad] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+    ) -> Dict[str, int]:
+        """
+        Calcular estadísticas de incapacidades con filtros opcionales.
+        
+        Usa queries SQL específicas por métrica para máxima eficiencia.
+        NO cargar objetos completos, solo COUNT().
+        
+        Args:
+            db: Sesión de base de datos
+            empresa_id: Filtrar por empresa (opcional)
+            tipo: Filtrar por tipo ARL/SALUD (opcional)
+            fecha_desde: Filtrar desde fecha (opcional)
+            fecha_hasta: Filtrar hasta fecha (opcional)
+            
+        Returns:
+            Dict con métricas: pendientes, auditadas_hoy, proximas_vencer, rechazadas_observadas
+        """
+        # Query base con filtros comunes
+        base_conditions = []
+        
+        if empresa_id:
+            base_conditions.append(Incapacidad.empresa_id == empresa_id)
+        if tipo:
+            base_conditions.append(Incapacidad.tipo == tipo)
+        if fecha_desde:
+            base_conditions.append(Incapacidad.created_at >= datetime.combine(fecha_desde, datetime.min.time()))
+        if fecha_hasta:
+            base_conditions.append(Incapacidad.created_at <= datetime.combine(fecha_hasta, datetime.max.time()))
+        
+        # Métrica 1: Pendientes (RADICADA o EN_AUDITORIA)
+        pendientes_query = select(func.count(Incapacidad.id)).where(
+            Incapacidad.estado.in_([EstadoIncapacidad.RADICADA, EstadoIncapacidad.EN_AUDITORIA]),
+            *base_conditions
+        )
+        result = await db.execute(pendientes_query)
+        pendientes = result.scalar() or 0
+        
+        # Métrica 2: Auditadas hoy
+        # JOIN con historial_estado para obtener cambios de estado de hoy
+        hoy = date.today()
+        auditadas_query = (
+            select(func.count(distinct(HistorialEstado.entity_id)))
+            .select_from(HistorialEstado)
+            .where(
+                HistorialEstado.entity_type == "incapacidad",
+                HistorialEstado.estado_nuevo.in_([
+                    EstadoIncapacidad.APROBADA.value,
+                    EstadoIncapacidad.RECHAZADA.value,
+                    EstadoIncapacidad.OBSERVADA.value
+                ]),
+                func.date(HistorialEstado.created_at) == hoy
+            )
+        )
+        
+        # Aplicar filtros de incapacidad si existen
+        if base_conditions:
+            auditadas_query = auditadas_query.join(
+                Incapacidad,
+                HistorialEstado.entity_id == Incapacidad.id
+            ).where(*base_conditions)
+        
+        result = await db.execute(auditadas_query)
+        auditadas_hoy = result.scalar() or 0
+        
+        # Métrica 3: Próximas a vencer (>7 días sin cambio)
+        siete_dias_atras = datetime.utcnow() - timedelta(days=7)
+        
+        # Subquery: última fecha de cambio por incapacidad
+        ultima_actualizacion_subquery = (
+            select(
+                HistorialEstado.entity_id,
+                func.max(HistorialEstado.created_at).label('ultima_actualizacion')
+            )
+            .where(HistorialEstado.entity_type == "incapacidad")
+            .group_by(HistorialEstado.entity_id)
+            .subquery()
+        )
+        
+        proximas_vencer_query = (
+            select(func.count(Incapacidad.id))
+            .select_from(Incapacidad)
+            .join(
+                ultima_actualizacion_subquery,
+                Incapacidad.id == ultima_actualizacion_subquery.c.entity_id
+            )
+            .where(
+                Incapacidad.estado.in_([
+                    EstadoIncapacidad.RADICADA,
+                    EstadoIncapacidad.EN_AUDITORIA,
+                    EstadoIncapacidad.OBSERVADA
+                ]),
+                ultima_actualizacion_subquery.c.ultima_actualizacion <= siete_dias_atras,
+                *base_conditions
+            )
+        )
+        
+        result = await db.execute(proximas_vencer_query)
+        proximas_vencer = result.scalar() or 0
+        
+        # Métrica 4: Rechazadas u Observadas
+        rechazadas_query = select(func.count(Incapacidad.id)).where(
+            Incapacidad.estado.in_([EstadoIncapacidad.RECHAZADA, EstadoIncapacidad.OBSERVADA]),
+            *base_conditions
+        )
+        result = await db.execute(rechazadas_query)
+        rechazadas_observadas = result.scalar() or 0
+        
+        return {
+            "pendientes": pendientes,
+            "auditadas_hoy": auditadas_hoy,
+            "proximas_vencer": proximas_vencer,
+            "rechazadas_observadas": rechazadas_observadas,
+        }
     async def get_aprobadas_pendientes_pago(
         self,
         db: AsyncSession,

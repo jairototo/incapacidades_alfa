@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { useAuthStore } from '@/store/authStore';
 
 // En desarrollo usa el proxy de Vite (/api/v1)
 // En producción usa la URL completa del backend
@@ -46,38 +47,32 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
+        const { refreshToken } = useAuthStore.getState();
         
         if (!refreshToken) {
           throw new Error('No refresh token available');
         }
 
-        // Llamar al endpoint de refresh
+        // Llamar al endpoint de refresh (body JSON, NO header)
         const { data } = await axios.post(
           `${API_URL}/auth/refresh`,
-          null,
-          {
-            headers: {
-              Authorization: `Bearer ${refreshToken}`,
-            },
-          }
+          { refresh_token: refreshToken }
         );
 
-        // Guardar el nuevo access token
-        localStorage.setItem('access_token', data.access_token);
+        // Actualizar el access token en el store (esto también actualiza localStorage)
+        useAuthStore.getState().updateAccessToken(data.access_token);
 
-        // Reintentar la petición original
+        // Reintentar la petición original con el nuevo token
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
         }
         
         return api(originalRequest);
       } catch (refreshError) {
-        // Si falla el refresh, limpiar tokens y redirigir al login
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
+        // CRÍTICO: Limpiar TANTO localStorage COMO Zustand store
+        useAuthStore.getState().logout();
         
+        // Redirigir al login
         window.location.href = '/login';
         
         return Promise.reject(refreshError);

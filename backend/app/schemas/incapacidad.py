@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -395,5 +395,19 @@ class ConsultaIncapacidadPublicResponse(BaseModel):
     # Metadata
     created_at: datetime = Field(..., description="Fecha de radicación")
     updated_at: datetime = Field(..., description="Última actualización")
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadStatsResponse(BaseModel):
+    """Estadísticas del dashboard de incapacidades."""
+    pendientes: int = Field(..., description="Incapacidades en RADICADA o EN_AUDITORIA")
+    auditadas_hoy: int = Field(..., description="Incapacidades auditadas hoy (APROBADA/RECHAZADA/OBSERVADA)")
+    proximas_vencer: int = Field(..., description="Incapacidades con >7 días sin cambio de estado")
+    rechazadas_observadas: int = Field(..., description="Incapacidades en RECHAZADA u OBSERVADA")
+    
+    # Metadata opcional
+    fecha_calculo: datetime = Field(default_factory=datetime.utcnow)
+    filtros_aplicados: Optional[Dict[str, Any]] = None
     
     model_config = {"from_attributes": True}

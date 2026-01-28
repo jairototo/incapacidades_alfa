@@ -851,6 +851,35 @@ class IncapacidadService:
         # Si llega aquí, usar UUID como fallback
         return f"{prefix}-{fecha_str}-{str(uuid.uuid4())[:8].upper()}"
 
+    async def get_stats(
+        self,
+        db: AsyncSession,
+        empresa_id: Optional[UUID] = None,
+        tipo: Optional[TipoIncapacidad] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+    ) -> Dict[str, int]:
+        """
+        Obtener estadísticas del dashboard.
+        
+        Args:
+            db: Sesión de base de datos
+            empresa_id: Filtrar por empresa (opcional)
+            tipo: Filtrar por tipo ARL/SALUD (opcional)
+            fecha_desde: Filtrar desde fecha (opcional)
+            fecha_hasta: Filtrar hasta fecha (opcional)
+        
+        Returns:
+            Dict con métricas: pendientes, auditadas_hoy, proximas_vencer, rechazadas_observadas
+        """
+        return await self.repository.get_stats(
+            db=db,
+            empresa_id=empresa_id,
+            tipo=tipo,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+        )
+
     async def consultar_incapacidad_publica(
         self,
         db: AsyncSession,

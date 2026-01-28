@@ -18,7 +18,7 @@ interface ListEmpresasResponse {
  * Servicio para gestión de empresas
  */
 class EmpresaService {
-  private readonly baseUrl = '/empresas';
+  private readonly baseUrl = '/empresas/';
 
   /**
    * Listar empresas con paginación y búsqueda opcional
