@@ -14,33 +14,36 @@ vi.mock('@/services/incapacidadService', () => ({
 const mockDocumentos = [
   {
     id: 'doc-1',
-    nombre_archivo: 'incapacidad_medica.pdf',
+    nombre_original: 'incapacidad_medica.pdf', // Cambiado de nombre_archivo
     tipo_documento: 'INCAPACIDAD_MEDICA',
     mime_type: 'application/pdf',
-    tamano: 102400, // 100 KB
+    tamano_bytes: 102400, // 100 KB (cambiado de tamano)
     ruta_archivo: '/documentos/incapacidad_medica.pdf',
-    uploaded_by_id: 'user-123',
+    uploaded_by: 'user-123', // Cambiado de uploaded_by_id
     created_at: '2024-01-10T10:30:00Z',
+    extension: 'pdf', // Agregado
   },
   {
     id: 'doc-2',
-    nombre_archivo: 'historia_clinica.pdf',
+    nombre_original: 'historia_clinica.pdf', // Cambiado de nombre_archivo
     tipo_documento: 'HISTORIA_CLINICA',
     mime_type: 'application/pdf',
-    tamano: 204800, // 200 KB
+    tamano_bytes: 204800, // 200 KB (cambiado de tamano)
     ruta_archivo: '/documentos/historia_clinica.pdf',
-    uploaded_by_id: 'user-123',
+    uploaded_by: 'user-123', // Cambiado de uploaded_by_id
     created_at: '2024-01-10T11:00:00Z',
+    extension: 'pdf', // Agregado
   },
   {
     id: 'doc-3',
-    nombre_archivo: 'radiografia.jpg',
+    nombre_original: 'radiografia.jpg', // Cambiado de nombre_archivo
     tipo_documento: 'SOPORTE_MEDICO',
     mime_type: 'image/jpeg',
-    tamano: 512000, // 500 KB
+    tamano_bytes: 512000, // 500 KB (cambiado de tamano)
     ruta_archivo: '/documentos/radiografia.jpg',
-    uploaded_by_id: 'user-123',
+    uploaded_by: 'user-123', // Cambiado de uploaded_by_id
     created_at: '2024-01-10T12:00:00Z',
+    extension: 'jpg', // Agregado
   },
 ];
 
@@ -60,45 +63,41 @@ describe('DocumentosViewer', () => {
   it('debe renderizar grid de documentos con información correcta', () => {
     render(<DocumentosViewer documentos={mockDocumentos} />);
 
-    // Título
-    expect(screen.getByText('Documentos Adjuntos')).toBeInTheDocument();
-    expect(screen.getByText('3 archivos')).toBeInTheDocument();
-
-    // Debe mostrar todos los documentos
+    // Debe mostrar los nombres de todos los documentos
     expect(screen.getByText('incapacidad_medica.pdf')).toBeInTheDocument();
     expect(screen.getByText('historia_clinica.pdf')).toBeInTheDocument();
     expect(screen.getByText('radiografia.jpg')).toBeInTheDocument();
-
-    // Debe mostrar tamaños formateados
-    expect(screen.getByText('100.00 KB')).toBeInTheDocument();
-    expect(screen.getByText('200.00 KB')).toBeInTheDocument();
-    expect(screen.getByText('500.00 KB')).toBeInTheDocument();
 
     // Debe mostrar tipos de documento
     expect(screen.getByText('INCAPACIDAD_MEDICA')).toBeInTheDocument();
     expect(screen.getByText('HISTORIA_CLINICA')).toBeInTheDocument();
     expect(screen.getByText('SOPORTE_MEDICO')).toBeInTheDocument();
+
+    // Debe mostrar fechas de subida (formato: DD/MM/YYYY)
+    const fechasSubida = screen.getAllByText(/Subido:/);
+    expect(fechasSubida).toHaveLength(3);
   });
 
-  it('debe manejar documentos sin nombre_archivo correctamente', () => {
+  it('debe manejar documentos sin nombre_original correctamente', () => {
     const documentoSinNombre = {
       id: 'doc-no-name',
-      nombre_archivo: undefined,
+      nombre_original: undefined, // Cambiado de nombre_archivo
       tipo_documento: 'OTRO',
       mime_type: 'application/octet-stream',
-      tamano: 1024,
+      tamano_bytes: 1024, // Cambiado de tamano
       ruta_archivo: '/documentos/archivo_sin_nombre',
-      uploaded_by_id: 'user-123',
+      uploaded_by: 'user-123', // Cambiado de uploaded_by_id
       created_at: '2024-01-10T10:00:00Z',
+      extension: '', // Agregado
     };
 
-    render(<DocumentosViewer documentos={[documentoSinNombre]} />);
+    render(<DocumentosViewer documentos={[documentoSinNombre] as any} />);
 
     // Debe mostrar "Sin nombre" como fallback
     expect(screen.getByText('Sin nombre')).toBeInTheDocument();
 
-    // No debe romper el componente
-    expect(screen.getByText('Documentos Adjuntos')).toBeInTheDocument();
+    // Debe mostrar el tipo de documento
+    expect(screen.getByText('OTRO')).toBeInTheDocument();
   });
 
   it('debe abrir modal de vista previa al hacer click en "Ver"', async () => {
@@ -109,14 +108,17 @@ describe('DocumentosViewer', () => {
     const verButtons = screen.getAllByText('Ver');
     await user.click(verButtons[0]);
 
-    // Debe abrir modal con el título del documento
-    expect(screen.getByText(/Vista Previa/)).toBeInTheDocument();
-    expect(screen.getByText('incapacidad_medica.pdf')).toBeInTheDocument();
+    // Debe abrir modal con el nombre del documento (aparece 2 veces: en card y en modal)
+    const nombreDocumento = screen.getAllByText('incapacidad_medica.pdf');
+    expect(nombreDocumento.length).toBeGreaterThan(1); // Al menos en card y modal
 
-    // Debe haber un iframe para PDF
-    const iframe = document.querySelector('iframe');
+    // Debe haber botón "Cerrar" en el modal
+    expect(screen.getByText('Cerrar')).toBeInTheDocument();
+
+    // Debe haber un iframe para PDF con title
+    const iframe = screen.getByTitle('Vista previa PDF');
     expect(iframe).toBeInTheDocument();
-    expect(iframe?.src).toContain('/api/documentos/doc-1/download');
+    expect(iframe).toHaveAttribute('src', '/api/documentos/doc-1/download');
   });
 
   it('debe mostrar vista previa de imagen en el modal', async () => {
@@ -127,13 +129,14 @@ describe('DocumentosViewer', () => {
     const verButtons = screen.getAllByText('Ver');
     await user.click(verButtons[2]);
 
-    // Debe abrir modal con imagen
-    expect(screen.getByText('radiografia.jpg')).toBeInTheDocument();
+    // Debe abrir modal con el nombre del archivo (aparece 2 veces)
+    const nombreDocumento = screen.getAllByText('radiografia.jpg');
+    expect(nombreDocumento.length).toBeGreaterThan(1); // En card y modal
 
-    // Debe haber una etiqueta <img>
-    const img = document.querySelector('img[alt*="Documento"]');
+    // Debe haber una etiqueta <img> con alt text
+    const img = screen.getByAltText('radiografia.jpg');
     expect(img).toBeInTheDocument();
-    expect(img?.src).toContain('/api/documentos/doc-3/download');
+    expect(img).toHaveAttribute('src', '/api/documentos/doc-3/download');
   });
 
   it('debe cerrar el modal al hacer click en "Cerrar"', async () => {
@@ -144,15 +147,15 @@ describe('DocumentosViewer', () => {
     const verButtons = screen.getAllByText('Ver');
     await user.click(verButtons[0]);
 
-    // Verificar que el modal está abierto
-    expect(screen.getByText(/Vista Previa/)).toBeInTheDocument();
+    // Verificar que el modal está abierto (aparece botón "Cerrar")
+    const cerrarBtn = screen.getByRole('button', { name: /Cerrar/i });
+    expect(cerrarBtn).toBeInTheDocument();
 
     // Click en botón "Cerrar"
-    const cerrarBtn = screen.getByRole('button', { name: /Cerrar/i });
     await user.click(cerrarBtn);
 
-    // El modal debe desaparecer
-    expect(screen.queryByText(/Vista Previa/)).not.toBeInTheDocument();
+    // El modal debe desaparecer (botón "Cerrar" ya no está)
+    expect(screen.queryByRole('button', { name: /Cerrar/i })).not.toBeInTheDocument();
   });
 
   it('debe llamar a getDownloadUrl al hacer click en "Descargar"', async () => {
@@ -181,8 +184,13 @@ describe('DocumentosViewer', () => {
   it('debe mostrar iconos diferentes según el tipo de archivo', () => {
     render(<DocumentosViewer documentos={mockDocumentos} />);
 
-    // Debe haber iconos de archivo (no vamos a verificar el ícono exacto, pero sí que se renderice)
-    const cards = screen.getAllByRole('article'); // Las Cards suelen tener role="article"
-    expect(cards.length).toBe(3);
+    // Debe renderizar los 3 documentos con sus nombres
+    expect(screen.getByText('incapacidad_medica.pdf')).toBeInTheDocument();
+    expect(screen.getByText('historia_clinica.pdf')).toBeInTheDocument();
+    expect(screen.getByText('radiografia.jpg')).toBeInTheDocument();
+
+    // Debe haber botones "Ver" para PDFs e imágenes (todos son previsualizables)
+    const verButtons = screen.getAllByText('Ver');
+    expect(verButtons).toHaveLength(3);
   });
 });

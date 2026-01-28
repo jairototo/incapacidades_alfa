@@ -68,8 +68,8 @@ describe('GestionActions', () => {
     const textarea = await screen.findByLabelText(/Observaciones/i);
     expect(textarea).toBeInTheDocument();
 
-    // El texto debe indicar que es obligatorio
-    expect(screen.getByText(/obligatorio para esta acción/i)).toBeInTheDocument();
+    // Debe mostrar texto indicando que es requerido
+    expect(screen.getByText(/Requerido: Justifique las razones del rechazo/i)).toBeInTheDocument();
   });
 
   it('debe llamar a onAction con el objeto correcto { nuevoEstado, observacion }', async () => {

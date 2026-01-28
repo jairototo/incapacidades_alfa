@@ -759,7 +759,6 @@ docker compose exec api flake8 app/                             # Linter
 - [ ] Incrementar cobertura backend a >90%
 
 #### Opción B: Fase 2 - Sistema Interno (4-6 semanas)
-#### Opción B: Fase 2 - Sistema Interno (4-6 semanas)
 **Objetivo**: Dashboard de auditoría completo
 
 **Tareas**:

@@ -117,7 +117,7 @@ export const incapacidadService = {
   /**
    * WORKFLOW: Aprobar incapacidad para pago
    * POST /api/v1/incapacidades/{incapacidad_id}/aprobar
-   * No requiere body
+   * Body: 
    */
   async aprobar(id: string): Promise<Incapacidad> {
     const { data } = await api.post<Incapacidad>(`/incapacidades/${id}/aprobar`);

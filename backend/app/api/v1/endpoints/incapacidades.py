@@ -519,7 +519,8 @@ async def radicar_incapacidad(
 async def auditar_incapacidad(
     incapacidad_id: UUID,
     auditoria: IncapacidadAuditar,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
 ):
     """
     Audita una incapacidad.
@@ -538,7 +539,8 @@ async def auditar_incapacidad(
         db,
         incapacidad_id,
         auditoria.accion,
-        auditoria.observaciones
+        auditoria.observaciones,
+        current_user.id
     )
 
 
@@ -550,7 +552,8 @@ async def auditar_incapacidad(
 )
 async def aprobar_incapacidad(
     incapacidad_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)  
 ):
     """
     Aprueba una incapacidad para pago.
@@ -561,7 +564,7 @@ async def aprobar_incapacidad(
     - Debe estar en estado EN_AUDITORIA
     - Registra fecha de aprobación y aprobador
     """
-    return await incapacidad_service.aprobar_incapacidad(db, incapacidad_id)
+    return await incapacidad_service.aprobar_incapacidad(db, incapacidad_id, current_user.id)
 
 
 @router.post(
@@ -573,7 +576,8 @@ async def aprobar_incapacidad(
 async def rechazar_incapacidad(
     incapacidad_id: UUID,
     motivo: str = Body(..., embed=True, min_length=10),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)   
 ):
     """
     Rechaza una incapacidad.
@@ -584,7 +588,7 @@ async def rechazar_incapacidad(
     - Motivo es obligatorio (mínimo 10 caracteres)
     - Registra fecha de rechazo y motivo
     """
-    return await incapacidad_service.rechazar_incapacidad(db, incapacidad_id, motivo)
+    return await incapacidad_service.rechazar_incapacidad(db, incapacidad_id, motivo, current_user.id)
 
 
 @router.post(
@@ -595,7 +599,8 @@ async def rechazar_incapacidad(
 )
 async def enviar_a_pago(
     incapacidad_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
 ):
     """
     Envía una incapacidad aprobada a pago.
@@ -606,7 +611,7 @@ async def enviar_a_pago(
     - Debe estar en estado APROBADA
     - Debe tener valor_total calculado
     """
-    return await incapacidad_service.enviar_a_pago(db, incapacidad_id)
+    return await incapacidad_service.enviar_a_pago(db, incapacidad_id, current_user.id)
 
 
 @router.post(
@@ -617,7 +622,8 @@ async def enviar_a_pago(
 )
 async def marcar_como_pagada(
     incapacidad_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
 ):
     """
     Marca una incapacidad como pagada.
@@ -628,7 +634,7 @@ async def marcar_como_pagada(
     - Debe estar en estado EN_PAGO
     - Estado final del workflow
     """
-    return await incapacidad_service.marcar_como_pagada(db, incapacidad_id)
+    return await incapacidad_service.marcar_como_pagada(db, incapacidad_id, current_user.id)
 
 
 @router.get(
