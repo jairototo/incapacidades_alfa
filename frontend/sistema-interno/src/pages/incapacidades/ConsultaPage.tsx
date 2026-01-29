@@ -159,9 +159,10 @@ export function ConsultaPage() {
       if (filtros.estado && filtros.estado !== 'ALL') params.estado = filtros.estado;
       if (filtros.empleado_documento) params.empleado_documento = filtros.empleado_documento;
       if (filtros.empresa_nit) params.empresa_nit = filtros.empresa_nit;
-      if (filtros.fecha_inicio) params.fecha_inicio = filtros.fecha_inicio;
-      if (filtros.fecha_fin) params.fecha_fin = filtros.fecha_fin;
+      if (filtros.fecha_inicio) params.fecha_inicio_desde = filtros.fecha_inicio;
+      if (filtros.fecha_fin) params.fecha_inicio_hasta = filtros.fecha_fin;
 
+      console.log('Params enviados al servicio:', params); // Debug
       return incapacidadService.list(params);
     },
   });

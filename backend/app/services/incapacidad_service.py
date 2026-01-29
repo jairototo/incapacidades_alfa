@@ -199,8 +199,11 @@ class IncapacidadService:
         estado: Optional[EstadoIncapacidad] = None,
         numero: Optional[str] = None,
         empleado_id: Optional[UUID] = None,
+        empleado_documento: Optional[str] = None,
         afiliado_id: Optional[UUID] = None,
+        afiliado_documento: Optional[str] = None,
         empresa_id: Optional[UUID] = None,
+        empresa_nit: Optional[str] = None,
         fecha_inicio_desde: Optional[date] = None,
         fecha_inicio_hasta: Optional[date] = None,
         skip: int = 0,
@@ -214,8 +217,12 @@ class IncapacidadService:
             tipo: Filtrar por tipo
             estado: Filtrar por estado
             numero: Filtrar por número de incapacidad
-            afiliado_id: Filtrar por afiliado
-            empresa_id: Filtrar por empresa
+            empleado_id: Filtrar por empleado (UUID)
+            empleado_documento: Filtrar por documento de empleado
+            afiliado_id: Filtrar por afiliado (UUID)
+            afiliado_documento: Filtrar por documento de afiliado
+            empresa_id: Filtrar por empresa (UUID)
+            empresa_nit: Filtrar por NIT de empresa
             fecha_inicio_desde: Fecha mínima
             fecha_inicio_hasta: Fecha máxima
             skip: Registros a saltar
@@ -224,6 +231,24 @@ class IncapacidadService:
         Returns:
             Lista de incapacidades
         """
+        # Resolver empleado_id si se proporciona documento
+        if empleado_documento and not empleado_id:
+            empleado = await self.empleado_repository.get_by_documento(db, empleado_documento)
+            if empleado:
+                empleado_id = empleado.id
+                
+        # Resolver afiliado_id si se proporciona documento
+        if afiliado_documento and not afiliado_id:
+            afiliado = await self.afiliado_repository.get_by_documento(db, afiliado_documento)
+            if afiliado:
+                afiliado_id = afiliado.id
+                
+        # Resolver empresa_id si se proporciona NIT
+        if empresa_nit and not empresa_id:
+            empresa = await self.empresa_repository.get_by_nit(db, empresa_nit)
+            if empresa:
+                empresa_id = empresa.id
+        
         return await self.repository.search(
             db,
             tipo=tipo,

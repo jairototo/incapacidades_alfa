@@ -16,14 +16,34 @@ export const incapacidadService = {
   /**
    * Listar incapacidades con filtros y paginación
    * GET /api/v1/incapacidades/
-   * Query params: skip, limit
+   * Query params: skip, limit, numero, tipo, estado, empleado_documento, empresa_nit, fecha_inicio, fecha_fin
    */
   async list(filtros: IncapacidadFiltros = {}): Promise<Incapacidad[]> {
+    // Filtrar parámetros inválidos (undefined, null, string vacío)
+    const paramsLimpios = Object.fromEntries(
+      Object.entries({
+        skip: filtros.skip ?? 0,
+        limit: filtros.limit ?? 100,
+        numero: filtros.numero,
+        tipo: filtros.tipo,
+        estado: filtros.estado,
+        empleado_documento: filtros.empleado_documento,
+        afiliado_documento: filtros.afiliado_documento,
+        empresa_nit: filtros.empresa_nit,
+        fecha_inicio_desde: filtros.fecha_inicio_desde,
+        fecha_inicio_hasta: filtros.fecha_inicio_hasta,
+      }).filter(([_, value]) => {
+        // Excluir undefined, null, y strings vacíos
+        if (value === undefined || value === null || value === '') return false;
+        if (typeof value === 'number' && isNaN(value)) return false;
+        return true;
+      })
+    );
+
+    console.log('Enviando parámetros al backend:', paramsLimpios); // Debug
+
     const { data } = await api.get<Incapacidad[]>('/incapacidades/', {
-      params: {
-        skip: filtros.skip || 0,
-        limit: filtros.limit || 100,
-      },
+      params: paramsLimpios,
     });
     return data;
   },

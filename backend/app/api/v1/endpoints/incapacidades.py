@@ -393,9 +393,12 @@ async def list_incapacidades(
     tipo: Optional[TipoIncapacidad] = Query(None, description="Filtrar por tipo (ARL/SALUD)"),
     estado: Optional[EstadoIncapacidad] = Query(None, description="Filtrar por estado"),
     numero: Optional[str] = Query(None, description="Filtrar por número de incapacidad"),
-    empleado_id: Optional[UUID] = Query(None, description="Filtrar por empleado"),
-    afiliado_id: Optional[UUID] = Query(None, description="Filtrar por afiliado"),
-    empresa_id: Optional[UUID] = Query(None, description="Filtrar por empresa"),
+    empleado_id: Optional[UUID] = Query(None, description="Filtrar por empleado (UUID)"),
+    empleado_documento: Optional[str] = Query(None, description="Filtrar por documento de empleado"),
+    afiliado_id: Optional[UUID] = Query(None, description="Filtrar por afiliado (UUID)"),
+    afiliado_documento: Optional[str] = Query(None, description="Filtrar por documento de afiliado"),
+    empresa_id: Optional[UUID] = Query(None, description="Filtrar por empresa (UUID)"),
+    empresa_nit: Optional[str] = Query(None, description="Filtrar por NIT de empresa"),
     fecha_inicio_desde: Optional[date] = Query(None, description="Fecha inicio mínima"),
     fecha_inicio_hasta: Optional[date] = Query(None, description="Fecha inicio máxima"),
     skip: int = Query(0, ge=0, description="Número de registros a saltar"),
@@ -409,9 +412,9 @@ async def list_incapacidades(
     - tipo: ARL o SALUD
     - estado: RADICADA, EN_AUDITORIA, OBSERVADA, APROBADA, RECHAZADA, EN_PAGO, PAGADA, CANCELADA
     - número: Número único de incapacidad
-    - empleado_id: UUID del empleado (para ARL)
-    - afiliado_id: UUID del afiliado (para SALUD)
-    - empresa_id: UUID de la empresa (para ARL)
+    - empleado_id/empleado_documento: Por empleado (UUID o documento)
+    - afiliado_id/afiliado_documento: Por afiliado (UUID o documento)
+    - empresa_id/empresa_nit: Por empresa (UUID o NIT)
     - fecha_inicio_desde/hasta: Rango de fechas de inicio
     
     Ordenamiento: Por fecha de radicación descendente
@@ -422,8 +425,11 @@ async def list_incapacidades(
         estado=estado,
         numero=numero,
         empleado_id=empleado_id,
+        empleado_documento=empleado_documento,
         afiliado_id=afiliado_id,
+        afiliado_documento=afiliado_documento,
         empresa_id=empresa_id,
+        empresa_nit=empresa_nit,
         fecha_inicio_desde=fecha_inicio_desde,
         fecha_inicio_hasta=fecha_inicio_hasta,
         skip=skip,

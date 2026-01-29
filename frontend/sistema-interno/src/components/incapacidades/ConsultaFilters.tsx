@@ -1,7 +1,7 @@
 /**
  * ConsultaFilters - Filtros para búsqueda de incapacidades
  */
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,9 +31,21 @@ interface ConsultaFiltersProps {
 }
 
 export function ConsultaFilters({ onSearch, isLoading }: ConsultaFiltersProps) {
-  const { register, handleSubmit, reset, setValue } = useForm<ConsultaFiltros>();
+  const { register, handleSubmit, reset, control } = useForm<ConsultaFiltros>({
+    defaultValues: {
+      numero: '',
+      tipo: 'ALL',
+      estado: 'ALL',
+      empleado_documento: '',
+      empresa_nit: '',
+      fecha_inicio: '',
+      fecha_fin: '',
+    }
+  });
 
   const onSubmit = (data: ConsultaFiltros) => {
+    console.log('Form submitted with data:', data); // Debug
+    
     // Filtrar campos vacíos y valores 'ALL'
     const filtros = Object.entries(data).reduce((acc, [key, value]) => {
       if (value !== '' && value !== undefined && value !== null && value !== 'ALL') {
@@ -42,11 +54,20 @@ export function ConsultaFilters({ onSearch, isLoading }: ConsultaFiltersProps) {
       return acc;
     }, {} as ConsultaFiltros);
 
+    console.log('Filtered data:', filtros); // Debug
     onSearch(filtros);
   };
 
   const handleReset = () => {
-    reset();
+    reset({
+      numero: '',
+      tipo: 'ALL',
+      estado: 'ALL',
+      empleado_documento: '',
+      empresa_nit: '',
+      fecha_inicio: '',
+      fecha_fin: '',
+    });
     onSearch({});
   };
 
@@ -69,42 +90,56 @@ export function ConsultaFilters({ onSearch, isLoading }: ConsultaFiltersProps) {
             {/* Tipo */}
             <div className="space-y-2">
               <Label htmlFor="tipo">Tipo</Label>
-              <Select 
-                onValueChange={(value: string) => setValue('tipo', value as 'ARL' | 'SALUD' | 'ALL' | '')}
-                disabled={isLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
-                  <SelectItem value="ARL">ARL</SelectItem>
-                  <SelectItem value="SALUD">SALUD</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                name="tipo"
+                control={control}
+                render={({ field }) => (
+                  <Select 
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Todos</SelectItem>
+                      <SelectItem value="ARL">ARL</SelectItem>
+                      <SelectItem value="SALUD">SALUD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             {/* Estado */}
             <div className="space-y-2">
               <Label htmlFor="estado">Estado</Label>
-              <Select 
-                onValueChange={(value: string) => setValue('estado', value)}
-                disabled={isLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
-                  <SelectItem value="RADICADA">Radicada</SelectItem>
-                  <SelectItem value="EN_AUDITORIA">En Auditoría</SelectItem>
-                  <SelectItem value="OBSERVADA">Observada</SelectItem>
-                  <SelectItem value="APROBADA">Aprobada</SelectItem>
-                  <SelectItem value="RECHAZADA">Rechazada</SelectItem>
-                  <SelectItem value="EN_PAGO">En Pago</SelectItem>
-                  <SelectItem value="PAGADA">Pagada</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                name="estado"
+                control={control}
+                render={({ field }) => (
+                  <Select 
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Todos</SelectItem>
+                      <SelectItem value="RADICADA">Radicada</SelectItem>
+                      <SelectItem value="EN_AUDITORIA">En Auditoría</SelectItem>
+                      <SelectItem value="OBSERVADA">Observada</SelectItem>
+                      <SelectItem value="APROBADA">Aprobada</SelectItem>
+                      <SelectItem value="RECHAZADA">Rechazada</SelectItem>
+                      <SelectItem value="EN_PAGO">En Pago</SelectItem>
+                      <SelectItem value="PAGADA">Pagada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             {/* Documento Empleado */}
