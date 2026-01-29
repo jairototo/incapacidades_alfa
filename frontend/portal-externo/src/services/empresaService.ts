@@ -17,7 +17,7 @@ export function useSearchEmpresas(query: string) {
     queryKey: ['empresas', 'search', query],
     queryFn: async () => {
       const { data } = await api.get<{ items: EmpresaResponse[]; total: number }>(
-        '/empresas',
+        '/empresas/',
         {
           params: {
             search: query,
@@ -25,7 +25,8 @@ export function useSearchEmpresas(query: string) {
           },
         }
       );
-      return data.items;
+      
+      return data;
     },
     enabled: query.length >= 2,
     staleTime: 5 * 60 * 1000, // 5 minutos

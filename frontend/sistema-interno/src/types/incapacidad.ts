@@ -114,6 +114,8 @@ export interface Documento {
 export interface IncapacidadFiltros {
   numero?: string;
   numero_documento?: string;
+  empleado_documento?: string;
+  afiliado_documento?: string;
   tipo?: TipoIncapacidad;
   estado?: EstadoIncapacidad;
   fecha_inicio_desde?: string;

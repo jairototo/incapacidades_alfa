@@ -269,7 +269,7 @@ export function DatosPersonalesForm({
             </div>
 
             {/* Cargo */}
-            <Input
+            {/*<Input
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               {...register('cargo' as any)}
               label="Cargo"
@@ -277,10 +277,10 @@ export function DatosPersonalesForm({
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               error={(errors as any).cargo?.message}
               required
-            />
+            />*/}
 
             {/* Fecha de Ingreso */}
-            <Input
+            {/*<Input
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               {...register('fecha_ingreso' as any, {
                 valueAsDate: true,
@@ -290,7 +290,7 @@ export function DatosPersonalesForm({
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               error={(errors as any).fecha_ingreso?.message}
               required
-            />
+            />*/}
           </div>
         </div>
       )}
