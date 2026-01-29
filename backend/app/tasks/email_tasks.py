@@ -83,7 +83,8 @@ def send_incapacidad_radicada_email_task(
         incapacidad_data: Diccionario con datos de la incapacidad
     """
     logger.info(f"[EMAIL] Enviando notificación de radicación {numero_radicacion} a {correo_solicitante}")
-    
+    # No esta imprimiendo ni el nombre del empleado
+    logger.debug(f"[EMAIL] Datos incapacidad: {incapacidad_data}")
     try:
         # Preparar contexto para el template
         context = {
@@ -102,7 +103,7 @@ def send_incapacidad_radicada_email_task(
             'registro_medico': incapacidad_data.get('registro_medico', None),
             'eps': incapacidad_data.get('eps', None),
             'fecha_radicacion': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-            'url_consulta': f"{incapacidad_data.get('base_url', 'http://localhost:3000')}/consultar?numero={numero_radicacion}",
+            'url_consulta': f"{incapacidad_data.get('base_url', 'http://localhost:5173')}/consultar?numero={numero_radicacion}",
             'year': datetime.utcnow().year
         }
         
