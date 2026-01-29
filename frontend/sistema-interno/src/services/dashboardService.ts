@@ -2,7 +2,9 @@ import api from '@/lib/api';
 import type { 
   GetIncapacidadesParams, 
   PaginatedResponse, 
-  DashboardStats 
+  DashboardStats,
+  ExtendedStats,
+  GetExtendedStatsParams
 } from '@/types/dashboard';
 import type { Incapacidad } from '@/types/incapacidad';
 
@@ -135,6 +137,39 @@ class DashboardService {
     });
 
     return stats;
+  }
+
+  /**
+   * Obtener estadísticas extendidas con datos para gráficos
+   */
+  async getExtendedStats(params?: GetExtendedStatsParams): Promise<ExtendedStats> {
+    const queryParams: Record<string, string | number> = {};
+
+    if (params?.empresa_id) {
+      queryParams.empresa_id = params.empresa_id;
+    }
+
+    if (params?.tipo) {
+      queryParams.tipo = params.tipo;
+    }
+
+    if (params?.fecha_desde) {
+      queryParams.fecha_desde = params.fecha_desde.toISOString().split('T')[0];
+    }
+
+    if (params?.fecha_hasta) {
+      queryParams.fecha_hasta = params.fecha_hasta.toISOString().split('T')[0];
+    }
+
+    if (params?.top_limit) {
+      queryParams.top_limit = params.top_limit;
+    }
+
+    const { data } = await api.get<ExtendedStats>(`${this.baseUrl}/stats/extended`, {
+      params: queryParams,
+    });
+
+    return data;
   }
 }
 

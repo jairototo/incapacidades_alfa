@@ -905,6 +905,38 @@ class IncapacidadService:
             fecha_hasta=fecha_hasta,
         )
 
+    async def get_extended_stats(
+        self,
+        db: AsyncSession,
+        empresa_id: Optional[UUID] = None,
+        tipo: Optional[TipoIncapacidad] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+        top_limit: int = 10,
+    ) -> Dict[str, any]:
+        """
+        Obtener estadísticas extendidas del dashboard con datos para gráficos.
+        
+        Args:
+            db: Sesión de base de datos
+            empresa_id: Filtrar por empresa (opcional)
+            tipo: Filtrar por tipo ARL/SALUD (opcional)
+            fecha_desde: Filtrar desde fecha (opcional)
+            fecha_hasta: Filtrar hasta fecha (opcional)
+            top_limit: Límite para rankings TOP (default 10)
+        
+        Returns:
+            Dict con métricas básicas + datos agregados
+        """
+        return await self.repository.get_extended_stats(
+            db=db,
+            empresa_id=empresa_id,
+            tipo=tipo,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+            top_limit=top_limit,
+        )
+
     async def consultar_incapacidad_publica(
         self,
         db: AsyncSession,

@@ -411,3 +411,92 @@ class IncapacidadStatsResponse(BaseModel):
     filtros_aplicados: Optional[Dict[str, Any]] = None
     
     model_config = {"from_attributes": True}
+
+
+# ========== SCHEMAS PARA ESTADÍSTICAS EXTENDIDAS ==========
+
+class TopEmpresaStats(BaseModel):
+    """Top empresa por radicaciones."""
+    empresa_id: UUID
+    razon_social: str
+    nit: str
+    total_incapacidades: int
+    valor_total: Decimal
+    
+    model_config = {"from_attributes": True}
+
+
+class TopCIE10Stats(BaseModel):
+    """Top diagnóstico CIE-10."""
+    codigo_cie10: str
+    descripcion: str
+    total_incapacidades: int
+    porcentaje: float  # % sobre el total
+    
+    model_config = {"from_attributes": True}
+
+
+class TopEmpleadoStats(BaseModel):
+    """Empleado con más días de incapacidad."""
+    empleado_id: UUID
+    nombres: str
+    apellidos: str
+    numero_documento: str
+    empresa_razon_social: str
+    total_dias: int
+    total_incapacidades: int
+    
+    model_config = {"from_attributes": True}
+
+
+class DistribucionEstados(BaseModel):
+    """Distribución de incapacidades por estado."""
+    estado: EstadoIncapacidad
+    cantidad: int
+    porcentaje: float
+    
+    model_config = {"from_attributes": True}
+
+
+class DistribucionTipos(BaseModel):
+    """Distribución de incapacidades por tipo."""
+    tipo: TipoIncapacidad
+    cantidad: int
+    valor_total: Decimal
+    promedio_dias: float
+    
+    model_config = {"from_attributes": True}
+
+
+class TendenciaMensual(BaseModel):
+    """Tendencia mensual de radicaciones."""
+    mes: str  # formato: "2026-01"
+    radicadas: int
+    aprobadas: int
+    rechazadas: int
+    valor_total_aprobado: Decimal
+    
+    model_config = {"from_attributes": True}
+
+
+class IncapacidadStatsExtendedResponse(BaseModel):
+    """Estadísticas extendidas del dashboard con datos para gráficos."""
+    # Métricas básicas (mantener compatibilidad)
+    pendientes: int
+    auditadas_hoy: int
+    proximas_vencer: int
+    rechazadas_observadas: int
+    
+    # Datos para gráficos
+    top_empresas: List[TopEmpresaStats]
+    top_diagnosticos: List[TopCIE10Stats]
+    top_empleados: List[TopEmpleadoStats]
+    distribucion_estados: List[DistribucionEstados]
+    distribucion_tipos: List[DistribucionTipos]
+    tendencia_mensual: List[TendenciaMensual]
+    
+    # Metadata
+    fecha_calculo: datetime = Field(default_factory=datetime.utcnow)
+    filtros_aplicados: Optional[Dict[str, Any]] = None
+    
+    model_config = {"from_attributes": True}

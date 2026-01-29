@@ -531,6 +531,254 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
             "proximas_vencer": proximas_vencer,
             "rechazadas_observadas": rechazadas_observadas,
         }
+
+    async def get_extended_stats(
+        self,
+        db: AsyncSession,
+        empresa_id: Optional[UUID] = None,
+        tipo: Optional[TipoIncapacidad] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+        top_limit: int = 10,
+    ) -> Dict[str, any]:
+        """
+        Calcular estadísticas extendidas con datos para gráficos.
+        
+        Args:
+            db: Sesión de base de datos
+            empresa_id: Filtrar por empresa (opcional)
+            tipo: Filtrar por tipo ARL/SALUD (opcional)
+            fecha_desde: Filtrar desde fecha (opcional)
+            fecha_hasta: Filtrar hasta fecha (opcional)
+            top_limit: Límite para rankings TOP (default 10)
+            
+        Returns:
+            Dict con métricas básicas + datos agregados para gráficos
+        """
+        from sqlalchemy import desc, case, extract
+        from app.models.empresa import Empresa
+        from app.models.empleado import Empleado
+        from dateutil.relativedelta import relativedelta
+        
+        # 1. Obtener métricas básicas (reutilizar método existente)
+        basic_stats = await self.get_stats(db, empresa_id, tipo, fecha_desde, fecha_hasta)
+        
+        # Condiciones base
+        base_conditions = []
+        if empresa_id:
+            base_conditions.append(Incapacidad.empresa_id == empresa_id)
+        if tipo:
+            base_conditions.append(Incapacidad.tipo == tipo)
+        if fecha_desde:
+            base_conditions.append(Incapacidad.created_at >= datetime.combine(fecha_desde, datetime.min.time()))
+        if fecha_hasta:
+            base_conditions.append(Incapacidad.created_at <= datetime.combine(fecha_hasta, datetime.max.time()))
+        
+        # 2. Top 10 Empresas por Radicaciones
+        top_empresas_query = (
+            select(
+                Empresa.id,
+                Empresa.razon_social,
+                Empresa.nit,
+                func.count(Incapacidad.id).label('total_incapacidades'),
+                func.coalesce(func.sum(Incapacidad.valor_total), 0).label('valor_total')
+            )
+            .select_from(Incapacidad)
+            .join(Empresa, Incapacidad.empresa_id == Empresa.id)
+            .where(*base_conditions)
+            .group_by(Empresa.id, Empresa.razon_social, Empresa.nit)
+            .order_by(desc('total_incapacidades'))
+            .limit(top_limit)
+        )
+        result = await db.execute(top_empresas_query)
+        top_empresas = [
+            {
+                "empresa_id": row.id,
+                "razon_social": row.razon_social,
+                "nit": row.nit,
+                "total_incapacidades": row.total_incapacidades,
+                "valor_total": row.valor_total
+            }
+            for row in result.all()
+        ]
+        
+        # 3. Top 10 Diagnósticos CIE-10
+        # Primero obtener el total de incapacidades
+        total_query = select(func.count(Incapacidad.id)).where(*base_conditions)
+        total_result = await db.execute(total_query)
+        total_incapacidades = total_result.scalar() or 1  # Evitar división por 0
+        
+        top_cie10_query = (
+            select(
+                Incapacidad.diagnostico_cie10,
+                Incapacidad.descripcion_diagnostico,
+                func.count(Incapacidad.id).label('total')
+            )
+            .where(*base_conditions)
+            .group_by(Incapacidad.diagnostico_cie10, Incapacidad.descripcion_diagnostico)
+            .order_by(desc('total'))
+            .limit(top_limit)
+        )
+        result = await db.execute(top_cie10_query)
+        top_diagnosticos = [
+            {
+                "codigo_cie10": row.diagnostico_cie10,
+                "descripcion": row.descripcion_diagnostico or "Sin descripción",
+                "total_incapacidades": row.total,
+                "porcentaje": round((row.total / total_incapacidades) * 100, 2)
+            }
+            for row in result.all()
+        ]
+        
+        # 4. Top 10 Empleados con más Días de Incapacidad
+        top_empleados_query = (
+            select(
+                Empleado.id,
+                Empleado.nombres,
+                Empleado.apellidos,
+                Empleado.numero_documento,
+                Empresa.razon_social.label('empresa_razon_social'),
+                func.sum(Incapacidad.dias_totales).label('total_dias'),
+                func.count(Incapacidad.id).label('total_incapacidades')
+            )
+            .select_from(Incapacidad)
+            .join(Empleado, Incapacidad.empleado_id == Empleado.id)
+            .join(Empresa, Empleado.empresa_id == Empresa.id)
+            .where(
+                Incapacidad.tipo == TipoIncapacidad.ARL,
+                *base_conditions
+            )
+            .group_by(
+                Empleado.id,
+                Empleado.nombres,
+                Empleado.apellidos,
+                Empleado.numero_documento,
+                Empresa.razon_social
+            )
+            .order_by(desc('total_dias'))
+            .limit(top_limit)
+        )
+        result = await db.execute(top_empleados_query)
+        top_empleados = [
+            {
+                "empleado_id": row.id,
+                "nombres": row.nombres,
+                "apellidos": row.apellidos,
+                "numero_documento": row.numero_documento,
+                "empresa_razon_social": row.empresa_razon_social,
+                "total_dias": row.total_dias,
+                "total_incapacidades": row.total_incapacidades
+            }
+            for row in result.all()
+        ]
+        
+        # 5. Distribución de Pendientes por Estado
+        # Solo estados activos: RADICADA, EN_AUDITORIA, OBSERVADA
+        estados_pendientes = [
+            EstadoIncapacidad.RADICADA,
+            EstadoIncapacidad.EN_AUDITORIA,
+            EstadoIncapacidad.OBSERVADA
+        ]
+        
+        distribucion_estados_query = (
+            select(
+                Incapacidad.estado,
+                func.count(Incapacidad.id).label('cantidad')
+            )
+            .where(
+                Incapacidad.estado.in_(estados_pendientes),
+                *base_conditions
+            )
+            .group_by(Incapacidad.estado)
+        )
+        result = await db.execute(distribucion_estados_query)
+        distribucion_data = result.all()
+        total_pendientes = sum(row.cantidad for row in distribucion_data)
+        
+        distribucion_estados = [
+            {
+                "estado": row.estado,
+                "cantidad": row.cantidad,
+                "porcentaje": round((row.cantidad / total_pendientes * 100) if total_pendientes > 0 else 0, 2)
+            }
+            for row in distribucion_data
+        ]
+        
+        # 6. Distribución por Tipo (ARL vs SALUD)
+        distribucion_tipos_query = (
+            select(
+                Incapacidad.tipo,
+                func.count(Incapacidad.id).label('cantidad'),
+                func.coalesce(func.sum(Incapacidad.valor_total), 0).label('valor_total'),
+                func.avg(Incapacidad.dias_totales).label('promedio_dias')
+            )
+            .where(*base_conditions)
+            .group_by(Incapacidad.tipo)
+        )
+        result = await db.execute(distribucion_tipos_query)
+        distribucion_tipos = [
+            {
+                "tipo": row.tipo,
+                "cantidad": row.cantidad,
+                "valor_total": row.valor_total,
+                "promedio_dias": round(row.promedio_dias, 2) if row.promedio_dias else 0
+            }
+            for row in result.all()
+        ]
+        
+        # 7. Tendencia Mensual (últimos 6 meses)
+        # Calcular rango de 6 meses
+        hoy = datetime.utcnow()
+        hace_6_meses = hoy - relativedelta(months=6)
+        
+        tendencia_query = (
+            select(
+                func.to_char(Incapacidad.created_at, 'YYYY-MM').label('mes'),
+                func.count(
+                    case((Incapacidad.estado == EstadoIncapacidad.RADICADA or Incapacidad.estado == EstadoIncapacidad.EN_AUDITORIA, 1))
+                ).label('radicadas'),
+                func.count(
+                    case((Incapacidad.estado == EstadoIncapacidad.APROBADA, 1))
+                ).label('aprobadas'),
+                func.count(
+                    case((Incapacidad.estado == EstadoIncapacidad.RECHAZADA, 1))
+                ).label('rechazadas'),
+                func.coalesce(
+                    func.sum(
+                        case((Incapacidad.estado == EstadoIncapacidad.APROBADA, Incapacidad.valor_total))
+                    ), 0
+                ).label('valor_total_aprobado')
+            )
+            .where(
+                Incapacidad.created_at >= hace_6_meses,
+                *base_conditions
+            )
+            .group_by('mes')
+            .order_by('mes')
+        )
+        result = await db.execute(tendencia_query)
+        tendencia_mensual = [
+            {
+                "mes": row.mes,
+                "radicadas": row.radicadas,
+                "aprobadas": row.aprobadas,
+                "rechazadas": row.rechazadas,
+                "valor_total_aprobado": row.valor_total_aprobado
+            }
+            for row in result.all()
+        ]
+        
+        # Combinar todo
+        return {
+            **basic_stats,
+            "top_empresas": top_empresas,
+            "top_diagnosticos": top_diagnosticos,
+            "top_empleados": top_empleados,
+            "distribucion_estados": distribucion_estados,
+            "distribucion_tipos": distribucion_tipos,
+            "tendencia_mensual": tendencia_mensual,
+        }
+
     async def get_aprobadas_pendientes_pago(
         self,
         db: AsyncSession,
