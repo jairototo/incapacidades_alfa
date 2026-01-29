@@ -54,10 +54,12 @@ export const datosPersonalesARLSchema = datosPersonalesBaseSchema.extend({
   cargo: z
     .string()
     .min(3, 'El cargo debe tener al menos 3 caracteres')
-    .max(100, 'El cargo no puede exceder 100 caracteres'),
+    .max(100, 'El cargo no puede exceder 100 caracteres')
+    .optional()
+    .or(z.literal('')),
   fecha_ingreso: z.date({
     message: 'Debe seleccionar la fecha de ingreso',
-  }),
+  }).optional(),
 });
 
 /**

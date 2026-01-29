@@ -51,7 +51,7 @@ describe('DatosPersonalesForm', () => {
     expect(screen.getByPlaceholderText(/3001234567/i)).toBeInTheDocument();
   });
 
-  test('debe renderizar campos de empresa y cargo solo para tipo ARL', () => {
+  test('debe renderizar campos de empresa solo para tipo ARL', () => {
     render(
       <DatosPersonalesForm
         tipo="ARL"
@@ -64,13 +64,10 @@ describe('DatosPersonalesForm', () => {
     // Verificar que se renderiza la sección de información laboral
     expect(screen.getByText(/información laboral/i)).toBeInTheDocument();
     
-    // Verificar campo cargo por placeholder
-    expect(screen.getByPlaceholderText(/operario/i)).toBeInTheDocument();
+    // Verificar que existe el campo de empresa
+    expect(screen.getByText(/empresa/i)).toBeInTheDocument();
     
-    // Verificar que existe un input de tipo date (fecha_ingreso)
-    const dateInputs = screen.getAllByDisplayValue('');
-    const dateInput = dateInputs.find(input => input.getAttribute('type') === 'date');
-    expect(dateInput).toBeInTheDocument();
+    // Nota: Los campos 'cargo' y 'fecha_ingreso' están ocultos por el momento
   });
 
   test('debe renderizar campo numero_poliza solo para tipo SALUD', () => {

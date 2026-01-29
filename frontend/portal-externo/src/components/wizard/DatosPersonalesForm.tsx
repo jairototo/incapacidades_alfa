@@ -110,9 +110,7 @@ export function DatosPersonalesForm({
       setValue('apellidos', empleadoCompleto.apellidos);
       setValue('email', empleadoCompleto.email || '');
       setValue('telefono', empleadoCompleto.telefono || '');
-      setValue('cargo', empleadoCompleto.cargo || '');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setValue('fecha_ingreso' as any, empleadoCompleto.fecha_ingreso || new Date().toISOString().split('T')[0]);
+      // Campos ocultos: cargo y fecha_ingreso no se establecen
       setValue('id', empleadoCompleto.id);
     }
   }, [empleadoCompleto?.id, tipo, setValue]);
