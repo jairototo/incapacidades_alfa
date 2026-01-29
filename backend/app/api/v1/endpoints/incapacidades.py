@@ -33,6 +33,8 @@ from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
 from app.core.exceptions import BadRequestException
 from app.core.security import get_current_user, PermissionChecker, Permissions
 from app.models.usuario import Usuario
+from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
+from app.core.logging import logger 
 
 router = APIRouter()
 
@@ -325,6 +327,7 @@ async def listar_incapacidades_pendientes(
     return incapacidades
 
 
+
 @router.post(
     "/",
     response_model=IncapacidadInDB,
@@ -355,8 +358,29 @@ async def create_incapacidad(
     - Genera número único automáticamente
     - Calcula días_totales automáticamente
     - Estado inicial: RADICADA
+    
+    **Proceso automático**:
+    - Después de crear, se envía automáticamente una tarea en background
+      para radicar la incapacidad (RADICADA → EN_AUDITORIA)
     """
-    return await incapacidad_service.create_incapacidad(db, incapacidad_data)
+    # Crear incapacidad
+    incapacidad = await incapacidad_service.create_incapacidad(db, incapacidad_data)
+    
+    # Lanzar tarea de radicación automática en background (no espera)
+    try:
+        task = radicar_incapacidad_automatica_task.delay(str(incapacidad.id))
+        logger.info(
+            f"Tarea de radicación automática lanzada para incapacidad {incapacidad.numero}. "
+            f"Task ID: {task.id}"
+        )
+    except Exception as e:
+        # Si falla el lanzamiento de la tarea, loggear pero NO fallar la creación
+        logger.error(
+            f"Error al lanzar tarea de radicación para {incapacidad.numero}: {e}. "
+            f"La incapacidad fue creada pero debe radicarse manualmente."
+        )
+    
+    return incapacidad
 
 
 @router.get(

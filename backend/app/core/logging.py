@@ -42,7 +42,7 @@ def setup_logging():
                 serialize=True  # JSON format
             )
         except PermissionError:
-            # If file logging fails, just use console
+            # If file logging fails, just use console 
             logger.warning("Could not create log file, using console only")
     
     # Intercept standard logging

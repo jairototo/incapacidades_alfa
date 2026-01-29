@@ -30,6 +30,12 @@ celery_app.conf.update(
 celery_app.autodiscover_tasks(["app.tasks"])
 
 # Import tasks
-from app.tasks import email_tasks, notification_tasks, report_tasks  # noqa
+from app.tasks import (  # noqa
+    email_tasks,
+    notification_tasks,
+    report_tasks,
+    incapacidad_tasks  # ← NUEVO
+)
+
 
 __all__ = ["celery_app"]
