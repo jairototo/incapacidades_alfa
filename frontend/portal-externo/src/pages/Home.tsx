@@ -24,13 +24,28 @@ export function Home() {
       {/* Header */}
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-              Sistema de Gestión de Incapacidades
-            </h1>
-            <p className="text-lg text-gray-600">
-              Portal de autogestión para trabajadores y afiliados
-            </p>
+          <div className="flex items-center justify-between">
+            {/* Logo a la izquierda */}
+            <div className="flex-shrink-0">
+              <img 
+                src="/LOGO_SEGUROS_ALFA.png" 
+                alt="Logo Seguros Alfa" 
+                className="h-16 w-auto"
+              />
+            </div>
+            
+            {/* Título centrado */}
+            <div className="flex-1 text-center">
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+                Sistema de Gestión de Incapacidades
+              </h1>
+              <p className="text-lg text-gray-600">
+                Portal de autogestión para trabajadores y afiliados
+              </p>
+            </div>
+            
+            {/* Espacio vacío a la derecha para mantener balance */}
+            <div className="flex-shrink-0 w-16 md:w-20"></div>
           </div>
         </div>
       </header>

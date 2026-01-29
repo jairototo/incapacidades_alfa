@@ -1,26 +1,63 @@
 """
 Tareas de Celery para incapacidades.
+
+IMPORTANTE: Usa sesiones SÍNCRONAS (psycopg2) para evitar problemas de event loop con asyncpg.
 """
-import asyncio
 from uuid import UUID
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 from loguru import logger
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tasks import celery_app
-from app.db.session import AsyncSessionLocal
-from app.services.incapacidad_service import incapacidad_service
 from app.core.exceptions import NotFoundException, ValidationException
+from app.utils.enums import EstadoIncapacidad
+from app.tasks.email_tasks import send_incapacidad_radicada_email_task
+
+
+# Variables globales para lazy initialization
+_sync_engine = None
+_SyncSessionLocal = None
+
+
+def get_sync_session():
+    """
+    Obtener sesión síncrona para Celery (lazy initialization).
+    Evita problemas de import circular.
+    """
+    global _sync_engine, _SyncSessionLocal
+    
+    if _SyncSessionLocal is None:
+        from app.core.config import settings
+        
+        # Motor síncrono: reemplazar +asyncpg con psycopg2
+        sync_database_uri = settings.DATABASE_URL.replace("+asyncpg", "")
+        _sync_engine = create_engine(
+            sync_database_uri,
+            pool_pre_ping=True,
+            echo=False,
+            pool_size=5,
+            max_overflow=10
+        )
+        _SyncSessionLocal = sessionmaker(
+            bind=_sync_engine,
+            autoflush=False,
+            autocommit=False
+        )
+    
+    return _SyncSessionLocal()
 
 
 @celery_app.task(
     name="radicar_incapacidad_automatica",
     bind=True,
-    max_retries=3,
-    default_retry_delay=60  # Reintentar después de 1 minuto
+    autoretry_for=(Exception,),
+    retry_kwargs={'max_retries': 3, 'countdown': 30},
+    retry_backoff=True,
+    acks_late=True
 )
 def radicar_incapacidad_automatica_task(self, incapacidad_id: str):
     """
-    Tarea de Celery para radicar una incapacidad automáticamente.
+    Tarea de Celery para radicar una incapacidad automáticamente (SÍNCRONA).
     
     Transición: RADICADA → EN_AUDITORIA
     
@@ -36,182 +73,207 @@ def radicar_incapacidad_automatica_task(self, incapacidad_id: str):
     logger.info(f"[CELERY] Iniciando radicación automática para incapacidad {incapacidad_id}")
     
     try:
-        # Convertir string a UUID
         incap_uuid = UUID(incapacidad_id)
+    except ValueError as e:
+        logger.error(f"[CELERY] ID de incapacidad inválido: {incapacidad_id}")
+        return {
+            "status": "error",
+            "incapacidad_id": incapacidad_id,
+            "error": "ID inválido"
+        }
+    
+    db: Session = get_sync_session()
+    try:
+        # Importar modelos (lazy import para evitar circularidad)
+        from app.models.incapacidad import Incapacidad
+        from app.models.historial_estado import HistorialEstado
         
-        # Ejecutar función async en event loop
-        result = asyncio.run(_radicar_incapacidad_async(incap_uuid))
+        # 1. Obtener incapacidad (query síncrona)
+        incapacidad = db.query(Incapacidad).filter(Incapacidad.id == incap_uuid).first()
+        
+        if not incapacidad:
+            logger.error(f"[CELERY] Incapacidad {incapacidad_id} no encontrada")
+            return {
+                "status": "error",
+                "incapacidad_id": incapacidad_id,
+                "error": "Incapacidad no encontrada"
+            }
+        
+        # 2. Verificar estado actual (idempotencia)
+        if incapacidad.estado == EstadoIncapacidad.EN_AUDITORIA:
+            logger.warning(
+                f"[CELERY] Incapacidad {incapacidad_id} ya está EN_AUDITORIA. No se requiere acción."
+            )
+            return {
+                "status": "already_processed",
+                "incapacidad_id": incapacidad_id,
+                "estado": "EN_AUDITORIA",
+                "numero": incapacidad.numero,
+                "message": "Ya radicada previamente"
+            }
+        
+        if incapacidad.estado != EstadoIncapacidad.RADICADA:
+            logger.warning(
+                f"[CELERY] Incapacidad {incapacidad_id} tiene estado {incapacidad.estado}, "
+                f"no se puede radicar (solo desde RADICADA)"
+            )
+            return {
+                "status": "invalid_state",
+                "incapacidad_id": incapacidad_id,
+                "estado_actual": incapacidad.estado.value if hasattr(incapacidad.estado, 'value') else str(incapacidad.estado),
+                "message": "Estado inválido para radicación"
+            }
+        
+        # 3. Cambiar estado
+        estado_anterior = incapacidad.estado
+        incapacidad.estado = EstadoIncapacidad.EN_AUDITORIA
+        
+        # 4. Crear registro en historial_estado
+        historial = HistorialEstado(
+            entity_type="incapacidad",
+            entity_id=incapacidad.id,
+            estado_anterior=estado_anterior.value if hasattr(estado_anterior, 'value') else str(estado_anterior),
+            estado_nuevo=EstadoIncapacidad.EN_AUDITORIA.value,
+            observacion="Radicación automática por sistema (background task)",
+            cambiado_por_id=None  # Sistema
+        )
+        db.add(historial)
+        
+        # 5. Commit
+        db.commit()
+        db.refresh(incapacidad)
         
         logger.success(
             f"[CELERY] Incapacidad {incapacidad_id} radicada exitosamente. "
-            f"Nuevo estado: {result['estado']}"
+            f"Estado: {incapacidad.estado.value}. Número: {incapacidad.numero}"
         )
+        
+        # 6. Lanzar tarea de email (asíncrona, no bloqueante)
+        try:
+            # Preparar datos para el email
+            from datetime import datetime
+            
+            # Determinar beneficiario (empleado o afiliado)
+            beneficiario_nombre = "N/A"
+            beneficiario_documento = "N/A"
+            tipo_documento_str = "N/A"
+            
+            if incapacidad.empleado:
+                beneficiario_nombre = f"{incapacidad.empleado.nombres} {incapacidad.empleado.apellidos}"
+                beneficiario_documento = incapacidad.empleado.numero_documento
+                tipo_documento_str = incapacidad.empleado.tipo_documento.value if hasattr(incapacidad.empleado.tipo_documento, 'value') else str(incapacidad.empleado.tipo_documento)
+            elif incapacidad.afiliado:
+                beneficiario_nombre = f"{incapacidad.afiliado.nombres} {incapacidad.afiliado.apellidos}"
+                beneficiario_documento = incapacidad.afiliado.numero_documento
+                tipo_documento_str = incapacidad.afiliado.tipo_documento.value if hasattr(incapacidad.afiliado.tipo_documento, 'value') else str(incapacidad.afiliado.tipo_documento)
+            
+            incapacidad_data = {
+                "tipo": incapacidad.tipo.value if hasattr(incapacidad.tipo, 'value') else str(incapacidad.tipo),
+                "beneficiario_nombre": beneficiario_nombre,
+                "tipo_documento": tipo_documento_str,
+                "numero_documento": beneficiario_documento,
+                "fecha_inicio": incapacidad.fecha_inicio.isoformat() if incapacidad.fecha_inicio else None,
+                "fecha_fin": incapacidad.fecha_fin.isoformat() if incapacidad.fecha_fin else None,
+                "dias_totales": incapacidad.dias_totales,
+                "diagnostico_cie10": incapacidad.diagnostico_cie10,
+                "ips_nombre": incapacidad.ips_nombre if hasattr(incapacidad, 'ips_nombre') else "N/A",
+                "medico_nombre": incapacidad.medico_nombre if hasattr(incapacidad, 'medico_nombre') else "N/A",
+                "eps_nombre": incapacidad.eps if hasattr(incapacidad, 'eps') else "N/A"
+            }
+            
+            send_incapacidad_radicada_email_task.delay(
+                correo_solicitante=incapacidad.solicitante.correo,
+                solicitante_nombre=incapacidad.solicitante.nombres + " " + incapacidad.solicitante.apellidos,
+                numero_radicacion=incapacidad.numero,
+                incapacidad_data=incapacidad_data
+            )
+            logger.info(f"[CELERY] Tarea de email programada para {incapacidad_id}")
+        except Exception as email_error:
+            logger.error(f"[CELERY] Error al programar email: {email_error}")
+            # No fallar la radicación si falla el email
         
         return {
             "status": "success",
             "incapacidad_id": incapacidad_id,
-            "estado_anterior": "RADICADA",
-            "estado_nuevo": result["estado"],
-            "numero": result["numero"]
+            "estado_anterior": estado_anterior.value if hasattr(estado_anterior, 'value') else str(estado_anterior),
+            "estado_nuevo": incapacidad.estado.value,
+            "numero": incapacidad.numero
         }
-        
-    except NotFoundException as e:
-        logger.error(f"[CELERY] Incapacidad {incapacidad_id} no encontrada: {e}")
-        # No reintentar si no existe
-        return {
-            "status": "error",
-            "incapacidad_id": incapacidad_id,
-            "error": "Incapacidad no encontrada"
-        }
-        
-    except ValidationException as e:
-        logger.warning(
-            f"[CELERY] Error de validación al radicar {incapacidad_id}: {e}. "
-            f"Puede que ya esté radicada."
-        )
-        # No reintentar si ya está radicada
-        return {
-            "status": "skipped",
-            "incapacidad_id": incapacidad_id,
-            "error": str(e)
-        }
-        
+    
     except Exception as e:
+        db.rollback()
         logger.error(
             f"[CELERY] Error al radicar incapacidad {incapacidad_id}: {e}. "
             f"Intento {self.request.retries + 1}/3"
         )
-        
-        # Reintentar automáticamente
-        try:
-            raise self.retry(exc=e)
-        except self.MaxRetriesExceededError:
-            logger.critical(
-                f"[CELERY] FALLO CRÍTICO: Incapacidad {incapacidad_id} "
-                f"no pudo ser radicada después de 3 intentos"
-            )
-            # Aquí podrías enviar una alerta al equipo
-            return {
-                "status": "failed",
-                "incapacidad_id": incapacidad_id,
-                "error": str(e),
-                "retries": 3
-            }
-
-
-async def _radicar_incapacidad_async(incapacidad_id: UUID) -> dict:
-    """
-    Función async helper para radicar incapacidad.
+        raise  # Autoretry lo manejará
     
-    Args:
-        incapacidad_id: UUID de la incapacidad
-        
-    Returns:
-        dict: Datos de la incapacidad radicada
-    """
-    # Crear sesión de BD async
-    async with AsyncSessionLocal() as db:
-        try:
-            # Llamar al servicio para radicar
-            incapacidad = await incapacidad_service.radicar_incapacidad(
-                db=db,
-                incapacidad_id=incapacidad_id,
-                usuario_id=None  # Sistema automático
-            )
-            
-            # Confirmar transacción
-            await db.commit()
-            
-            return {
-                "id": str(incapacidad.id),
-                "numero": incapacidad.numero,
-                "estado": incapacidad.estado.value,
-                "tipo": incapacidad.tipo.value
-            }
-            
-        except Exception as e:
-            # Rollback en caso de error
-            await db.rollback()
-            raise e
+    finally:
+        db.close()
 
 
 @celery_app.task(name="procesar_incapacidades_radicadas_pendientes")
-def procesar_incapacidades_radicadas_pendientes_task(
-    dias_antiguedad: int = 1
-):
+def procesar_incapacidades_radicadas_pendientes_task():
     """
-    Tarea programada (Celery Beat) para radicar incapacidades antiguas.
+    Tarea programada (beat) para procesar incapacidades en estado RADICADA.
     
-    Encuentra incapacidades en estado RADICADA con más de X días
-    y las envía a radicar automáticamente.
+    Se ejecuta periódicamente para asegurar que todas las incapacidades
+    se radiquen automáticamente, incluso si hubo errores temporales.
     
-    Args:
-        dias_antiguedad: Días mínimos en estado RADICADA
-        
     Returns:
-        dict: Resumen de procesamiento
+        dict: Resumen del procesamiento
     """
-    logger.info(
-        f"[CELERY BEAT] Buscando incapacidades RADICADAS con más de {dias_antiguedad} días"
-    )
+    logger.info("[CELERY-BEAT] Iniciando procesamiento de incapacidades RADICADAS pendientes")
     
+    db: Session = get_sync_session()
     try:
-        result = asyncio.run(
-            _procesar_incapacidades_pendientes_async(dias_antiguedad)
+        from app.models.incapacidad import Incapacidad
+        
+        # Buscar todas las incapacidades en estado RADICADA
+        incapacidades_pendientes = db.query(Incapacidad).filter(
+            Incapacidad.estado == EstadoIncapacidad.RADICADA
+        ).all()
+        
+        count = len(incapacidades_pendientes)
+        logger.info(f"[CELERY-BEAT] Encontradas {count} incapacidades RADICADAS pendientes")
+        
+        if count == 0:
+            return {
+                "status": "completed",
+                "processed": 0,
+                "message": "No hay incapacidades pendientes"
+            }
+        
+        # Lanzar tarea para cada una
+        processed = 0
+        errors = 0
+        for incapacidad in incapacidades_pendientes:
+            try:
+                radicar_incapacidad_automatica_task.delay(str(incapacidad.id))
+                processed += 1
+                logger.debug(f"[CELERY-BEAT] Programada radicación para {incapacidad.id}")
+            except Exception as e:
+                errors += 1
+                logger.error(f"[CELERY-BEAT] Error al programar {incapacidad.id}: {e}")
+        
+        logger.success(
+            f"[CELERY-BEAT] Procesamiento completado. "
+            f"Programadas: {processed}, Errores: {errors}"
         )
         
-        logger.info(
-            f"[CELERY BEAT] Procesamiento completado: "
-            f"{result['procesadas']} incapacidades enviadas a radicar"
-        )
-        
-        return result
-        
+        return {
+            "status": "completed",
+            "total_found": count,
+            "processed": processed,
+            "errors": errors
+        }
+    
     except Exception as e:
-        logger.error(f"[CELERY BEAT] Error al procesar incapacidades pendientes: {e}")
+        logger.error(f"[CELERY-BEAT] Error en procesamiento batch: {e}")
         return {
             "status": "error",
             "error": str(e)
         }
-
-
-async def _procesar_incapacidades_pendientes_async(dias_antiguedad: int) -> dict:
-    """
-    Busca y radica incapacidades antiguas.
     
-    Args:
-        dias_antiguedad: Días mínimos
-        
-    Returns:
-        dict: Resumen
-    """
-    from datetime import datetime, timedelta
-    from app.utils.enums import EstadoIncapacidad
-    from sqlalchemy import select, and_
-    from app.models.incapacidad import Incapacidad
-    
-    async with AsyncSessionLocal() as db:
-        fecha_limite = datetime.utcnow() - timedelta(days=dias_antiguedad)
-        
-        # Buscar incapacidades RADICADAS antiguas
-        stmt = select(Incapacidad).where(
-            and_(
-                Incapacidad.estado == EstadoIncapacidad.RADICADA,
-                Incapacidad.created_at <= fecha_limite
-            )
-        ).limit(100)  # Por seguridad, procesar máximo 100 a la vez
-        
-        result = await db.execute(stmt)
-        incapacidades = result.scalars().all()
-        
-        # Enviar cada una a radicar
-        count = 0
-        for incap in incapacidades:
-            radicar_incapacidad_automatica_task.delay(str(incap.id))
-            count += 1
-        
-        return {
-            "status": "success",
-            "procesadas": count,
-            "fecha_limite": fecha_limite.isoformat()
-        }
+    finally:
+        db.close()
