@@ -148,7 +148,10 @@ class IncapacidadService:
             incapacidad_dict['radicado_por_id'] = usuario_id
         
         # Crear incapacidad
-        return await self.repository.create(db, incapacidad_dict)
+        incapacidad = await self.repository.create(db, incapacidad_dict)
+        
+        # Recargar con relaciones para que la serialización funcione correctamente
+        return await self.repository.get_by_id_with_relations(db, incapacidad.id)
 
     async def get_incapacidad(
         self,
@@ -324,15 +327,13 @@ class IncapacidadService:
             if dias_antiguedad_min is not None and dias_desde_radicacion < dias_antiguedad_min:
                 continue
             
-            # Convertir a dict y agregar campos calculados
-            incap_dict = {
-                **incap.__dict__,
+            # Retornar objeto con campos calculados
+            resultado = {
+                'incapacidad': incap,  # Objeto completo con relaciones
                 'dias_desde_radicacion': dias_desde_radicacion,
                 'dias_en_estado_actual': dias_en_estado_actual
             }
-            # Remover atributos internos de SQLAlchemy
-            incap_dict.pop('_sa_instance_state', None)
-            resultados.append(incap_dict)
+            resultados.append(resultado)
         
         return resultados
 

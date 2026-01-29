@@ -36,8 +36,8 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
     ),
   },
   {
-    accessorKey: 'solicitante',
-    header: 'Solicitante',
+    accessorKey: 'empleado',
+    header: 'Empleado / Afiliado',
     cell: ({ row }) => {
       const empleado = row.original.empleado;
       const afiliado = row.original.afiliado;
@@ -69,7 +69,7 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
   },
   {
     accessorKey: 'empresa',
-    header: 'Empresa / Afiliado',
+    header: 'Empresa',
     cell: ({ row }) => {
       if (row.original.empresa) {
         return (
