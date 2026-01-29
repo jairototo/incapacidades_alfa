@@ -37,13 +37,13 @@ const tipoOptions: TipoOption[] = [
     icon: <Building2 className="w-12 h-12" />,
     color: 'blue',
   },
-  {
-    value: TipoIncapacidad.SALUD,
-    label: 'SALUD - Enfermedad General',
-    description: 'Incapacidades por enfermedad general o maternidad',
-    icon: <Heart className="w-12 h-12" />,
-    color: 'green',
-  },
+  // {
+  //   value: TipoIncapacidad.SALUD,
+  //   label: 'SALUD - Enfermedad General',
+  //   description: 'Incapacidades por enfermedad general o maternidad',
+  //   icon: <Heart className="w-12 h-12" />,
+  //   color: 'green',
+  // },
 ];
 
 /**
