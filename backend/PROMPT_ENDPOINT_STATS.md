@@ -1,4 +1,4 @@
-# PROMPT: Endpoint de Estadísticas del Dashboard
+# Endpoint de Estadísticas del Dashboard
 
 ## Contexto
 

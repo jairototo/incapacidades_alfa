@@ -4,10 +4,20 @@ import type { PaginationState, SortingState } from '@tanstack/react-table';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { FiltersBar } from '@/components/dashboard/FiltersBar';
 import { IncapacidadesTable } from '@/components/dashboard/IncapacidadesTable';
+import {
+  TopEmpresasChart,
+  TopDiagnosticosChart,
+  TopEmpleadosTable,
+  DistribucionEstadosPieChart,
+  DistribucionTiposDonut,
+  TendenciaMensualLineChart,
+} from '@/components/dashboard/charts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, TrendingUp } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { dashboardService } from '@/services/dashboardService';
 import { empresaService } from '@/services/empresaService';
+import { useExtendedStats } from '@/hooks/useExtendedStats';
 import type { FilterState } from '@/types/dashboard';
 
 export function DashboardPage() {
@@ -66,6 +76,19 @@ export function DashboardPage() {
     staleTime: 10 * 60 * 1000, // 10 minutos
   });
 
+  // Query de estadísticas extendidas (gráficos)
+  const {
+    data: extendedStats,
+    isLoading: isLoadingExtended,
+    error: extendedError,
+  } = useExtendedStats({
+    empresa_id: filters.empresa_id || undefined,
+    tipo: filters.tipo !== 'TODAS' ? filters.tipo : undefined,
+    fecha_desde: filters.fecha_desde || undefined,
+    fecha_hasta: filters.fecha_hasta || undefined,
+    top_limit: 10,
+  });
+
   const error = statsError || incapacidadesError;
 
   return (
@@ -93,6 +116,53 @@ export function DashboardPage() {
         stats={stats || { pendientes: 0, auditadas_hoy: 0, proximas_vencer: 0, rechazadas_observadas: 0 }}
         isLoading={isLoadingStats}
       />
+
+      {/* Gráficos y Análisis */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-primary" />
+          <h2 className="text-2xl font-bold">Análisis y Tendencias</h2>
+        </div>
+
+        {/* Error State para gráficos */}
+        {extendedError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Error al cargar gráficos: {extendedError instanceof Error ? extendedError.message : 'Error desconocido'}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Loading State para gráficos */}
+        {isLoadingExtended ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-[400px]" />
+            ))}
+          </div>
+        ) : extendedStats ? (
+          <>
+            {/* Grid de gráficos - Primera fila */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TopEmpresasChart data={extendedStats.top_empresas} />
+              <TopDiagnosticosChart data={extendedStats.top_diagnosticos} />
+            </div>
+
+            {/* Grid de gráficos - Segunda fila */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <DistribucionEstadosPieChart data={extendedStats.distribucion_estados} />
+              <DistribucionTiposDonut data={extendedStats.distribucion_tipos} />
+            </div>
+
+            {/* Tabla de top empleados */}
+            <TopEmpleadosTable data={extendedStats.top_empleados} />
+
+            {/* Gráfico de tendencia mensual (ancho completo) */}
+            <TendenciaMensualLineChart data={extendedStats.tendencia_mensual} />
+          </>
+        ) : null}
+      </div>
 
       {/* Filtros */}
       <FiltersBar

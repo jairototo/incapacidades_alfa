@@ -20,6 +20,7 @@ from app.schemas.incapacidad import (
     IncapacidadPendienteResponse,
     IncapacidadDetalleResponse,
     IncapacidadStatsResponse,
+    IncapacidadStatsExtendedResponse,
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
@@ -498,6 +499,78 @@ async def get_stats(
             "tipo": tipo.value if tipo else None,
             "fecha_desde": fecha_desde.isoformat() if fecha_desde else None,
             "fecha_hasta": fecha_hasta.isoformat() if fecha_hasta else None,
+        } if any([empresa_id, tipo, fecha_desde, fecha_hasta]) else None,
+    )
+
+
+@router.get(
+    "/stats/extended",
+    response_model=IncapacidadStatsExtendedResponse,
+    summary="Estadísticas extendidas del dashboard con gráficos",
+    description="Obtiene métricas estadísticas + datos agregados para visualizaciones",
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_READ]))],
+    tags=["incapacidades-dashboard"]
+)
+async def get_extended_stats(
+    empresa_id: Optional[UUID] = Query(None, description="Filtrar por empresa"),
+    tipo: Optional[TipoIncapacidad] = Query(None, description="Filtrar por tipo (ARL/SALUD)"),
+    fecha_desde: Optional[date] = Query(None, description="Filtrar desde fecha (YYYY-MM-DD)"),
+    fecha_hasta: Optional[date] = Query(None, description="Filtrar hasta fecha (YYYY-MM-DD)"),
+    top_limit: int = Query(10, ge=5, le=20, description="Límite para rankings TOP"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+) -> IncapacidadStatsExtendedResponse:
+    """
+    Obtener estadísticas extendidas del dashboard con datos para gráficos.
+    
+    Incluye:
+    - **Métricas básicas**: pendientes, auditadas_hoy, proximas_vencer, rechazadas_observadas
+    - **Top 10 Empresas**: Por cantidad de radicaciones
+    - **Top 10 Diagnósticos CIE-10**: Más frecuentes con porcentaje
+    - **Top 10 Empleados**: Con más días acumulados de incapacidad
+    - **Distribución Estados**: Pendientes por estado (Pie Chart)
+    - **Distribución Tipos**: ARL vs SALUD con valores (Donut Chart)
+    - **Tendencia Mensual**: Últimos 6 meses (Line Chart)
+    
+    Filtros opcionales:
+    - empresa_id: ID de empresa (solo stats de esa empresa)
+    - tipo: ARL o SALUD (excluye el otro tipo)
+    - fecha_desde/fecha_hasta: Rango de fechas de creación
+    - top_limit: Cuántos items mostrar en rankings (5-20)
+    
+    Requiere permisos: INCAPACIDAD_READ
+    Roles permitidos: ADMIN, AUDITOR, APROBADOR
+    
+    Example:
+        GET /api/v1/incapacidades/stats/extended?tipo=ARL&top_limit=5
+    """
+    # Validar rango de fechas
+    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+        raise HTTPException(
+            status_code=400,
+            detail="fecha_desde debe ser menor o igual a fecha_hasta"
+        )
+    
+    # Obtener estadísticas extendidas
+    stats = await incapacidad_service.get_extended_stats(
+        db=db,
+        empresa_id=empresa_id,
+        tipo=tipo,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        top_limit=top_limit,
+    )
+    
+    # Construir response con metadata
+    return IncapacidadStatsExtendedResponse(
+        **stats,
+        fecha_calculo=datetime.utcnow(),
+        filtros_aplicados={
+            "empresa_id": str(empresa_id) if empresa_id else None,
+            "tipo": tipo.value if tipo else None,
+            "fecha_desde": fecha_desde.isoformat() if fecha_desde else None,
+            "fecha_hasta": fecha_hasta.isoformat() if fecha_hasta else None,
+            "top_limit": top_limit,
         } if any([empresa_id, tipo, fecha_desde, fecha_hasta]) else None,
     )
 

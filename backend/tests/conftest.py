@@ -262,6 +262,29 @@ async def test_usuario(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
+async def test_user_auditor(db_session: AsyncSession):
+    """Create a test auditor user."""
+    from app.models.usuario import Usuario
+    from app.utils.enums import RolUsuario, EstadoUsuario
+    from app.core.security import get_password_hash
+    
+    usuario = Usuario(
+        username="auditor",
+        email="auditor@example.com",
+        password_hash=get_password_hash("Auditor123!"),
+        nombre_completo="Usuario Auditor",
+        rol=RolUsuario.AUDITOR,
+        estado=EstadoUsuario.ACTIVO,
+    )
+    
+    db_session.add(usuario)
+    await db_session.commit()
+    await db_session.refresh(usuario)
+    
+    return usuario
+
+
+@pytest_asyncio.fixture
 async def test_documento(db_session: AsyncSession, test_incapacidad, test_usuario):
     """Create a test documento."""
     from app.models.documento import Documento
@@ -287,3 +310,18 @@ async def test_documento(db_session: AsyncSession, test_incapacidad, test_usuari
     await db_session.refresh(documento)
     
     return documento
+
+
+@pytest_asyncio.fixture
+async def admin_token_headers(test_usuario) -> dict:
+    """Create authentication headers with admin token."""
+    from app.core.security import create_access_token
+    
+    # Usar el ID del usuario (UUID) como sub en el token
+    token = create_access_token(
+        data={
+            "sub": str(test_usuario.id),
+            "token_version": test_usuario.token_version
+        }
+    )
+    return {"Authorization": f"Bearer {token}"}
