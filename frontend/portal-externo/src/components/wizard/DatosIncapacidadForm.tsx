@@ -62,10 +62,13 @@ export function DatosIncapacidadForm({
 
   // Actualizar valor en formulario cuando se selecciona CIE-10
   useEffect(() => {
+    console.log("selectedCIE10", selectedCIE10);
     if (selectedCIE10) {
       setValue('diagnostico_cie10', selectedCIE10.codigo);
+      setValue('descripcion_diagnostico', selectedCIE10.descripcion);
     } else {
       setValue('diagnostico_cie10', '');
+      setValue('descripcion_diagnostico', '');
     }
   }, [selectedCIE10, setValue]);
 
@@ -212,13 +215,13 @@ export function DatosIncapacidadForm({
             placeholder="Clínica Santa María"
             helperText="Institución Prestadora de Salud"
           />
-          <Input
+          {/*<Input
             label="EPS"
             {...register('eps')}
             error={errors.eps?.message as string}
             placeholder="Sura EPS"
             helperText="Entidad Promotora de Salud"
-          />
+          />*/}
         </div>
       </div>
 

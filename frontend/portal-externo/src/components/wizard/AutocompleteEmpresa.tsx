@@ -37,6 +37,7 @@ export function AutocompleteEmpresa({
   const debouncedQuery = useDebounce(query, 300);
   const { data: empresas = [], isLoading } = useSearchEmpresas(debouncedQuery);
 
+
   // Actualizar query cuando cambia nombre (autocompletado desde empleado)
   useEffect(() => {
     if (nombre && nombre !== query) {
