@@ -16,9 +16,12 @@ class EstadoIncapacidad(str, Enum):
     EN_AUDITORIA = "EN_AUDITORIA"
     OBSERVADA = "OBSERVADA"
     APROBADA = "APROBADA"
+    APROBADA_PARCIALMENTE = "APROBADA_PARCIALMENTE"  # Estado para aprobación parcial
     RECHAZADA = "RECHAZADA"
     EN_PAGO = "EN_PAGO"
+    EN_PAGO_PARCIAL = "EN_PAGO_PARCIAL"  # Estado para pago parcial
     PAGADA = "PAGADA"
+    PAGADA_PARCIALMENTE = "PAGADA_PARCIALMENTE"  # Estado para pago parcial completado
     CANCELADA = "CANCELADA"
 
 

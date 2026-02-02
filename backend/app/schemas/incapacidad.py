@@ -99,17 +99,72 @@ class IncapacidadUpdate(BaseModel):
 
 
 class IncapacidadAuditar(BaseModel):
-    """Schema para auditar incapacidad."""
-    accion: str = Field(..., description="SOLICITAR_INFORMACION, APROBAR_PARA_PAGO, RECHAZAR")
+    """Schema para auditar incapacidad con soporte para aprobación parcial."""
+    accion: str = Field(
+        ..., 
+        description="SOLICITAR_INFORMACION, APROBAR_PARA_PAGO, APROBAR_PARA_PAGO_PARCIAL, RECHAZAR"
+    )
     observaciones: str = Field(..., min_length=10)
+    
+    # Campos modificables por el auditor (opcionales)
+    # Se requieren para APROBAR_PARA_PAGO_PARCIAL
+    fecha_inicio_aprobada: Optional[date] = Field(
+        None, 
+        description="Fecha de inicio aprobada por el auditor"
+    )
+    fecha_fin_aprobada: Optional[date] = Field(
+        None,
+        description="Fecha de fin aprobada por el auditor"
+    )
+    dias_aprobados: Optional[int] = Field(
+        None, 
+        ge=1,
+        description="Días aprobados por el auditor"
+    )
+    cie10_aprobado: Optional[str] = Field(
+        None, 
+        max_length=10,
+        description="Código CIE-10 aprobado"
+    )
+    diagnostico_aprobado: Optional[str] = Field(
+        None, 
+        max_length=500,
+        description="Descripción del diagnóstico aprobado"
+    )
     
     @field_validator("accion")
     @classmethod
     def validate_accion(cls, v):
-        acciones_validas = ["SOLICITAR_INFORMACION", "APROBAR_PARA_PAGO", "RECHAZAR"]
+        acciones_validas = [
+            "SOLICITAR_INFORMACION", 
+            "APROBAR_PARA_PAGO", 
+            "APROBAR_PARA_PAGO_PARCIAL",
+            "RECHAZAR"
+        ]
         if v not in acciones_validas:
             raise ValueError(f"Acción debe ser una de: {', '.join(acciones_validas)}")
         return v
+    
+    @model_validator(mode='after')
+    def validate_aprobacion_parcial(self):
+        """Validar que si es aprobación parcial, vengan los campos modificables."""
+        if self.accion == "APROBAR_PARA_PAGO_PARCIAL":
+            required_fields = {
+                'fecha_inicio_aprobada': self.fecha_inicio_aprobada,
+                'fecha_fin_aprobada': self.fecha_fin_aprobada,
+                'dias_aprobados': self.dias_aprobados,
+                'cie10_aprobado': self.cie10_aprobado,
+                'diagnostico_aprobado': self.diagnostico_aprobado
+            }
+            
+            missing = [name for name, value in required_fields.items() if value is None]
+            
+            if missing:
+                raise ValueError(
+                    f"Para aprobación parcial se requieren los siguientes campos: {', '.join(missing)}"
+                )
+        
+        return self
 
 
 class IncapacidadResponder(BaseModel):
