@@ -19,8 +19,7 @@ router = APIRouter()
 
 @router.get("/files/{filepath:path}")
 async def serve_file(
-    filepath: str = PathParam(..., description="Ruta relativa del archivo"),
-    current_user: Usuario = Depends(get_current_user)
+    filepath: str = PathParam(..., description="Ruta relativa del archivo")
 ):
     """
     Sirve archivos del filesystem local.
@@ -63,7 +62,7 @@ async def serve_file(
     except ValueError:
         logger.error(
             f"Intento de path traversal bloqueado: {filepath} -> {file_path}",
-            extra={"user_id": str(current_user.id), "filepath": filepath}
+            extra={"filepath": filepath}
         )
         raise HTTPException(
             status_code=403,
@@ -74,7 +73,7 @@ async def serve_file(
     if not file_path.exists() or not file_path.is_file():
         logger.warning(
             f"Archivo no encontrado: {filepath}",
-            extra={"user_id": str(current_user.id)}
+            extra={"filepath": filepath}
         )
         raise HTTPException(
             status_code=404,
@@ -96,7 +95,6 @@ async def serve_file(
     logger.info(
         f"Archivo servido: {filepath}",
         extra={
-            "user_id": str(current_user.id),
             "filepath": filepath,
             "size_bytes": file_path.stat().st_size
         }
@@ -116,8 +114,7 @@ async def serve_file(
 
 @router.head("/files/{filepath:path}")
 async def check_file_exists(
-    filepath: str = PathParam(..., description="Ruta relativa del archivo"),
-    current_user: Usuario = Depends(get_current_user)
+    filepath: str = PathParam(..., description="Ruta relativa del archivo")
 ):
     """
     Verifica si un archivo existe (HEAD request).

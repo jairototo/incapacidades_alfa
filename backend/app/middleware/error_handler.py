@@ -121,8 +121,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     async def general_exception_handler(request: Request, exc: Exception):
         """Handle general exceptions."""
         logger.exception(
-            f"Unhandled exception: {str(exc)}",
-            extra={"path": request.url.path}
+            "Unhandled exception: {}",
+            type(exc).__name__,
+            extra={"path": request.url.path, "error_detail": str(exc)}
         )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

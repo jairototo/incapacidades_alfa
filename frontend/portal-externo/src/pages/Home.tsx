@@ -182,7 +182,7 @@ export function Home() {
       <footer className="bg-white border-t mt-auto">
         <div className="container mx-auto px-4 py-6">
           <p className="text-center text-sm text-gray-600">
-            Sistema de Gestión de Incapacidades © 2026 - Todos los derechos reservados
+            Sistema de Gestión de Incapacidades Seguros de Vida Alfa S.A. © 2026 - Todos los derechos reservados
           </p>
         </div>
       </footer>

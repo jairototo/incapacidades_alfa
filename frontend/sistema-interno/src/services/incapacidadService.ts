@@ -231,7 +231,7 @@ export const incapacidadService = {
    */
   async getDownloadUrl(documentoId: string): Promise<string> {
     const { data } = await api.get<{ url: string; expires_in: number }>(
-      `/documentos/${documentoId}/download-url`
+      `/documentos/${documentoId}/download`
     );
     return data.url;
   },

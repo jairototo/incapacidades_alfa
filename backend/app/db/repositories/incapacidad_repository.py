@@ -222,7 +222,20 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
         Returns:
             Lista de incapacidades que cumplen los criterios
         """
-        query = select(Incapacidad)
+        from sqlalchemy.orm import selectinload
+        from app.models.empleado import Empleado
+        from app.models.empresa import Empresa
+        from app.models.afiliado import Afiliado
+        
+        # Query base con eager loading de relaciones
+        query = (
+            select(Incapacidad)
+            .options(
+                selectinload(Incapacidad.empleado),
+                selectinload(Incapacidad.empresa),
+                selectinload(Incapacidad.afiliado)
+            )
+        )
         
         # Aplicar filtros
         if tipo:

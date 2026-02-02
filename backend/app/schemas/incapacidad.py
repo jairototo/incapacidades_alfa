@@ -203,6 +203,11 @@ class IncapacidadInDB(IncapacidadBase):
     created_at: datetime
     updated_at: datetime
     
+    # Objetos completos (se cargan con eager loading)
+    empleado: Optional[Any] = None
+    empresa: Optional[Any] = None
+    afiliado: Optional[Any] = None
+    
     model_config = {"from_attributes": True}
 
 

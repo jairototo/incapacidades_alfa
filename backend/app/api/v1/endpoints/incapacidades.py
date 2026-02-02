@@ -40,6 +40,35 @@ from app.core.logging import logger
 router = APIRouter()
 
 
+# ========== HELPER FUNCTIONS ==========
+
+def _serialize_incapacidad(incap) -> dict:
+    """
+    Convierte objeto SQLAlchemy Incapacidad a dict serializable.
+    
+    Maneja la conversión de objetos relacionados (empleado, empresa, afiliado)
+    de SQLAlchemy a Pydantic para evitar PydanticSerializationError.
+    
+    Args:
+        incap: Objeto Incapacidad de SQLAlchemy
+        
+    Returns:
+        Dict serializable con objetos relacionados convertidos a Pydantic
+    """
+    # Convertir incapacidad base
+    incap_dict = IncapacidadInDB.model_validate(incap).model_dump()
+    
+    # Convertir objetos relacionados a schemas Pydantic
+    if incap.empleado:
+        incap_dict['empleado'] = EmpleadoResponse.model_validate(incap.empleado).model_dump()
+    if incap.empresa:
+        incap_dict['empresa'] = EmpresaResponse.model_validate(incap.empresa).model_dump()
+    if incap.afiliado:
+        incap_dict['afiliado'] = AfiliadoResponse.model_validate(incap.afiliado).model_dump()
+    
+    return incap_dict
+
+
 # ========== ENDPOINTS PÚBLICOS (SIN AUTENTICACIÓN) ==========
 
 @router.get(
@@ -325,7 +354,31 @@ async def listar_incapacidades_pendientes(
         skip=skip,
         limit=limit
     )
-    return incapacidades
+    
+    # Convertir objetos SQLAlchemy a schemas Pydantic
+    result = []
+    for item in incapacidades:
+        # item es un dict con 'incapacidad' y campos calculados
+        incap = item['incapacidad']
+        
+        # Convertir a dict base
+        incap_dict = IncapacidadInDB.model_validate(incap).model_dump()
+        
+        # Agregar campos calculados
+        incap_dict['dias_desde_radicacion'] = item['dias_desde_radicacion']
+        incap_dict['dias_en_estado_actual'] = item['dias_en_estado_actual']
+        
+        # Convertir objetos relacionados a schemas
+        if incap.empleado:
+            incap_dict['empleado'] = EmpleadoResponse.model_validate(incap.empleado).model_dump()
+        if incap.empresa:
+            incap_dict['empresa'] = EmpresaResponse.model_validate(incap.empresa).model_dump()
+        if incap.afiliado:
+            incap_dict['afiliado'] = AfiliadoResponse.model_validate(incap.afiliado).model_dump()
+            
+        result.append(incap_dict)
+    
+    return result
 
 
 
@@ -381,7 +434,7 @@ async def create_incapacidad(
             f"La incapacidad fue creada pero debe radicarse manualmente."
         )
     
-    return incapacidad
+    return _serialize_incapacidad(incapacidad)
 
 
 @router.get(
@@ -420,7 +473,7 @@ async def list_incapacidades(
     
     Ordenamiento: Por fecha de radicación descendente
     """
-    return await incapacidad_service.list_incapacidades(
+    incapacidades = await incapacidad_service.list_incapacidades(
         db,
         tipo=tipo,
         estado=estado,
@@ -436,6 +489,23 @@ async def list_incapacidades(
         skip=skip,
         limit=limit
     )
+    
+    # Convertir objetos SQLAlchemy a schemas Pydantic
+    result = []
+    for incap in incapacidades:
+        incap_dict = IncapacidadInDB.model_validate(incap).model_dump()
+        
+        # Convertir objetos relacionados a schemas
+        if incap.empleado:
+            incap_dict['empleado'] = EmpleadoResponse.model_validate(incap.empleado).model_dump()
+        if incap.empresa:
+            incap_dict['empresa'] = EmpresaResponse.model_validate(incap.empresa).model_dump()
+        if incap.afiliado:
+            incap_dict['afiliado'] = AfiliadoResponse.model_validate(incap.afiliado).model_dump()
+            
+        result.append(incap_dict)
+    
+    return result
 
 
 @router.get(
@@ -654,7 +724,8 @@ async def update_incapacidad(
     
     Nota: Solo se actualizan los campos proporcionados (PATCH semántico)
     """
-    return await incapacidad_service.update_incapacidad(db, incapacidad_id, incapacidad_data)
+    incap = await incapacidad_service.update_incapacidad(db, incapacidad_id, incapacidad_data)
+    return _serialize_incapacidad(incap)
 
 
 @router.post(
@@ -676,7 +747,8 @@ async def radicar_incapacidad(
     - Debe estar en estado RADICADA
     - Registra fecha de radicación
     """
-    return await incapacidad_service.radicar_incapacidad(db, incapacidad_id)
+    incap = await incapacidad_service.radicar_incapacidad(db, incapacidad_id)
+    return _serialize_incapacidad(incap)
 
 
 @router.post(
@@ -704,13 +776,14 @@ async def auditar_incapacidad(
     - Observaciones son obligatorias (mínimo 10 caracteres)
     - Registra fecha de auditoría y auditor
     """
-    return await incapacidad_service.auditar_incapacidad(
+    incap = await incapacidad_service.auditar_incapacidad(
         db,
         incapacidad_id,
         auditoria.accion,
         auditoria.observaciones,
         current_user.id
     )
+    return _serialize_incapacidad(incap)
 
 
 @router.post(
@@ -733,7 +806,8 @@ async def aprobar_incapacidad(
     - Debe estar en estado EN_AUDITORIA
     - Registra fecha de aprobación y aprobador
     """
-    return await incapacidad_service.aprobar_incapacidad(db, incapacidad_id, current_user.id)
+    incap = await incapacidad_service.aprobar_incapacidad(db, incapacidad_id, current_user.id)
+    return _serialize_incapacidad(incap)
 
 
 @router.post(
@@ -757,7 +831,8 @@ async def rechazar_incapacidad(
     - Motivo es obligatorio (mínimo 10 caracteres)
     - Registra fecha de rechazo y motivo
     """
-    return await incapacidad_service.rechazar_incapacidad(db, incapacidad_id, motivo, current_user.id)
+    incap = await incapacidad_service.rechazar_incapacidad(db, incapacidad_id, motivo, current_user.id)
+    return _serialize_incapacidad(incap)
 
 
 @router.post(
@@ -780,7 +855,8 @@ async def enviar_a_pago(
     - Debe estar en estado APROBADA
     - Debe tener valor_total calculado
     """
-    return await incapacidad_service.enviar_a_pago(db, incapacidad_id, current_user.id)
+    incap = await incapacidad_service.enviar_a_pago(db, incapacidad_id, current_user.id)
+    return _serialize_incapacidad(incap)
 
 
 @router.post(
@@ -803,7 +879,8 @@ async def marcar_como_pagada(
     - Debe estar en estado EN_PAGO
     - Estado final del workflow
     """
-    return await incapacidad_service.marcar_como_pagada(db, incapacidad_id, current_user.id)
+    incap = await incapacidad_service.marcar_como_pagada(db, incapacidad_id, current_user.id)
+    return _serialize_incapacidad(incap)
 
 
 @router.get(
