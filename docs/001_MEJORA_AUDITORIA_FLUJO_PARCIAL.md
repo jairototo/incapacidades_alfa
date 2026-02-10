@@ -1,10 +1,10 @@
 # Plan de Desarrollo - Feature: Auditoría Mejorada con Aprobación Parcial
 
-## ✅ ESTADO: PARTE 1 BACKEND COMPLETADA (2 de febrero de 2026)
+## ✅ ESTADO: COMPLETADO 100% (3 de febrero de 2026)
 
 ### Resumen de Cambios Implementados
 
-**Backend (100% Completado):**
+**Backend (100% Completado - 2 de febrero):**
 - ✅ **Modelo de Datos**: Tabla `auditoria_datos_aprobados` creada con todos los campos requeridos
 - ✅ **Enums**: Agregados 3 nuevos estados (`APROBADA_PARCIALMENTE`, `EN_PAGO_PARCIAL`, `PAGADA_PARCIALMENTE`)
 - ✅ **Matriz de Transiciones**: Actualizada con 4 nuevas transiciones para el flujo parcial
@@ -15,39 +15,83 @@
 - ✅ **Endpoints**: 
   - Actualizado `POST /{id}/auditar` para recibir datos aprobados
   - Creado `GET /{id}/datos-aprobados` para consultar datos aprobados
-- ✅ **Migración**: Ejecutada `5f0125256440_add_auditoria_datos_aprobados_table_and_estados_parciales`
-- ✅ **Migración Enum**: Ejecutada `566c94df42fa_update_estadoincapacidad_enum_add_partial_states`
-  - Agrega `APROBADA_PARCIALMENTE` al enum
-  - Agrega `EN_PAGO_PARCIAL` al enum
-  - Agrega `PAGADA_PARCIALMENTE` al enum
-- ✅ **Documentación**: Actualizado `docs/04_FLUJO_ESTADOS.md` con:
-  - Diagrama de estados actualizado
-  - 3 nuevas secciones de estados (2.9, 2.10, 2.11)
-  - Matriz de transiciones expandida con 4 nuevas filas
+- ✅ **Migraciones**: 3 migraciones ejecutadas exitosamente
+  - `5f0125256440`: Tabla auditoria_datos_aprobados
+  - `566c94df42fa`: Enum estadoincapacidad actualizado
+  - `cf0a432a3aa8`: CHECK constraint incapacidad actualizado
+- ✅ **Documentación**: Actualizado `docs/04_FLUJO_ESTADOS.md`
 
-**Archivos Creados:**
+**Frontend (100% Completado - 3 de febrero):**
+- ✅ **Types**:
+  - Actualizado `enums.ts` con 3 nuevos estados (`APROBADA_PARCIALMENTE`, `EN_PAGO_PARCIAL`, `PAGADA_PARCIALMENTE`)
+  - Creada interfaz `AuditoriaDatosAprobados` en `incapacidad.ts` (12 campos)
+  - Actualizada interfaz `IncapacidadAuditarRequest` con acción `APROBAR_PARA_PAGO_PARCIAL` y 5 campos opcionales
+- ✅ **Service**:
+  - Actualizado método `auditar()` para aceptar objeto `IncapacidadAuditarRequest` completo
+  - Creado método `getDatosAprobados()` con manejo de errores 404
+  - Actualizada llamada en `cambiarEstado()` para usar nueva firma
+- ✅ **Componente AuditoriaFormulario**:
+  - React Hook Form + Zod validation con 6 campos validados
+  - Estado local: `selectedAction`, `diasCalculados`, `esAprobacionParcial`
+  - useEffect para cálculo automático de días entre fechas
+  - Date pickers (shadcn/ui Calendar) para fecha_inicio/fin_aprobada
+  - Input CIE-10 con validación regex `/^[A-Z]\d{2}(\.\d{1,2})?$/`
+  - Textarea diagnóstico aprobado (min 3 caracteres)
+  - Campo observaciones siempre visible (min 10 caracteres)
+  - 4 botones de acción con colores diferenciados
+  - Alert de aprobación parcial cuando `dias_aprobados < dias_totales`
+  - Mutation con invalidación de queries y toast success/error
+- ✅ **Página GestionarPage**:
+  - Layout split-screen: Sidebar documentos (50%) | Panel principal (50%)
+  - Sidebar collapsible con toggle button
+  - Tabs reorganizadas: **Auditoría**, Detalle Completo, Historial
+  - Tab Auditoría: alert de datos aprobados previos + AuditoriaFormulario
+  - Query adicional para `getDatosAprobados()`
+  - Handler `handleAuditoriaSuccess()` con redirección
+  - Función `getEstadoBadgeVariant()` actualizada con 3 nuevos estados
+
+**Archivos Creados (Backend):**
 - `backend/app/models/auditoria_datos_aprobados.py`
 - `backend/app/schemas/auditoria_datos.py`
 - `backend/app/db/repositories/auditoria_datos_repository.py`
-- `backend/alembic/versions/20260202_1640_5f0125256440_*.py` (tabla auditoria_datos_aprobados)
-- `backend/alembic/versions/20260202_1923_566c94df42fa_*.py` (enum estadoincapacidad actualizado)
+- `backend/alembic/versions/20260202_1640_5f0125256440_*.py`
+- `backend/alembic/versions/20260202_1923_566c94df42fa_*.py`
+- `backend/alembic/versions/20260202_2136_cf0a432a3aa8_*.py`
 
-**Archivos Modificados:**
+**Archivos Creados (Frontend):**
+- `frontend/sistema-interno/src/components/incapacidades/AuditoriaFormulario.tsx` (446 líneas)
+
+**Archivos Modificados (Backend - 7 archivos):**
 - `backend/app/models/__init__.py`
 - `backend/app/models/incapacidad.py`
 - `backend/app/utils/enums.py`
 - `backend/app/schemas/incapacidad.py`
 - `backend/app/services/incapacidad_service.py`
 - `backend/app/api/v1/endpoints/incapacidades.py`
+- `backend/app/middleware/error_handler.py`
 - `docs/04_FLUJO_ESTADOS.md`
+
+**Archivos Modificados (Frontend - 4 archivos):**
+- `frontend/sistema-interno/src/types/enums.ts`
+- `frontend/sistema-interno/src/types/incapacidad.ts`
+- `frontend/sistema-interno/src/services/incapacidadService.ts`
+- `frontend/sistema-interno/src/pages/incapacidades/GestionarPage.tsx`
 
 **Base de Datos:**
 - ✅ Tabla `auditoria_datos_aprobados` creada y operativa
 - ✅ Relación ONE-TO-ONE con `incapacidad` establecida
 - ✅ Índices y constraints configurados
-- ✅ Enum `estadoincapacidad` actualizado con 3 nuevos valores (total: 11 valores)
+- ✅ Enum `estadoincapacidad` actualizado con 11 valores
+- ✅ CHECK constraint `chk_incapacidad_estado` actualizado con 11 estados
 
-**Próximos Pasos:**
+**Testing Realizado:**
+- ✅ POST `/api/v1/incapacidades/{id}/auditar` con `APROBAR_PARA_PAGO_PARCIAL` → Estado `APROBADA_PARCIALMENTE`
+- ✅ GET `/api/v1/incapacidades/{id}/datos-aprobados` → Retorna objeto completo con 12 campos
+- ✅ Database query verificada: registro en `auditoria_datos_aprobados` con todos los campos
+- ✅ Enum verificado: 11 valores en `pg_enum`
+- ✅ CHECK constraint verificado: 11 estados permitidos
+
+**Próximos Pasos - Testing y Validación:**
 - 🔄 **Parte 2: Frontend** (Siguiente fase)
 
 ---

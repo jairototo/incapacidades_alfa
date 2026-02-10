@@ -136,12 +136,36 @@ export interface PaginatedResponse<T> {
 }
 
 /**
- * Request para auditar incapacidad
+ * Datos aprobados en auditoría (relación 1:1 con Incapacidad)
+ */
+export interface AuditoriaDatosAprobados {
+  id: string;
+  incapacidad_id: string;
+  fecha_inicio_aprobada: string;
+  fecha_fin_aprobada: string;
+  dias_aprobados: number;
+  cie10_aprobado: string;
+  diagnostico_aprobado: string;
+  observacion_auditoria: string;
+  auditado_por_id: string;
+  fecha_auditoria: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Request para auditar incapacidad con soporte para aprobación parcial
  * POST /api/v1/incapacidades/{id}/auditar
  */
 export interface IncapacidadAuditarRequest {
-  accion: 'SOLICITAR_INFORMACION' | 'APROBAR_PARA_PAGO' | 'RECHAZAR';
-  observaciones: string; // mínimo 10 caracteres
+  accion: 'SOLICITAR_INFORMACION' | 'APROBAR_PARA_PAGO' | 'APROBAR_PARA_PAGO_PARCIAL' | 'RECHAZAR';
+  observaciones: string;
+  // Campos modificables (solo para aprobación parcial)
+  fecha_inicio_aprobada?: string;
+  fecha_fin_aprobada?: string;
+  dias_aprobados?: number;
+  cie10_aprobado?: string;
+  diagnostico_aprobado?: string;
 }
 
 /**

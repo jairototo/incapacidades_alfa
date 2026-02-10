@@ -6,6 +6,8 @@ import type {
   FiltrosPendientes,
   HistorialEstado,
   Documento,
+  AuditoriaDatosAprobados,
+  IncapacidadAuditarRequest,
 } from '@/types/incapacidad';
 
 /**
@@ -119,19 +121,28 @@ export const incapacidadService = {
   /**
    * WORKFLOW: Auditar incapacidad
    * POST /api/v1/incapacidades/{incapacidad_id}/auditar
-   * Body: { accion: string, observaciones: string }
-   * Acciones: "SOLICITAR_INFORMACION", "APROBAR_PARA_PAGO", "RECHAZAR"
+   * Soporta aprobación parcial con datos modificados
    */
-  async auditar(
-    id: string,
-    accion: 'SOLICITAR_INFORMACION' | 'APROBAR_PARA_PAGO' | 'RECHAZAR',
-    observaciones: string
-  ): Promise<Incapacidad> {
-    const { data } = await api.post<Incapacidad>(`/incapacidades/${id}/auditar`, {
-      accion,
-      observaciones,
-    });
-    return data;
+  async auditar(id: string, data: IncapacidadAuditarRequest): Promise<Incapacidad> {
+    const { data: response } = await api.post<Incapacidad>(`/incapacidades/${id}/auditar`, data);
+    return response;
+  },
+
+  /**
+   * Obtener datos aprobados de una incapacidad (si existen)
+   * GET /api/v1/incapacidades/{incapacidad_id}/datos-aprobados
+   * Returns: AuditoriaDatosAprobados | null
+   */
+  async getDatosAprobados(id: string): Promise<AuditoriaDatosAprobados | null> {
+    try {
+      const { data } = await api.get<AuditoriaDatosAprobados>(`/incapacidades/${id}/datos-aprobados`);
+      return data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null; // No hay datos aprobados
+      }
+      throw error; // Re-lanzar otros errores
+    }
   },
 
   /**
@@ -262,7 +273,7 @@ export const incapacidadService = {
         if (!observacion) {
           throw new Error('Se requiere observación');
         }
-        return this.auditar(id, 'SOLICITAR_INFORMACION', observacion);
+        return this.auditar(id, { accion: 'SOLICITAR_INFORMACION', observaciones: observacion });
       
       case 'EN_PAGO':
         return this.enviarPago(id);
