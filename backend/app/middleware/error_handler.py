@@ -90,8 +90,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(IntegrityError)
     async def integrity_error_handler(request: Request, exc: IntegrityError):
         """Handle database integrity errors."""
+        error_message = str(exc).replace("{", "{{").replace("}", "}}")
         logger.error(
-            f"Database integrity error: {str(exc)}",
+            f"Database integrity error: {error_message}",
             extra={"path": request.url.path}
         )
         return JSONResponse(
@@ -105,8 +106,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
         """Handle SQLAlchemy errors."""
+        error_message = str(exc).replace("{", "{{").replace("}", "}}")
         logger.error(
-            f"Database error: {str(exc)}",
+            f"Database error: {error_message}",
             extra={"path": request.url.path}
         )
         return JSONResponse(
@@ -121,8 +123,7 @@ def add_exception_handlers(app: FastAPI) -> None:
     async def general_exception_handler(request: Request, exc: Exception):
         """Handle general exceptions."""
         logger.exception(
-            "Unhandled exception: {}",
-            type(exc).__name__,
+            f"Unhandled exception: {type(exc).__name__}",
             extra={"path": request.url.path, "error_detail": str(exc)}
         )
         return JSONResponse(

@@ -24,6 +24,7 @@ from app.schemas.incapacidad import (
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
+from app.schemas.auditoria_datos import AuditoriaDatosAprobadosResponse
 from app.schemas.empleado import EmpleadoResponse
 from app.schemas.empresa import EmpresaResponse
 from app.schemas.afiliado import AfiliadoResponse
@@ -55,9 +56,10 @@ def _serialize_incapacidad(incap) -> dict:
     Returns:
         Dict serializable con objetos relacionados convertidos a Pydantic
     """
+    logger.info(f"Serializando incapacidad {incap.id}")
     # Convertir incapacidad base
     incap_dict = IncapacidadInDB.model_validate(incap).model_dump()
-    
+    logger.info(f"Vamos a convertir objetos relacionados para incapacidad {incap.id}")
     # Convertir objetos relacionados a schemas Pydantic
     if incap.empleado:
         incap_dict['empleado'] = EmpleadoResponse.model_validate(incap.empleado).model_dump()
@@ -66,6 +68,8 @@ def _serialize_incapacidad(incap) -> dict:
     if incap.afiliado:
         incap_dict['afiliado'] = AfiliadoResponse.model_validate(incap.afiliado).model_dump()
     
+    # imprimir en el log todo el diccionario
+    logger.info(f"Incapacidad serializada: {incap_dict}")
     return incap_dict
 
 
@@ -755,7 +759,7 @@ async def radicar_incapacidad(
     "/{incapacidad_id}/auditar",
     response_model=IncapacidadInDB,
     summary="Auditar incapacidad",
-    description="Audita una incapacidad con diferentes acciones"
+    description="Audita una incapacidad con soporte para aprobación parcial"
 )
 async def auditar_incapacidad(
     incapacidad_id: UUID,
@@ -764,25 +768,46 @@ async def auditar_incapacidad(
     current_user: Usuario = Depends(get_current_user)
 ):
     """
-    Audita una incapacidad.
+    Audita una incapacidad con soporte para aprobación parcial.
     
     Acciones disponibles:
     - SOLICITAR_INFORMACION: Pasa a OBSERVADA (requiere aclaración)
-    - APROBAR_PARA_PAGO: Pasa a APROBADA (lista para pagar)
+    - APROBAR_PARA_PAGO: Pasa a APROBADA (100% de días aprobados)
+    - APROBAR_PARA_PAGO_PARCIAL: Pasa a APROBADA_PARCIALMENTE (días menores a solicitados)
     - RECHAZAR: Pasa a RECHAZADA (no procede)
+    
+    Para APROBAR_PARA_PAGO_PARCIAL se requieren campos adicionales:
+    - fecha_inicio_aprobada
+    - fecha_fin_aprobada
+    - dias_aprobados
+    - cie10_aprobado
+    - diagnostico_aprobado
     
     Validaciones:
     - Debe estar en estado EN_AUDITORIA
     - Observaciones son obligatorias (mínimo 10 caracteres)
     - Registra fecha de auditoría y auditor
     """
+    # Preparar datos aprobados si es aprobación parcial
+    datos_aprobados = None
+    if auditoria.accion == "APROBAR_PARA_PAGO_PARCIAL":
+        datos_aprobados = {
+            'fecha_inicio_aprobada': auditoria.fecha_inicio_aprobada,
+            'fecha_fin_aprobada': auditoria.fecha_fin_aprobada,
+            'dias_aprobados': auditoria.dias_aprobados,
+            'cie10_aprobado': auditoria.cie10_aprobado,
+            'diagnostico_aprobado': auditoria.diagnostico_aprobado,
+        }
+    
     incap = await incapacidad_service.auditar_incapacidad(
         db,
         incapacidad_id,
         auditoria.accion,
         auditoria.observaciones,
-        current_user.id
+        current_user.id,
+        datos_aprobados=datos_aprobados
     )
+    logger.info(f"Incapacidad {incapacidad_id} auditada con acción {auditoria.accion} por usuario {current_user.id}")
     return _serialize_incapacidad(incap)
 
 
@@ -945,3 +970,45 @@ async def get_historial(
     )
     
     return [HistorialEstadoResponse.model_validate(item) for item in items]
+
+
+@router.get(
+    "/{incapacidad_id}/datos-aprobados",
+    response_model=Optional[AuditoriaDatosAprobadosResponse],
+    summary="Obtener datos aprobados en auditoría",
+    description="Devuelve los datos aprobados si la incapacidad fue aprobada parcialmente"
+)
+async def get_datos_aprobados(
+    incapacidad_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Obtiene los datos aprobados por el auditor durante la auditoría parcial.
+    
+    Retorna:
+    - Fechas aprobadas (inicio y fin)
+    - Días aprobados
+    - Código CIE-10 aprobado
+    - Diagnóstico aprobado
+    - Observaciones de la auditoría
+    - ID del auditor y fecha de auditoría
+    
+    Retorna None si la incapacidad no tiene aprobación parcial.
+    
+    Útil para:
+    - Mostrar en el frontend los datos finales aprobados vs los solicitados
+    - Generar órdenes de pago con valores correctos
+    - Reportes de diferencias entre solicitado y aprobado
+    """
+    from app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
+    
+    # Validar que la incapacidad existe
+    await incapacidad_service.get_incapacidad(db, incapacidad_id)
+    
+    # Obtener datos aprobados
+    datos = await auditoria_datos_repository.get_by_incapacidad(db, incapacidad_id)
+    
+    # Convertir a schema Pydantic si existe
+    if datos:
+        return AuditoriaDatosAprobadosResponse.model_validate(datos)
+    return None

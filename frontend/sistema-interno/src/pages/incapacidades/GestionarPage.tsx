@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, FileText, History, CheckCircle, XCircle, AlertCircle, Image } from 'lucide-react';
+import { ArrowLeft, FileText, History, CheckCircle, XCircle, AlertCircle, Image, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,26 +13,29 @@ import { IncapacidadDetalle } from '@/components/incapacidades/IncapacidadDetall
 import { DocumentosViewer } from '@/components/incapacidades/DocumentosViewer';
 import { HistorialTimeline } from '@/components/incapacidades/HistorialTimeline';
 import { GestionActions } from '@/components/incapacidades/GestionActions';
+import { AuditoriaFormulario } from '@/components/incapacidades/AuditoriaFormulario';
 
 import { incapacidadService } from '@/services/incapacidadService';
+import { cn } from '@/lib/utils';
 
 /**
- * Página de Gestión de Incapacidad
+ * Página de Gestión de Incapacidad (MEJORADA - Auditoría Avanzada)
  * 
- * Permite visualizar y gestionar una incapacidad específica a través de:
- * - Tab "Datos Generales": Información completa de la incapacidad
- * - Tab "Documentos": Visualización y descarga de documentos adjuntos
- * - Tab "Historial": Timeline de cambios de estado
+ * Permite visualizar y gestionar una incapacidad específica con:
+ * - Sidebar de documentos (collapsible, 50% ancho)
+ * - Tabs: "Auditoría" (con aprobación parcial), "Detalle Completo", "Historial"
+ * - Formulario de auditoría con soporte para modificación de fechas, CIE-10, diagnóstico
  * 
- * Incluye acciones de auditoría (Aprobar, Observar, Rechazar) para
- * incapacidades en estados: RADICADA, EN_AUDITORIA, OBSERVADA
+ * Soporta aprobación parcial cuando días aprobados < días solicitados
  */
 export function GestionarPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('detalle');
+  
+  const [activeTab, setActiveTab] = useState('auditoria');
+  const [showDocumentsSidebar, setShowDocumentsSidebar] = useState(true);
 
   // Query: Obtener incapacidad
   const {
@@ -59,12 +62,18 @@ export function GestionarPage() {
     enabled: !!id,
   });
 
-  // Mutation: Cambiar estado
+  // Query: Obtener datos aprobados (si existen)
+  const { data: datosAprobados } = useQuery({
+    queryKey: ['incapacidad', id, 'datos-aprobados'],
+    queryFn: () => incapacidadService.getDatosAprobados(id!),
+    enabled: !!id,
+  });
+
+  // Mutation: Cambiar estado (deprecado - usar AuditoriaFormulario)
   const cambiarEstadoMutation = useMutation({
     mutationFn: ({ nuevoEstado, observacion }: { nuevoEstado: string; observacion?: string }) =>
       incapacidadService.cambiarEstado(id!, nuevoEstado, observacion),
     onSuccess: (data) => {
-      // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['incapacidad', id] });
       queryClient.invalidateQueries({ queryKey: ['incapacidad', id, 'historial'] });
       queryClient.invalidateQueries({ queryKey: ['incapacidades-pendientes'] });
@@ -74,7 +83,6 @@ export function GestionarPage() {
         description: `La incapacidad ahora está en estado: ${data.estado}`,
       });
       
-      // Redirigir a pendientes después de un breve delay
       setTimeout(() => {
         navigate('/incapacidades/pendientes');
       }, 1500);
@@ -87,6 +95,14 @@ export function GestionarPage() {
       });
     },
   });
+
+  // Handler éxito de auditoría
+  const handleAuditoriaSuccess = () => {
+    // Redirigir después de brief delay
+    setTimeout(() => {
+      navigate('/incapacidades/pendientes');
+    }, 2000);
+  };
 
   // Loading state
   if (isLoading) {
@@ -147,84 +163,176 @@ export function GestionarPage() {
           </div>
         </div>
 
-        {/* Indicador de tipo */}
-        <div>
+        {/* Indicador de tipo + Toggle documentos */}
+        <div className="flex items-center gap-3">
           <Badge variant={incapacidad.tipo === 'ARL' ? 'default' : 'secondary'} className="text-base px-4 py-2">
             {incapacidad.tipo}
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDocumentsSidebar(!showDocumentsSidebar)}
+            className="flex items-center gap-2"
+          >
+            {showDocumentsSidebar ? (
+              <>
+                <ChevronLeft className="h-4 w-4" />
+                Ocultar Documentos
+              </>
+            ) : (
+              <>
+                <ChevronRight className="h-4 w-4" />
+                Mostrar Documentos ({documentos?.length || 0})
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto">
-          <TabsTrigger value="detalle" className="space-x-2">
-            <FileText className="h-4 w-4" />
-            <span>Datos Generales</span>
-          </TabsTrigger>
-          <TabsTrigger value="documentos" className="space-x-2">
-            <Image className="h-4 w-4" />
-            <span>Documentos ({documentos?.length || 0})</span>
-          </TabsTrigger>
-          <TabsTrigger value="historial" className="space-x-2">
-            <History className="h-4 w-4" />
-            <span>Historial ({historial?.length || 0})</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Tab: Datos Generales */}
-        <TabsContent value="detalle" className="space-y-6">
-          <IncapacidadDetalle incapacidad={incapacidad} />
-          
-          {/* Acciones de Gestión */}
-          {canManage && (
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <CheckCircle className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold">Acciones de Auditoría</h3>
-              </div>
-              <GestionActions
-                incapacidad={incapacidad}
-                onAction={cambiarEstadoMutation.mutate}
-                isLoading={cambiarEstadoMutation.isPending}
-              />
-            </Card>
-          )}
-
-          {/* Mensaje si no se puede gestionar */}
-          {!canManage && (
-            <Card className="p-6 bg-slate-50">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-slate-500 mt-0.5" />
-                <div>
-                  <p className="font-medium text-slate-700">
-                    Esta incapacidad no se puede gestionar en su estado actual
-                  </p>
-                  <p className="text-sm text-slate-500 mt-1">
-                    Las acciones de auditoría solo están disponibles para incapacidades en estado 
-                    RADICADA, EN_AUDITORIA u OBSERVADA.
-                  </p>
+      {/* Layout principal: Split-screen (Documentos | Tabs) */}
+      <div className="flex gap-6">
+        {/* Sidebar de documentos (collapsible) */}
+        {showDocumentsSidebar && (
+          <div className="w-1/2 flex-shrink-0">
+            <Card className="h-full sticky top-6">
+              <div className="p-6 border-b flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Image className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold">Documentos Adjuntos</h3>
+                  <Badge variant="secondary">{documentos?.length || 0}</Badge>
                 </div>
               </div>
+              <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]">
+                <DocumentosViewer documentos={documentos || []} />
+              </div>
             </Card>
-          )}
-        </TabsContent>
+          </div>
+        )}
 
-        {/* Tab: Documentos */}
-        <TabsContent value="documentos">
-          <DocumentosViewer documentos={documentos || []} />
-        </TabsContent>
+        {/* Panel principal de tabs */}
+        <div className={cn('flex-1', showDocumentsSidebar ? 'w-1/2' : 'w-full')}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="auditoria" className="space-x-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Auditoría</span>
+              </TabsTrigger>
+              <TabsTrigger value="detalle" className="space-x-2">
+                <FileText className="h-4 w-4" />
+                <span>Detalle Completo</span>
+              </TabsTrigger>
+              <TabsTrigger value="historial" className="space-x-2">
+                <History className="h-4 w-4" />
+                <span>Historial ({historial?.length || 0})</span>
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Tab: Historial */}
-        <TabsContent value="historial">
-          <HistorialTimeline historial={historial || []} />
-        </TabsContent>
-      </Tabs>
+            {/* Tab: Auditoría (NUEVO) */}
+            <TabsContent value="auditoria" className="space-y-6">
+              {canManage ? (
+                <>
+                  {/* Datos aprobados previos (si existen) */}
+                  {datosAprobados && (
+                    <Card className="p-6 bg-yellow-50 border-yellow-400">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-yellow-900">
+                            Aprobación Parcial Existente
+                          </h3>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            Esta incapacidad ya tiene datos aprobados modificados del {' '}
+                            {new Date(datosAprobados.fecha_auditoria).toLocaleDateString('es-CO')}
+                          </p>
+                          <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
+                            <div>
+                              <span className="text-yellow-800 font-medium">Fechas aprobadas:</span>{' '}
+                              {new Date(datosAprobados.fecha_inicio_aprobada).toLocaleDateString('es-CO')} - {' '}
+                              {new Date(datosAprobados.fecha_fin_aprobada).toLocaleDateString('es-CO')}
+                            </div>
+                            <div>
+                              <span className="text-yellow-800 font-medium">Días aprobados:</span>{' '}
+                              {datosAprobados.dias_aprobados} días
+                            </div>
+                            <div>
+                              <span className="text-yellow-800 font-medium">CIE-10:</span>{' '}
+                              {datosAprobados.cie10_aprobado}
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-yellow-800 font-medium">Diagnóstico:</span>{' '}
+                              {datosAprobados.diagnostico_aprobado}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Formulario de auditoría mejorado */}
+                  <AuditoriaFormulario
+                    incapacidad={incapacidad}
+                    onSuccess={handleAuditoriaSuccess}
+                  />
+                </>
+              ) : (
+                <Card className="p-6 bg-slate-50">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-slate-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-slate-700">
+                        Esta incapacidad no se puede auditar en su estado actual
+                      </p>
+                      <p className="text-sm text-slate-500 mt-1">
+                        Las acciones de auditoría solo están disponibles para incapacidades en estado{' '}
+                        <strong>RADICADA</strong>, <strong>EN_AUDITORIA</strong> u <strong>OBSERVADA</strong>.
+                      </p>
+                      <p className="text-sm text-slate-600 mt-3">
+                        Estado actual: <Badge variant={getEstadoBadgeVariant(incapacidad.estado)}>{incapacidad.estado}</Badge>
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Tab: Datos Generales */}
+            <TabsContent value="detalle" className="space-y-6">
+              <IncapacidadDetalle incapacidad={incapacidad} />
+              
+              {/* Legacy actions (deprecadas - usar tab Auditoría) */}
+              {canManage && (
+                <Card className="p-6 bg-blue-50 border-blue-400">
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertCircle className="h-5 w-5 text-blue-600" />
+                    <h3 className="text-lg font-semibold text-blue-900">Acciones de Gestión</h3>
+                  </div>
+                  <p className="text-sm text-blue-700 mb-4">
+                    Para realizar la auditoría con soporte de aprobación parcial, utilice la pestaña{' '}
+                    <strong>"Auditoría"</strong>.
+                  </p>
+                  <Button
+                    variant="default"
+                    onClick={() => setActiveTab('auditoria')}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Ir a Auditoría
+                  </Button>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Tab: Historial */}
+            <TabsContent value="historial">
+              <HistorialTimeline historial={historial || []} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
     </div>
   );
 }
 
-// Helper function para badge de estado
+// Helper function para badge de estado (incluye estados de aprobación parcial)
 function getEstadoBadgeVariant(estado: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (estado) {
     case 'RADICADA':
@@ -235,11 +343,18 @@ function getEstadoBadgeVariant(estado: string): 'default' | 'secondary' | 'destr
       return 'outline';
     case 'APROBADA':
       return 'default';
+    case 'APROBADA_PARCIALMENTE':
+      return 'default'; // Color similar a APROBADA
     case 'RECHAZADA':
       return 'destructive';
     case 'EN_PAGO':
+      return 'default';
+    case 'EN_PAGO_PARCIAL':
+      return 'default'; // Color similar a EN_PAGO
     case 'PAGADA':
       return 'default';
+    case 'PAGADA_PARCIALMENTE':
+      return 'default'; // Color similar a PAGADA
     default:
       return 'secondary';
   }

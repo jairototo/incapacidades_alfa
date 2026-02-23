@@ -20,35 +20,36 @@
               │     │EN_AUDITORIA │◄───┤
               │     └──────┬──────┘    │
               │            │            │
-              │     ┌──────┴───────┬───┴─────────┐
-              │     │              │             │
-              │     │ Solicitar    │ Aprobar     │ Rechazar
-              │     │ información  │             │
-              │     ▼              ▼             ▼
-              │  ┌──────────┐  ┌─────────┐  ┌──────────┐
-              │  │OBSERVADA │  │APROBADA │  │RECHAZADA │
-              │  └────┬─────┘  └────┬────┘  └──────────┘
-              │       │             │              │
-              │       │ Responder   │ Generar      │
-              │       │ observac.   │ orden pago   │
-              │       │             ▼              │
-              │       └────────►┌─────────┐       │
-              │                 │ EN_PAGO │       │
-              │                 └────┬────┘       │
-              │                      │            │
-              │                      │ Confirmar  │
-              │                      │ pago       │
-              │                      ▼            │
-              │                 ┌─────────┐      │
-              │                 │ PAGADA  │      │
-              │                 └─────────┘      │
-              │                                  │
-              │ Cancelar                         │
-              └─────────────────────────────────►│
-                                                 ▼
-                                          ┌──────────┐
-                                          │CANCELADA │
-                                          └──────────┘
+              │     ┌──────┴───────┬───┴─────────┬─────────────┐
+              │     │              │             │             │
+              │     │ Solicitar    │ Aprobar     │ Aprobar     │ Rechazar
+              │     │ información  │ 100%        │ Parcial     │
+              │     ▼              ▼             ▼             ▼
+              │  ┌──────────┐  ┌─────────┐  ┌──────────────┐  ┌──────────┐
+              │  │OBSERVADA │  │APROBADA │  │APROBADA_PARC.│  │RECHAZADA │
+              │  └────┬─────┘  └────┬────┘  └──────┬───────┘  └──────────┘
+              │       │             │               │                │
+              │       │ Responder   │ Generar       │ Generar        │
+              │       │ observac.   │ orden pago    │ orden pago     │
+              │       │             │ completa      │ parcial        │
+              │       │             ▼               ▼                │
+              │       └────────►┌─────────┐     ┌────────────────┐  │
+              │                 │ EN_PAGO │     │EN_PAGO_PARCIAL │  │
+              │                 └────┬────┘     └───────┬────────┘  │
+              │                      │                  │            │
+              │                      │ Confirmar        │ Confirmar  │
+              │                      │ pago 100%        │ pago parc. │
+              │                      ▼                  ▼            │
+              │                 ┌─────────┐      ┌──────────────┐   │
+              │                 │ PAGADA  │      │PAGADA_PARC.  │   │
+              │                 └─────────┘      └──────────────┘   │
+              │                                                      │
+              │ Cancelar                                             │
+              └─────────────────────────────────────────────────────►│
+                                                                     ▼
+                                                              ┌──────────┐
+                                                              │CANCELADA │
+                                                              └──────────┘
 ```
 
 ## 2. Descripción de Estados
@@ -220,21 +221,141 @@
 **Notificaciones**:
 - Email confirmando cancelación
 
+---
+
+### 2.9 APROBADA_PARCIALMENTE
+
+**Descripción**: La incapacidad ha sido aprobada **parcialmente** porque el auditor determinó que los días a aprobar son menores a los solicitados.
+
+**Acciones permitidas**:
+- Generar orden de pago parcial (→ EN_PAGO_PARCIAL)
+- Anular aprobación parcial (solo Admin)
+- Consultar detalles y datos aprobados
+
+**Usuarios con permiso**:
+- Admin
+- Auditor (solo generar orden de pago)
+
+**Diferencia con APROBADA**:
+- Los datos aprobados (fechas, días, CIE-10, diagnóstico) se guardan en tabla `auditoria_datos_aprobados`
+- El valor a pagar se calcula con base en `dias_aprobados` (no `dias_totales`)
+- Se mantienen tanto los datos originales como los aprobados para trazabilidad
+
+**Datos almacenados**:
+- `fecha_inicio_aprobada`: Fecha de inicio aprobada por el auditor
+- `fecha_fin_aprobada`: Fecha de fin aprobada por el auditor
+- `dias_aprobados`: Cantidad de días aprobados (menor a `dias_totales`)
+- `cie10_aprobado`: Código CIE-10 aprobado (puede diferir del solicitado)
+- `diagnostico_aprobado`: Descripción del diagnóstico aprobado
+- `observacion_auditoria`: Justificación del auditor para la aprobación parcial
+
+**Validaciones**:
+- `dias_aprobados` debe ser >= 1 y < `dias_totales` de la incapacidad
+- Todos los campos de datos aprobados son obligatorios
+- `observacion_auditoria` debe explicar las modificaciones
+
+**Notificaciones**:
+- Email a la empresa indicando aprobación parcial
+- Email al empleado/afiliado indicando días aprobados vs solicitados
+- Detalle de las diferencias en el cuerpo del email
+
+---
+
+### 2.10 EN_PAGO_PARCIAL
+
+**Descripción**: Se ha generado orden de pago **parcial** y está en proceso de pago.
+
+**Acciones permitidas**:
+- Registrar pago efectuado (→ PAGADA_PARCIALMENTE)
+- Anular orden de pago (→ APROBADA_PARCIALMENTE)
+- Consultar detalles de la orden
+
+**Usuarios con permiso**:
+- Admin
+- Usuario con rol TESORERIA (si existe)
+
+**Cálculo de valor de pago**:
+- Se usa `dias_aprobados` en lugar de `dias_totales`
+- Fórmula: `valor_pago_parcial = valor_dia * dias_aprobados`
+- Ejemplo: Si se solicitaron 10 días pero se aprobaron 5, se paga solo por 5 días
+
+**Validaciones**:
+- Debe existir registro en `auditoria_datos_aprobados`
+- Datos bancarios del empleado/afiliado completos
+- Orden de pago generada y en estado APROBADA
+
+**Notificaciones**:
+- Email a Tesorería con orden de pago parcial
+- Email a la empresa con detalle de pago parcial pendiente
+
+---
+
+### 2.11 PAGADA_PARCIALMENTE
+
+**Descripción**: El pago **parcial** ha sido efectuado exitosamente.
+
+**Acciones permitidas**:
+- Consultar detalles
+- Descargar comprobante de pago parcial
+- Generar certificados de pago
+- Ver comparativa solicitado vs aprobado vs pagado
+
+**Información visible**:
+- Días solicitados vs días aprobados vs días pagados
+- Valor solicitado vs valor aprobado vs valor pagado
+- Motivo de la aprobación parcial (observación del auditor)
+- Datos bancarios utilizados para el pago
+- Comprobante de pago
+
+**Usuarios con permiso**:
+- Todos (solo consulta)
+- Admin (gestión completa)
+
+**Diferencias con PAGADA completa**:
+- Muestra indicador visual de "PAGO PARCIAL"
+- Incluye sección de comparativa en el detalle
+- Emails y certificados incluyen mención de pago parcial
+
+**Validaciones**:
+- Orden de pago en estado PAGADA
+- Comprobante de pago adjunto
+- Referencia bancaria registrada
+
+**Notificaciones**:
+- Email a la empresa confirmando pago parcial
+- Email al empleado/afiliado confirmando pago parcial con:
+  - Valor pagado
+  - Días aprobados
+  - Justificación de la diferencia
+  - Comprobante de pago adjunto
+
+**Reportes y auditoría**:
+- Los pagos parciales se marcan claramente en reportes
+- Incluidos en dashboard de métricas con indicador especial
+- Estadísticas separadas: % de aprobaciones parciales, promedio de días reducidos, etc.
+
+---
+
 ## 3. Matriz de Transiciones
 
-| Estado Actual  | Estado Destino  | Acción                | Rol Permitido        | Validaciones                    |
-|----------------|-----------------|----------------------|----------------------|---------------------------------|
-| RADICADA       | EN_AUDITORIA    | Asignar auditoría    | Admin, Auditor       | Documentos mínimos adjuntos     |
-| RADICADA       | CANCELADA       | Cancelar             | Creador, Admin       | Motivo obligatorio              |
-| EN_AUDITORIA   | OBSERVADA       | Solicitar info       | Auditor, Admin       | Observaciones obligatorias      |
-| EN_AUDITORIA   | APROBADA        | Aprobar              | Auditor, Admin       | Validación completa             |
-| EN_AUDITORIA   | RECHAZADA       | Rechazar             | Auditor, Admin       | Motivo obligatorio              |
-| OBSERVADA      | EN_AUDITORIA    | Responder            | Creador, Admin       | Respuesta a observaciones       |
-| OBSERVADA      | CANCELADA       | Cancelar             | Creador, Admin       | Motivo obligatorio              |
-| APROBADA       | EN_PAGO         | Generar orden        | Admin, Auditor       | Datos bancarios completos       |
-| APROBADA       | RADICADA        | Anular aprobación    | Admin                | Motivo obligatorio              |
-| EN_PAGO        | PAGADA          | Registrar pago       | Admin, Tesorería     | Comprobante y referencia        |
-| EN_PAGO        | APROBADA        | Anular orden         | Admin                | Motivo obligatorio              |
+| Estado Actual           | Estado Destino         | Acción                  | Rol Permitido    | Validaciones                    |
+|-------------------------|------------------------|-------------------------|------------------|---------------------------------|
+| RADICADA                | EN_AUDITORIA           | Asignar auditoría       | Admin, Auditor   | Documentos mínimos adjuntos     |
+| RADICADA                | CANCELADA              | Cancelar                | Creador, Admin   | Motivo obligatorio              |
+| EN_AUDITORIA            | OBSERVADA              | Solicitar info          | Auditor, Admin   | Observaciones obligatorias      |
+| EN_AUDITORIA            | APROBADA               | Aprobar 100%            | Auditor, Admin   | Validación completa             |
+| EN_AUDITORIA            | APROBADA_PARCIALMENTE  | Aprobar parcial         | Auditor, Admin   | Datos aprobados obligatorios    |
+| EN_AUDITORIA            | RECHAZADA              | Rechazar                | Auditor, Admin   | Motivo obligatorio              |
+| OBSERVADA               | EN_AUDITORIA           | Responder               | Creador, Admin   | Respuesta a observaciones       |
+| OBSERVADA               | CANCELADA              | Cancelar                | Creador, Admin   | Motivo obligatorio              |
+| APROBADA                | EN_PAGO                | Generar orden completa  | Admin, Auditor   | Datos bancarios completos       |
+| APROBADA                | RADICADA               | Anular aprobación       | Admin            | Motivo obligatorio              |
+| APROBADA_PARCIALMENTE   | EN_PAGO_PARCIAL        | Generar orden parcial   | Admin, Auditor   | Datos bancarios completos       |
+| APROBADA_PARCIALMENTE   | CANCELADA              | Cancelar                | Admin            | Motivo obligatorio              |
+| EN_PAGO                 | PAGADA                 | Registrar pago 100%     | Admin, Tesorería | Comprobante y referencia        |
+| EN_PAGO                 | APROBADA               | Anular orden            | Admin            | Motivo obligatorio              |
+| EN_PAGO_PARCIAL         | PAGADA_PARCIALMENTE    | Registrar pago parcial  | Admin, Tesorería | Comprobante y referencia        |
+| EN_PAGO_PARCIAL         | APROBADA_PARCIALMENTE  | Anular orden parcial    | Admin            | Motivo obligatorio              |
 
 ## 4. Reglas de Negocio por Estado
 

@@ -28,8 +28,9 @@ export function Home() {
             {/* Logo a la izquierda */}
             <div className="flex-shrink-0">
               <img 
-                src="/LOGO_SEGUROS_ALFA.png" 
-                alt="Logo Seguros Alfa" 
+                src="/logoimagine.jpeg" 
+                // alt="Logo Seguros Alfa" 
+                alt="Logo Imagine SAS"
                 className="h-16 w-auto"
               />
             </div>
@@ -182,7 +183,7 @@ export function Home() {
       <footer className="bg-white border-t mt-auto">
         <div className="container mx-auto px-4 py-6">
           <p className="text-center text-sm text-gray-600">
-            Sistema de Gestión de Incapacidades Seguros de Vida Alfa S.A. © 2026 - Todos los derechos reservados
+            Sistema de Gestión de Incapacidades - Imagine SAS. © 2026 - Todos los derechos reservados
           </p>
         </div>
       </footer>

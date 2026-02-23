@@ -8,7 +8,7 @@ export function Footer() {
   return (
     <footer className="h-12 bg-white border-t border-slate-200 flex items-center justify-between px-6">
       <p className="text-sm text-slate-600">
-        © {currentYear} Sistema de Gestión de Incapacidades Seguros de Vida Alfa S.A. Todos los derechos reservados.
+        © {currentYear} Sistema de Gestión de Incapacidades - Imagine SAS. Todos los derechos reservados.
       </p>
       <p className="text-xs text-slate-500">
         Versión 1.0.0

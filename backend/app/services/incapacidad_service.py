@@ -2,9 +2,10 @@
 Service para lógica de negocio de Incapacidad con workflow de estados.
 """
 from datetime import date, datetime, timedelta
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 import uuid
+from app.core.logging import logger
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -46,6 +47,7 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
     EstadoIncapacidad.EN_AUDITORIA: [
         EstadoIncapacidad.OBSERVADA,
         EstadoIncapacidad.APROBADA,
+        EstadoIncapacidad.APROBADA_PARCIALMENTE,  # Nueva transición para aprobación parcial
         EstadoIncapacidad.RECHAZADA,
         EstadoIncapacidad.CANCELADA
     ],
@@ -58,6 +60,10 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
         EstadoIncapacidad.EN_PAGO,
         EstadoIncapacidad.CANCELADA
     ],
+    EstadoIncapacidad.APROBADA_PARCIALMENTE: [  # Nuevas transiciones para aprobación parcial
+        EstadoIncapacidad.EN_PAGO_PARCIAL,
+        EstadoIncapacidad.CANCELADA
+    ],
     EstadoIncapacidad.RECHAZADA: [
         EstadoIncapacidad.CANCELADA
     ],
@@ -65,7 +71,14 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
         EstadoIncapacidad.PAGADA,
         EstadoIncapacidad.CANCELADA
     ],
+    EstadoIncapacidad.EN_PAGO_PARCIAL: [  # Nuevas transiciones para pago parcial
+        EstadoIncapacidad.PAGADA_PARCIALMENTE,
+        EstadoIncapacidad.CANCELADA
+    ],
     EstadoIncapacidad.PAGADA: [
+        EstadoIncapacidad.CANCELADA
+    ],
+    EstadoIncapacidad.PAGADA_PARCIALMENTE: [  # Nuevas transiciones para pago parcial
         EstadoIncapacidad.CANCELADA
     ],
     EstadoIncapacidad.CANCELADA: []
@@ -180,19 +193,20 @@ class IncapacidadService:
             
         if not incapacidad:
             raise NotFoundException(f"Incapacidad con ID {incapacidad_id} no encontrada")
-        
+        logger.info(f"Incapacidad {incapacidad_id} obtenida con relaciones: {with_relations}")
         # Si es ARL y tiene empleado, cargar sus siniestros
         if with_relations and incapacidad.tipo == TipoIncapacidad.ARL and incapacidad.empleado_id:
             from app.db.repositories.siniestro_repository import SiniestroRepository
             siniestro_repo = SiniestroRepository()
             # Cargar todos los siniestros del empleado
+            logger.info(f"Cargando siniestros para empleado {incapacidad.empleado_id}")
             incapacidad.siniestros_empleado = await siniestro_repo.get_by_empleado(
                 db, 
                 incapacidad.empleado_id,
                 skip=0,
                 limit=100  # Limitar a 100 siniestros
             )
-        
+        logger.info(f"Incapacidad {incapacidad_id} retornada")
         return incapacidad
 
     async def list_incapacidades(
@@ -440,23 +454,26 @@ class IncapacidadService:
         incapacidad_id: UUID,
         accion: str,
         observaciones: str,
-        usuario_id: Optional[UUID] = None
+        usuario_id: Optional[UUID] = None,
+        datos_aprobados: Optional[Dict[str, Any]] = None
     ) -> Incapacidad:
         """
-        Audita una incapacidad.
+        Audita una incapacidad con soporte para aprobación parcial.
         
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
-            accion: SOLICITAR_INFORMACION, APROBAR_PARA_PAGO, RECHAZAR
+            accion: SOLICITAR_INFORMACION, APROBAR_PARA_PAGO, APROBAR_PARA_PAGO_PARCIAL, RECHAZAR
             observaciones: Observaciones de la auditoría
             usuario_id: ID del auditor
+            datos_aprobados: Dict con campos modificados (solo para aprobación parcial)
             
         Returns:
             Incapacidad auditada
         """
+        logger.info(f"Auditar incapacidad {incapacidad_id} con acción {accion}")
         incapacidad = await self.get_incapacidad(db, incapacidad_id)
-        
+        logger.info(f"se obtuvo incapacidad {incapacidad}")
         if incapacidad.estado != EstadoIncapacidad.EN_AUDITORIA:
             raise InvalidStateException(
                 f"Solo se pueden auditar incapacidades en estado EN_AUDITORIA. "
@@ -479,6 +496,42 @@ class IncapacidadService:
             update_data['fecha_aprobacion'] = datetime.utcnow()
             if usuario_id:
                 update_data['aprobado_por_id'] = usuario_id
+        elif accion == "APROBAR_PARA_PAGO_PARCIAL":
+            # Nueva lógica para aprobación parcial
+            nuevo_estado = EstadoIncapacidad.APROBADA_PARCIALMENTE
+            update_data['fecha_aprobacion'] = datetime.utcnow()
+            if usuario_id:
+                update_data['aprobado_por_id'] = usuario_id
+            
+            # Guardar datos aprobados en tabla separada
+            if datos_aprobados:
+                from app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
+                
+                # Verificar si ya existe registro
+                datos_existentes = await auditoria_datos_repository.get_by_incapacidad(
+                    db, incapacidad_id
+                )
+                
+                datos_to_save = {
+                    'incapacidad_id': incapacidad_id,
+                    'fecha_inicio_aprobada': datos_aprobados.get('fecha_inicio_aprobada'),
+                    'fecha_fin_aprobada': datos_aprobados.get('fecha_fin_aprobada'),
+                    'dias_aprobados': datos_aprobados.get('dias_aprobados'),
+                    'cie10_aprobado': datos_aprobados.get('cie10_aprobado'),
+                    'diagnostico_aprobado': datos_aprobados.get('diagnostico_aprobado'),
+                    'observacion_auditoria': observaciones,
+                    'auditado_por_id': usuario_id,
+                    'fecha_auditoria': datetime.utcnow()
+                }
+                
+                if datos_existentes:
+                    # Actualizar existente
+                    await auditoria_datos_repository.update(
+                        db, id=datos_existentes.id, obj_in=datos_to_save
+                    )
+                else:
+                    # Crear nuevo
+                    await auditoria_datos_repository.create(db, obj_in=datos_to_save)
         elif accion == "RECHAZAR":
             nuevo_estado = EstadoIncapacidad.RECHAZADA
             update_data['fecha_rechazo'] = datetime.utcnow()

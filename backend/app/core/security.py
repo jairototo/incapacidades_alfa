@@ -28,8 +28,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Si la contraseña es más larga, se trunca automáticamente.
     """
     # Truncar a 72 bytes (límite de bcrypt)
-    if len(plain_password.encode('utf-8')) > 72:
-        plain_password = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    # logger.info(f"Verificando contraseña{pwd_context.hash(plain_password)}")
+    # logger.info(f"Hashed password: {hashed_password}")
+    # if len(plain_password.encode('utf-8')) > 72:
+    #     logger.warning("La contraseña excede los 72 bytes y será truncada para verificación.")
+    #     plain_password = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
     
     try:
         return pwd_context.verify(plain_password, hashed_password)
@@ -46,8 +49,9 @@ def get_password_hash(password: str) -> str:
     Si la contraseña es más larga, se trunca automáticamente.
     """
     # Truncar a 72 bytes (límite de bcrypt)
-    if len(password.encode('utf-8')) > 72:
-        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    # if len(password.encode('utf-8')) > 72:
+    #     logger.warning("La contraseña excede los 72 bytes y será truncada para hashing.")
+    #     password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
     
     return pwd_context.hash(password)
 

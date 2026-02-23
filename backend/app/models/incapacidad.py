@@ -128,6 +128,12 @@ class Incapacidad(BaseModel):
     documentos: Mapped[list["Documento"]] = relationship("Documento", back_populates="incapacidad", cascade="all, delete-orphan")
     # Nota: historial_estados ahora es polimórfico - usar historial_estado_service.get_incapacidad_history()
     ordenes_pago: Mapped[list["OrdenPago"]] = relationship("OrdenPago", back_populates="incapacidad")
+    datos_aprobados: Mapped[Optional["AuditoriaDatosAprobados"]] = relationship(
+        "AuditoriaDatosAprobados",
+        back_populates="incapacidad",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
     
     radicado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[radicado_por_id])
     auditado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[auditado_por_id])
