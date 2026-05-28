@@ -91,7 +91,7 @@ dump/
 
 # Archivos subidos por usuarios (desarrollo)
 uploads/
-storage/
+# storage/
 pdf_documentos/
 
 # ===========================================
