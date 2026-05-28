@@ -5,8 +5,8 @@ import pytest
 from uuid import uuid4
 from datetime import datetime
 
-from apps.backend.app.models.historial_estado import HistorialEstado
-from apps.backend.app.services.historial_estado_service import historial_estado_service
+from app.models.historial_estado import HistorialEstado
+from app.services.historial_estado_service import historial_estado_service
 
 
 @pytest.mark.asyncio

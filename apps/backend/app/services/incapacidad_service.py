@@ -5,28 +5,28 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 import uuid
-from apps.backend.app.core.logging import logger
+from app.core.logging import logger
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     NotFoundException,
     BadRequestException,
     InvalidStateException,
     ConflictException,
     ForbiddenException
 )
-from apps.backend.app.db.repositories.incapacidad_repository import incapacidad_repository
-from apps.backend.app.db.repositories.empleado_repository import empleado_repository
-from apps.backend.app.db.repositories.afiliado_repository import afiliado_repository
-from apps.backend.app.db.repositories.empresa_repository import empresa_repository
-from apps.backend.app.services.historial_estado_service import historial_estado_service
-from apps.backend.app.models.incapacidad import Incapacidad
-from apps.backend.app.models.documento import Documento
-from apps.backend.app.schemas.incapacidad import IncapacidadCreate, IncapacidadUpdate
-from apps.backend.app.schemas.documento import PresignedUrlResponse
-from apps.backend.app.utils.enums import (
+from app.db.repositories.incapacidad_repository import incapacidad_repository
+from app.db.repositories.empleado_repository import empleado_repository
+from app.db.repositories.afiliado_repository import afiliado_repository
+from app.db.repositories.empresa_repository import empresa_repository
+from app.services.historial_estado_service import historial_estado_service
+from app.models.incapacidad import Incapacidad
+from app.models.documento import Documento
+from app.schemas.incapacidad import IncapacidadCreate, IncapacidadUpdate
+from app.schemas.documento import PresignedUrlResponse
+from app.utils.enums import (
     EstadoIncapacidad,
     TipoIncapacidad,
     EstadoEmpleado,
@@ -196,7 +196,7 @@ class IncapacidadService:
         logger.info(f"Incapacidad {incapacidad_id} obtenida con relaciones: {with_relations}")
         # Si es ARL y tiene empleado, cargar sus siniestros
         if with_relations and incapacidad.tipo == TipoIncapacidad.ARL and incapacidad.empleado_id:
-            from apps.backend.app.db.repositories.siniestro_repository import SiniestroRepository
+            from app.db.repositories.siniestro_repository import SiniestroRepository
             siniestro_repo = SiniestroRepository()
             # Cargar todos los siniestros del empleado
             logger.info(f"Cargando siniestros para empleado {incapacidad.empleado_id}")
@@ -505,7 +505,7 @@ class IncapacidadService:
             
             # Guardar datos aprobados en tabla separada
             if datos_aprobados:
-                from apps.backend.app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
+                from app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
                 
                 # Verificar si ya existe registro
                 datos_existentes = await auditoria_datos_repository.get_by_incapacidad(
@@ -1019,9 +1019,9 @@ class IncapacidadService:
         """
         from sqlalchemy.orm import selectinload
         from sqlalchemy import select
-        from apps.backend.app.models.empleado import Empleado
-        from apps.backend.app.models.afiliado import Afiliado
-        from apps.backend.app.core.logging import logger
+        from app.models.empleado import Empleado
+        from app.models.afiliado import Afiliado
+        from app.core.logging import logger
         
         # Validar parámetros
         if not numero and not (documento and tipo_documento):

@@ -12,8 +12,8 @@ from uuid import UUID
 from sqlalchemy import select, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.historial_estado import HistorialEstado
+from app.db.repositories.base_repository import BaseRepository
+from app.models.historial_estado import HistorialEstado
 
 
 class HistorialEstadoRepository(BaseRepository[HistorialEstado]):

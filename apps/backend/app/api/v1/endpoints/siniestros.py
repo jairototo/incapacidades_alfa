@@ -8,17 +8,17 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.schemas.siniestro import (
+from app.db.session import get_db
+from app.schemas.siniestro import (
     SiniestroCreate,
     SiniestroUpdate,
     SiniestroInDB,
 )
-from apps.backend.app.schemas.incapacidad import IncapacidadInDB
-from apps.backend.app.schemas.historial_estado import HistorialEstadoResponse
-from apps.backend.app.services.siniestro_service import siniestro_service
-from apps.backend.app.services.historial_estado_service import historial_estado_service
-from apps.backend.app.utils.enums import TipoSiniestro, EstadoSiniestro
+from app.schemas.incapacidad import IncapacidadInDB
+from app.schemas.historial_estado import HistorialEstadoResponse
+from app.services.siniestro_service import siniestro_service
+from app.services.historial_estado_service import historial_estado_service
+from app.utils.enums import TipoSiniestro, EstadoSiniestro
 
 router = APIRouter()
 
@@ -294,7 +294,7 @@ async def get_historial(
     # Validar que el siniestro existe
     siniestro = await siniestro_service.get_siniestro(db, id)
     if not siniestro:
-        from apps.backend.app.core.exceptions import NotFoundException
+        from app.core.exceptions import NotFoundException
         raise NotFoundException(f"Siniestro con ID {id} no encontrado")
     
     # Obtener historial

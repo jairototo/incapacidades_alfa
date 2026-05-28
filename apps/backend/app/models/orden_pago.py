@@ -9,8 +9,8 @@ from sqlalchemy import String, Numeric, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, TIMESTAMP
 
-from apps.backend.app.models.base import BaseModel
-from apps.backend.app.utils.enums import BeneficiarioTipo, EstadoOrdenPago, MetodoPago, TipoCuenta
+from app.models.base import BaseModel
+from app.utils.enums import BeneficiarioTipo, EstadoOrdenPago, MetodoPago, TipoCuenta
 
 
 class OrdenPago(BaseModel):

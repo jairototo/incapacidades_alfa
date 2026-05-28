@@ -9,17 +9,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from apps.backend.app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocal
 
 # Importar todos los modelos para que SQLAlchemy los registre
-from apps.backend.app.models import (
+from app.models import (
     Usuario, Empresa, Empleado, Afiliado, Incapacidad, 
     Siniestro, Documento, HistorialEstado,
     OrdenPago, AuditoriaLog
 )
-from apps.backend.app.models.refresh_token import RefreshToken
-from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario
-from apps.backend.app.core.security import pwd_context
+from app.models.refresh_token import RefreshToken
+from app.utils.enums import RolUsuario, EstadoUsuario
+from app.core.security import pwd_context
 
 
 async def create_admin_user():

@@ -6,9 +6,9 @@ from uuid import UUID
 from sqlalchemy import select, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.empleado import Empleado
-from apps.backend.app.utils.enums import EstadoEmpleado
+from app.db.repositories.base_repository import BaseRepository
+from app.models.empleado import Empleado
+from app.utils.enums import EstadoEmpleado
 
 
 class EmpleadoRepository(BaseRepository[Empleado]):

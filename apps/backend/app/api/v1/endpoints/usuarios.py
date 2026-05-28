@@ -7,10 +7,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.core.security import get_current_user, PermissionChecker, Permissions
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.schemas.usuario import (
+from app.db.session import get_db
+from app.core.security import get_current_user, PermissionChecker, Permissions
+from app.models.usuario import Usuario
+from app.schemas.usuario import (
     UsuarioCreate,
     UsuarioUpdate,
     UsuarioResponse,
@@ -18,8 +18,8 @@ from apps.backend.app.schemas.usuario import (
     UsuarioChangePassword,
     UsuarioResetPassword
 )
-from apps.backend.app.services.usuario_service import usuario_service
-from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario
+from app.services.usuario_service import usuario_service
+from app.utils.enums import RolUsuario, EstadoUsuario
 
 router = APIRouter()
 
@@ -166,7 +166,7 @@ async def change_password(
     # Validar que el usuario solo pueda cambiar su propia contraseña
     # o que sea un ADMIN
     if current_user.id != usuario_id and current_user.rol != RolUsuario.ADMIN:
-        from apps.backend.app.core.exceptions import ForbiddenException
+        from app.core.exceptions import ForbiddenException
         raise ForbiddenException("Solo puedes cambiar tu propia contraseña")
     
     usuario = await usuario_service.change_password(

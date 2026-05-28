@@ -11,10 +11,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
-from apps.backend.app.main import app
-from apps.backend.app.db.session import get_db
-from apps.backend.app.models.base import Base
-from apps.backend.app.core.config import settings
+from app.main import app
+from app.db.session import get_db
+from app.models.base import Base
+from app.core.config import settings
 
 
 # Database URL para testing (usar base de datos de test)
@@ -125,8 +125,8 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 @pytest_asyncio.fixture
 async def test_empresa(db_session: AsyncSession):
     """Create a test empresa."""
-    from apps.backend.app.models.empresa import Empresa
-    from apps.backend.app.utils.enums import EstadoEmpresa
+    from app.models.empresa import Empresa
+    from app.utils.enums import EstadoEmpresa
     
     empresa = Empresa(
         nit="900123456",
@@ -148,8 +148,8 @@ async def test_empresa(db_session: AsyncSession):
 @pytest_asyncio.fixture
 async def test_empleado(db_session: AsyncSession, test_empresa):
     """Create a test empleado."""
-    from apps.backend.app.models.empleado import Empleado
-    from apps.backend.app.utils.enums import EstadoEmpleado, TipoDocumento, Genero
+    from app.models.empleado import Empleado
+    from app.utils.enums import EstadoEmpleado, TipoDocumento, Genero
     from datetime import date
     from decimal import Decimal
     
@@ -179,8 +179,8 @@ async def test_empleado(db_session: AsyncSession, test_empresa):
 @pytest_asyncio.fixture
 async def test_afiliado(db_session: AsyncSession):
     """Create a test afiliado (persona asegurada independiente)."""
-    from apps.backend.app.models.afiliado import Afiliado
-    from apps.backend.app.utils.enums import EstadoAfiliado, TipoPoliza, TipoDocumento
+    from app.models.afiliado import Afiliado
+    from app.utils.enums import EstadoAfiliado, TipoPoliza, TipoDocumento
     from datetime import date
     
     afiliado = Afiliado(
@@ -209,8 +209,8 @@ async def test_afiliado(db_session: AsyncSession):
 @pytest_asyncio.fixture
 async def test_incapacidad(db_session: AsyncSession, test_empleado, test_empresa):
     """Create a test incapacidad."""
-    from apps.backend.app.models.incapacidad import Incapacidad
-    from apps.backend.app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
+    from app.models.incapacidad import Incapacidad
+    from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
     from datetime import date, datetime
     from decimal import Decimal
     
@@ -241,9 +241,9 @@ async def test_incapacidad(db_session: AsyncSession, test_empleado, test_empresa
 @pytest_asyncio.fixture
 async def test_usuario(db_session: AsyncSession):
     """Create a test usuario."""
-    from apps.backend.app.models.usuario import Usuario
-    from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario
-    from apps.backend.app.core.security import get_password_hash
+    from app.models.usuario import Usuario
+    from app.utils.enums import RolUsuario, EstadoUsuario
+    from app.core.security import get_password_hash
     
     usuario = Usuario(
         username="testuser",
@@ -264,9 +264,9 @@ async def test_usuario(db_session: AsyncSession):
 @pytest_asyncio.fixture
 async def test_user_auditor(db_session: AsyncSession):
     """Create a test auditor user."""
-    from apps.backend.app.models.usuario import Usuario
-    from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario
-    from apps.backend.app.core.security import get_password_hash
+    from app.models.usuario import Usuario
+    from app.utils.enums import RolUsuario, EstadoUsuario
+    from app.core.security import get_password_hash
     
     usuario = Usuario(
         username="auditor",
@@ -287,8 +287,8 @@ async def test_user_auditor(db_session: AsyncSession):
 @pytest_asyncio.fixture
 async def test_documento(db_session: AsyncSession, test_incapacidad, test_usuario):
     """Create a test documento."""
-    from apps.backend.app.models.documento import Documento
-    from apps.backend.app.utils.enums import TipoDocumentoAdjunto
+    from app.models.documento import Documento
+    from app.utils.enums import TipoDocumentoAdjunto
     
     documento = Documento(
         incapacidad_id=test_incapacidad.id,
@@ -315,7 +315,7 @@ async def test_documento(db_session: AsyncSession, test_incapacidad, test_usuari
 @pytest_asyncio.fixture
 async def admin_token_headers(test_usuario) -> dict:
     """Create authentication headers with admin token."""
-    from apps.backend.app.core.security import create_access_token
+    from app.core.security import create_access_token
     
     # Usar el ID del usuario (UUID) como sub en el token
     token = create_access_token(

@@ -7,8 +7,8 @@ from uuid import UUID
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.afiliado import Afiliado
+from app.db.repositories.base_repository import BaseRepository
+from app.models.afiliado import Afiliado
 
 
 class AfiliadoRepository(BaseRepository[Afiliado]):

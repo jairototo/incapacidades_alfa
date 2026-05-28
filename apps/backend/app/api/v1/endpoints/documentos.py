@@ -7,14 +7,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.schemas.documento import (
+from app.db.session import get_db
+from app.models.usuario import Usuario
+from app.schemas.documento import (
     DocumentoResponse,
     DocumentoListItem,
     DocumentoUploadResponse
 )
-from apps.backend.app.services.documento_service import DocumentoService
+from app.services.documento_service import DocumentoService
 
 
 router = APIRouter()

@@ -8,18 +8,18 @@ from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     NotFoundException,
     BadRequestException,
     InvalidStateException,
     ForbiddenException
 )
-from apps.backend.app.db.repositories.orden_pago_repository import OrdenPagoRepository
-from apps.backend.app.db.repositories.incapacidad_repository import IncapacidadRepository
-from apps.backend.app.services.historial_estado_service import historial_estado_service
-from apps.backend.app.models.orden_pago import OrdenPago
-from apps.backend.app.schemas.orden_pago import OrdenPagoCreate, OrdenPagoUpdate
-from apps.backend.app.utils.enums import (
+from app.db.repositories.orden_pago_repository import OrdenPagoRepository
+from app.db.repositories.incapacidad_repository import IncapacidadRepository
+from app.services.historial_estado_service import historial_estado_service
+from app.models.orden_pago import OrdenPago
+from app.schemas.orden_pago import OrdenPagoCreate, OrdenPagoUpdate
+from app.utils.enums import (
     EstadoOrdenPago,
     EstadoIncapacidad,
     RolUsuario,
@@ -319,7 +319,7 @@ class OrdenPagoService:
         # 6. Actualizar estado de la incapacidad a PAGADA
         incapacidad = await self.incapacidad_repository.get_by_id(db, orden_pago.incapacidad_id)
         if incapacidad and incapacidad.estado in [EstadoIncapacidad.APROBADA, EstadoIncapacidad.EN_PAGO]:
-            from apps.backend.app.services.incapacidad_service import incapacidad_service
+            from app.services.incapacidad_service import incapacidad_service
             await incapacidad_service.cambiar_estado(
                 db=db,
                 incapacidad_id=incapacidad.id,

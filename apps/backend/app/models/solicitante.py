@@ -9,10 +9,10 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List, TYPE_CHECKING
 
-from apps.backend.app.models.base import BaseModel
+from app.models.base import BaseModel
 
 if TYPE_CHECKING:
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.models.incapacidad import Incapacidad
 
 
 class Solicitante(BaseModel):

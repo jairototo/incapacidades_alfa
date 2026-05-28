@@ -7,7 +7,7 @@ utilizados internacionalmente.
 
 from sqlalchemy import String, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column
-from apps.backend.app.models.base import Base
+from app.models.base import Base
 
 
 class CatalogoCIE10(Base):

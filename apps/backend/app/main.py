@@ -5,12 +5,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from apps.backend.app.core.config import settings
-from apps.backend.app.core.logging import setup_logging
-from apps.backend.app.core.events import create_start_app_handler, create_stop_app_handler
-from apps.backend.app.api.v1.router import api_router
-from apps.backend.app.middleware.error_handler import add_exception_handlers
-from apps.backend.app.middleware.logging_middleware import LoggingMiddleware
+from app.core.config import settings
+from app.core.logging import setup_logging
+from app.core.events import create_start_app_handler, create_stop_app_handler
+from app.api.v1.router import api_router
+from app.middleware.error_handler import add_exception_handlers
+from app.middleware.logging_middleware import LoggingMiddleware
 
 # Setup logging
 setup_logging()

@@ -10,8 +10,8 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, Query, Path, status, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.schemas.incapacidad import (
+from app.db.session import get_db
+from app.schemas.incapacidad import (
     IncapacidadCreate,
     IncapacidadUpdate,
     IncapacidadInDB,
@@ -22,21 +22,21 @@ from apps.backend.app.schemas.incapacidad import (
     IncapacidadStatsResponse,
     IncapacidadStatsExtendedResponse,
 )
-from apps.backend.app.schemas.documento import PresignedUrlResponse
-from apps.backend.app.schemas.historial_estado import HistorialEstadoResponse
-from apps.backend.app.schemas.auditoria_datos import AuditoriaDatosAprobadosResponse
-from apps.backend.app.schemas.empleado import EmpleadoResponse
-from apps.backend.app.schemas.empresa import EmpresaResponse
-from apps.backend.app.schemas.afiliado import AfiliadoResponse
-from apps.backend.app.schemas.siniestro import SiniestroInDB
-from apps.backend.app.services.incapacidad_service import incapacidad_service
-from apps.backend.app.services.historial_estado_service import historial_estado_service
-from apps.backend.app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
-from apps.backend.app.core.exceptions import BadRequestException
-from apps.backend.app.core.security import get_current_user, PermissionChecker, Permissions
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
-from apps.backend.app.core.logging import logger 
+from app.schemas.documento import PresignedUrlResponse
+from app.schemas.historial_estado import HistorialEstadoResponse
+from app.schemas.auditoria_datos import AuditoriaDatosAprobadosResponse
+from app.schemas.empleado import EmpleadoResponse
+from app.schemas.empresa import EmpresaResponse
+from app.schemas.afiliado import AfiliadoResponse
+from app.schemas.siniestro import SiniestroInDB
+from app.services.incapacidad_service import incapacidad_service
+from app.services.historial_estado_service import historial_estado_service
+from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
+from app.core.exceptions import BadRequestException
+from app.core.security import get_current_user, PermissionChecker, Permissions
+from app.models.usuario import Usuario
+from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
+from app.core.logging import logger 
 
 router = APIRouter()
 
@@ -1000,7 +1000,7 @@ async def get_datos_aprobados(
     - Generar órdenes de pago con valores correctos
     - Reportes de diferencias entre solicitado y aprobado
     """
-    from apps.backend.app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
+    from app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
     
     # Validar que la incapacidad existe
     await incapacidad_service.get_incapacidad(db, incapacidad_id)

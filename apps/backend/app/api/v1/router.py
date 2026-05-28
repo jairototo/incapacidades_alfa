@@ -1,10 +1,10 @@
 """
 Main API router for v1.
 """
-from apps.backend.app.api.v1.endpoints import afiliados, auth, catalogos, documentos, empleados, empresas, health, historial_estado, incapacidades, ordenes_pago, siniestros, solicitantes, storage
+from app.api.v1.endpoints import afiliados, auth, catalogos, documentos, empleados, empresas, health, historial_estado, incapacidades, ordenes_pago, siniestros, solicitantes, storage
 from fastapi import APIRouter
 
-from apps.backend.app.api.v1.endpoints import (
+from app.api.v1.endpoints import (
     usuarios
 )
 

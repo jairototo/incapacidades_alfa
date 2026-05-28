@@ -26,7 +26,7 @@ from sqlalchemy import create_engine, text, inspect
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
-from apps.backend.app.core.config import Settings
+from app.core.config import Settings
 
 
 # Tablas esperadas en el sistema

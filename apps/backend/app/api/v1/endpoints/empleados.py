@@ -7,15 +7,15 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.schemas.empleado import (
+from app.db.session import get_db
+from app.schemas.empleado import (
     EmpleadoCreate,
     EmpleadoUpdate,
     EmpleadoResponse,
     EmpleadoListItem
 )
-from apps.backend.app.services.empleado_service import empleado_service
-from apps.backend.app.utils.enums import EstadoEmpleado
+from app.services.empleado_service import empleado_service
+from app.utils.enums import EstadoEmpleado
 
 router = APIRouter()
 

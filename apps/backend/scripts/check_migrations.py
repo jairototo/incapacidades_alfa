@@ -16,7 +16,7 @@ from alembic.script import ScriptDirectory
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy import create_engine, text
 
-from apps.backend.app.core.config import Settings
+from app.core.config import Settings
 
 
 def check_migrations():

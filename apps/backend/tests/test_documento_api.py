@@ -8,8 +8,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.models.documento import Documento
-from apps.backend.app.models.usuario import Usuario
+from app.models.documento import Documento
+from app.models.usuario import Usuario
 
 
 class TestDocumentosEndpoints:

@@ -9,8 +9,8 @@ from sqlalchemy import String, Date, Numeric, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 
-from apps.backend.app.models.base import BaseModel
-from apps.backend.app.utils.enums import TipoDocumento, EstadoEmpleado, TipoCuenta, Genero, SyncSource
+from app.models.base import BaseModel
+from app.utils.enums import TipoDocumento, EstadoEmpleado, TipoCuenta, Genero, SyncSource
 
 
 class Empleado(BaseModel):

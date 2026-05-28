@@ -9,7 +9,7 @@ from sqlalchemy import String, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, TIMESTAMP
 
-from apps.backend.app.models.base import BaseModel
+from app.models.base import BaseModel
 
 
 class RefreshToken(BaseModel):

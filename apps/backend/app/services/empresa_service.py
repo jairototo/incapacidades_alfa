@@ -6,16 +6,16 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     NotFoundException,
     ValidationException,
     BusinessRuleException,
     DuplicateException
 )
-from apps.backend.app.core.logging import logger
-from apps.backend.app.db.repositories.empresa_repository import empresa_repository
-from apps.backend.app.models.empresa import Empresa
-from apps.backend.app.schemas.empresa import EmpresaCreate, EmpresaUpdate
+from app.core.logging import logger
+from app.db.repositories.empresa_repository import empresa_repository
+from app.models.empresa import Empresa
+from app.schemas.empresa import EmpresaCreate, EmpresaUpdate
 
 
 class EmpresaService:

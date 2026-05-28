@@ -7,11 +7,11 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.solicitante_repository import solicitante_repository
-from apps.backend.app.schemas.solicitante import SolicitanteCreate, SolicitanteUpdate
-from apps.backend.app.models.solicitante import Solicitante
-from apps.backend.app.core.exceptions import NotFoundException, ValidationException
-from apps.backend.app.core.logging import logger
+from app.db.repositories.solicitante_repository import solicitante_repository
+from app.schemas.solicitante import SolicitanteCreate, SolicitanteUpdate
+from app.models.solicitante import Solicitante
+from app.core.exceptions import NotFoundException, ValidationException
+from app.core.logging import logger
 
 
 class SolicitanteService:

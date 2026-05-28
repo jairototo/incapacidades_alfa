@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from loguru import logger
 
-from apps.backend.app.core.config import settings
+from app.core.config import settings
 
 
 def setup_logging():

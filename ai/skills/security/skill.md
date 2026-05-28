@@ -1,0 +1,8 @@
+- OWASP
+- SQL injection
+- XSS
+- CSRF
+- JWT
+- rate limit
+- validación
+- sanitización

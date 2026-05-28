@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.solicitante import Solicitante
+from app.db.repositories.base_repository import BaseRepository
+from app.models.solicitante import Solicitante
 
 
 class SolicitanteRepository(BaseRepository[Solicitante]):

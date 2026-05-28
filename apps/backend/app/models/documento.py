@@ -7,8 +7,8 @@ from sqlalchemy import String, BigInteger, Boolean, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
-from apps.backend.app.models.base import BaseModel
-from apps.backend.app.utils.enums import TipoDocumentoArchivo
+from app.models.base import BaseModel
+from app.utils.enums import TipoDocumentoArchivo
 
 
 class Documento(BaseModel):

@@ -11,13 +11,13 @@ from decimal import Decimal
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.models.incapacidad import Incapacidad
-from apps.backend.app.models.documento import Documento
-from apps.backend.app.models.empresa import Empresa
-from apps.backend.app.models.empleado import Empleado
-from apps.backend.app.models.afiliado import Afiliado
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.utils.enums import (
+from app.models.incapacidad import Incapacidad
+from app.models.documento import Documento
+from app.models.empresa import Empresa
+from app.models.empleado import Empleado
+from app.models.afiliado import Afiliado
+from app.models.usuario import Usuario
+from app.utils.enums import (
     TipoIncapacidad,
     EstadoIncapacidad,
     TipoDocumentoArchivo,

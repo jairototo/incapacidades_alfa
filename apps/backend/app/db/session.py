@@ -3,7 +3,7 @@ Database configuration and session management.
 """
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
-from apps.backend.app.core.config import settings
+from app.core.config import settings
 
 # Ensure DATABASE_URL is a string
 database_url = str(settings.DATABASE_URL) if not isinstance(settings.DATABASE_URL, str) else settings.DATABASE_URL

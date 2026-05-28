@@ -11,7 +11,7 @@ from httpx import AsyncClient
 async def test_search_cie10_by_code(client: AsyncClient, db_session):
     """Test búsqueda de códigos CIE-10 por código."""
     # Arrange: Crear códigos CIE-10 de prueba
-    from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+    from app.models.catalogo_cie10 import CatalogoCIE10
     
     codigos = [
         CatalogoCIE10(
@@ -47,7 +47,7 @@ async def test_search_cie10_by_code(client: AsyncClient, db_session):
 async def test_search_cie10_by_description(client: AsyncClient, db_session):
     """Test búsqueda de códigos CIE-10 por descripción."""
     # Arrange
-    from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+    from app.models.catalogo_cie10 import CatalogoCIE10
     
     codigos = [
         CatalogoCIE10(
@@ -79,7 +79,7 @@ async def test_search_cie10_by_description(client: AsyncClient, db_session):
 async def test_search_cie10_case_insensitive(client: AsyncClient, db_session):
     """Test que la búsqueda es case-insensitive."""
     # Arrange
-    from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+    from app.models.catalogo_cie10 import CatalogoCIE10
     
     codigo = CatalogoCIE10(
         codigo="K21",
@@ -134,7 +134,7 @@ async def test_search_cie10_no_results(client: AsyncClient):
 async def test_search_cie10_with_limit(client: AsyncClient, db_session):
     """Test búsqueda con límite de resultados."""
     # Arrange: Crear múltiples códigos con descripción similar
-    from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+    from app.models.catalogo_cie10 import CatalogoCIE10
     
     codigos = [
         CatalogoCIE10(codigo=f"Z{i:02d}", descripcion=f"Prueba diagnóstico {i}")
@@ -161,7 +161,7 @@ async def test_search_cie10_with_limit(client: AsyncClient, db_session):
 async def test_get_cie10_by_codigo_success(client: AsyncClient, db_session):
     """Test obtener código CIE-10 por código exacto."""
     # Arrange
-    from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+    from app.models.catalogo_cie10 import CatalogoCIE10
     
     codigo = CatalogoCIE10(
         codigo="I10",
@@ -195,7 +195,7 @@ async def test_get_cie10_by_codigo_not_found(client: AsyncClient):
 async def test_get_cie10_by_codigo_case_normalization(client: AsyncClient, db_session):
     """Test que normaliza el código a mayúsculas."""
     # Arrange
-    from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+    from app.models.catalogo_cie10 import CatalogoCIE10
     
     codigo = CatalogoCIE10(
         codigo="E11",
@@ -219,7 +219,7 @@ async def test_get_cie10_by_codigo_case_normalization(client: AsyncClient, db_se
 async def test_list_all_cie10_pagination(client: AsyncClient, db_session):
     """Test listar todos los códigos CIE-10 con paginación."""
     # Arrange: Crear varios códigos
-    from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+    from app.models.catalogo_cie10 import CatalogoCIE10
     
     codigos = [
         CatalogoCIE10(codigo=f"T{i:02d}", descripcion=f"Código prueba {i}")
@@ -267,7 +267,7 @@ async def test_list_all_cie10_default_limit(client: AsyncClient, db_session):
 async def test_get_cie10_stats_count(client: AsyncClient, db_session):
     """Test obtener estadísticas de códigos CIE-10."""
     # Arrange: Crear códigos conocidos
-    from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+    from app.models.catalogo_cie10 import CatalogoCIE10
     
     codigos = [
         CatalogoCIE10(codigo=f"S{i:02d}", descripcion=f"Código stats {i}")

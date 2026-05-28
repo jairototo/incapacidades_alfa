@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.services.solicitante_service import solicitante_service
-from apps.backend.app.schemas.solicitante import (
+from app.db.session import get_db
+from app.services.solicitante_service import solicitante_service
+from app.schemas.solicitante import (
     SolicitanteCreate,
     SolicitanteResponse,
     SolicitanteUpdate

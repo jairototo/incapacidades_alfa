@@ -6,10 +6,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, datetime
 
-from apps.backend.app.models.incapacidad import Incapacidad
-from apps.backend.app.models.documento import Documento
-from apps.backend.app.models.historial_estado import HistorialEstado
-from apps.backend.app.utils.enums import (
+from app.models.incapacidad import Incapacidad
+from app.models.documento import Documento
+from app.models.historial_estado import HistorialEstado
+from app.utils.enums import (
     TipoIncapacidad,
     EstadoIncapacidad,
     TipoDocumentoAdjunto,

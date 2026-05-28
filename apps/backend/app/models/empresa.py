@@ -7,8 +7,8 @@ from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 
-from apps.backend.app.models.base import BaseModel
-from apps.backend.app.utils.enums import EstadoEmpresa, TipoEmpresa, SyncSource
+from app.models.base import BaseModel
+from app.utils.enums import EstadoEmpresa, TipoEmpresa, SyncSource
 
 
 class Empresa(BaseModel):

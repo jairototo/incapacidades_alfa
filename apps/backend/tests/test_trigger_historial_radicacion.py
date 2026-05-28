@@ -10,9 +10,9 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.models.incapacidad import Incapacidad
-from apps.backend.app.models.historial_estado import HistorialEstado
-from apps.backend.app.utils.enums import (
+from app.models.incapacidad import Incapacidad
+from app.models.historial_estado import HistorialEstado
+from app.utils.enums import (
     TipoIncapacidad,
     EstadoIncapacidad,
     Prioridad,

@@ -9,10 +9,10 @@ from sqlalchemy import String, Text, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, TIMESTAMP
 
-from apps.backend.app.models.base import BaseModel
+from app.models.base import BaseModel
 
 if TYPE_CHECKING:
-    from apps.backend.app.models.usuario import Usuario
+    from app.models.usuario import Usuario
 
 
 class HistorialEstado(BaseModel):

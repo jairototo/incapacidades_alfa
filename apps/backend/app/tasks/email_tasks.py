@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Dict, Any
 from loguru import logger
 
-from apps.backend.app.tasks import celery_app
-from apps.backend.app.core.email import email_service
+from app.tasks import celery_app
+from app.core.email import email_service
 
 
 @celery_app.task(name="send_email")

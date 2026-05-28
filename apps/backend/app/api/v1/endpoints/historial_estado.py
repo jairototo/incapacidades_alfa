@@ -12,12 +12,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.schemas.historial_estado import (
+from app.db.session import get_db
+from app.schemas.historial_estado import (
     HistorialEstadoResponse,
     HistorialEstadoListResponse
 )
-from apps.backend.app.services.historial_estado_service import historial_estado_service
+from app.services.historial_estado_service import historial_estado_service
 
 router = APIRouter()
 

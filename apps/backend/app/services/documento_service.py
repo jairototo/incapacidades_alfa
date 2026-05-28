@@ -9,18 +9,18 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from apps.backend.app.core.config import settings
-from apps.backend.app.core.exceptions import (
+from app.core.config import settings
+from app.core.exceptions import (
     BadRequestException,
     NotFoundException,
     ValidationException,
     FileException
 )
 from app.core.storage import storage_backend
-from apps.backend.app.db.repositories.documento_repository import DocumentoRepository
-from apps.backend.app.models.documento import Documento
-from apps.backend.app.schemas.documento import DocumentoCreate, DocumentoUpdate, DocumentoResponse
-from apps.backend.app.utils.enums import AccionAuditoria
+from app.db.repositories.documento_repository import DocumentoRepository
+from app.models.documento import Documento
+from app.schemas.documento import DocumentoCreate, DocumentoUpdate, DocumentoResponse
+from app.utils.enums import AccionAuditoria
 
 
 class DocumentoService:

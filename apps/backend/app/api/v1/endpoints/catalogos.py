@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.services.catalogo_service import catalogo_service
-from apps.backend.app.schemas.catalogo import CIE10Response
+from app.db.session import get_db
+from app.services.catalogo_service import catalogo_service
+from app.schemas.catalogo import CIE10Response
 
 router = APIRouter()
 

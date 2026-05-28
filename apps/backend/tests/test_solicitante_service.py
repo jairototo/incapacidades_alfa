@@ -7,10 +7,10 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.services.solicitante_service import solicitante_service
-from apps.backend.app.models.solicitante import Solicitante
-from apps.backend.app.schemas.solicitante import SolicitanteCreate, SolicitanteUpdate
-from apps.backend.app.core.exceptions import NotFoundException, ValidationException
+from app.services.solicitante_service import solicitante_service
+from app.models.solicitante import Solicitante
+from app.schemas.solicitante import SolicitanteCreate, SolicitanteUpdate
+from app.core.exceptions import NotFoundException, ValidationException
 
 
 @pytest_asyncio.fixture

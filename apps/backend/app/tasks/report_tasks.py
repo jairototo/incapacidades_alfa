@@ -3,7 +3,7 @@ Report generation tasks for Celery.
 """
 from loguru import logger
 
-from apps.backend.app.tasks import celery_app
+from app.tasks import celery_app
 
 
 @celery_app.task(name="generate_report")

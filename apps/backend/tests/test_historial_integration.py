@@ -4,12 +4,12 @@ Tests de integración para el flujo completo con historial automático.
 import pytest
 from datetime import date
 
-from apps.backend.app.services.incapacidad_service import incapacidad_service
-from apps.backend.app.services.siniestro_service import siniestro_service
-from apps.backend.app.services.historial_estado_service import historial_estado_service
-from apps.backend.app.schemas.incapacidad import IncapacidadCreate
-from apps.backend.app.schemas.siniestro import SiniestroCreate
-from apps.backend.app.utils.enums import TipoIncapacidad, TipoSiniestro, GravedadSiniestro
+from app.services.incapacidad_service import incapacidad_service
+from app.services.siniestro_service import siniestro_service
+from app.services.historial_estado_service import historial_estado_service
+from app.schemas.incapacidad import IncapacidadCreate
+from app.schemas.siniestro import SiniestroCreate
+from app.utils.enums import TipoIncapacidad, TipoSiniestro, GravedadSiniestro
 
 
 @pytest.mark.asyncio

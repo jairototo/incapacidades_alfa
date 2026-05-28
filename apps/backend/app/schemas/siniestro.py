@@ -6,7 +6,7 @@ from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from apps.backend.app.utils.enums import TipoSiniestro, GravedadSiniestro, EstadoSiniestro, SyncSource
+from app.utils.enums import TipoSiniestro, GravedadSiniestro, EstadoSiniestro, SyncSource
 
 
 class SiniestroBase(BaseModel):

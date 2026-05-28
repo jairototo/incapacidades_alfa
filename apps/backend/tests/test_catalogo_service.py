@@ -7,9 +7,9 @@ from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.services.catalogo_service import catalogo_service
-from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
-from apps.backend.app.core.exceptions import NotFoundException, ValidationException
+from app.services.catalogo_service import catalogo_service
+from app.models.catalogo_cie10 import CatalogoCIE10
+from app.core.exceptions import NotFoundException, ValidationException
 
 
 @pytest_asyncio.fixture

@@ -8,9 +8,9 @@ from uuid import UUID
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.siniestro import Siniestro
-from apps.backend.app.utils.enums import TipoSiniestro, EstadoSiniestro
+from app.db.repositories.base_repository import BaseRepository
+from app.models.siniestro import Siniestro
+from app.utils.enums import TipoSiniestro, EstadoSiniestro
 
 
 class SiniestroRepository(BaseRepository[Siniestro]):

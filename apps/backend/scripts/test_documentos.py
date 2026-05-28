@@ -11,8 +11,8 @@ from uuid import UUID
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import select, text
-from apps.backend.app.db.session import AsyncSessionLocal
-from apps.backend.app.services.documento_service import DocumentoService
+from app.db.session import AsyncSessionLocal
+from app.services.documento_service import DocumentoService
 
 
 async def main():

@@ -10,13 +10,13 @@ from unittest.mock import Mock, MagicMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     ValidationException,
     NotFoundException,
     FileException
 )
-from apps.backend.app.models.documento import Documento
-from apps.backend.app.services.documento_service import DocumentoService
+from app.models.documento import Documento
+from app.services.documento_service import DocumentoService
 
 
 @pytest.fixture

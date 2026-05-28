@@ -17,11 +17,11 @@ from pathlib import Path
 # Add app directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from apps.backend.app.core.config import Settings
-from apps.backend.app.models.base import BaseModel
+from app.core.config import Settings
+from app.models.base import BaseModel
 
 # Import all models to ensure they are registered with SQLAlchemy
-from apps.backend.app.models import (
+from app.models import (
     Empresa,
     Empleado,
     Afiliado,

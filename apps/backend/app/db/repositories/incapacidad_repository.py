@@ -8,10 +8,10 @@ from sqlalchemy import select, and_, or_, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.incapacidad import Incapacidad
-from apps.backend.app.models.historial_estado import HistorialEstado
-from apps.backend.app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
+from app.db.repositories.base_repository import BaseRepository
+from app.models.incapacidad import Incapacidad
+from app.models.historial_estado import HistorialEstado
+from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
 
 
 class IncapacidadRepository(BaseRepository[Incapacidad]):
@@ -223,9 +223,9 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
             Lista de incapacidades que cumplen los criterios
         """
         from sqlalchemy.orm import selectinload
-        from apps.backend.app.models.empleado import Empleado
-        from apps.backend.app.models.empresa import Empresa
-        from apps.backend.app.models.afiliado import Afiliado
+        from app.models.empleado import Empleado
+        from app.models.empresa import Empresa
+        from app.models.afiliado import Afiliado
         
         # Query base con eager loading de relaciones
         query = (
@@ -379,9 +379,9 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
         """
         from sqlalchemy import case
         from sqlalchemy.orm import selectinload
-        from apps.backend.app.models.empresa import Empresa
-        from apps.backend.app.models.empleado import Empleado
-        from apps.backend.app.models.afiliado import Afiliado
+        from app.models.empresa import Empresa
+        from app.models.empleado import Empleado
+        from app.models.afiliado import Afiliado
         
         # Query base con eager loading
         query = (
@@ -569,8 +569,8 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
             Dict con métricas básicas + datos agregados para gráficos
         """
         from sqlalchemy import desc, case, extract
-        from apps.backend.app.models.empresa import Empresa
-        from apps.backend.app.models.empleado import Empleado
+        from app.models.empresa import Empresa
+        from app.models.empleado import Empleado
         from dateutil.relativedelta import relativedelta
         
         # 1. Obtener métricas básicas (reutilizar método existente)

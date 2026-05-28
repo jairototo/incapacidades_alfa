@@ -13,20 +13,20 @@ from fastapi import APIRouter, Depends, Query, status, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.session import get_db
-from apps.backend.app.core.security import get_current_user, PermissionChecker, Permissions
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.schemas.orden_pago import (
+from app.db.session import get_db
+from app.core.security import get_current_user, PermissionChecker, Permissions
+from app.models.usuario import Usuario
+from app.schemas.orden_pago import (
     OrdenPagoResponse,
     OrdenPagoListItem,
     OrdenPagoAnular,
     OrdenPagoAprobar,
     OrdenPagoUpdate
 )
-from apps.backend.app.schemas.historial_estado import HistorialEstadoResponse
-from apps.backend.app.services.orden_pago_service import orden_pago_service
-from apps.backend.app.services.historial_estado_service import historial_estado_service
-from apps.backend.app.utils.enums import EstadoOrdenPago, RolUsuario
+from app.schemas.historial_estado import HistorialEstadoResponse
+from app.services.orden_pago_service import orden_pago_service
+from app.services.historial_estado_service import historial_estado_service
+from app.utils.enums import EstadoOrdenPago, RolUsuario
 
 router = APIRouter()
 

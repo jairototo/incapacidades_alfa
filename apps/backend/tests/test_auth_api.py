@@ -10,10 +10,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import jwt
 
-from apps.backend.app.core.config import settings
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.models.refresh_token import RefreshToken
-from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario
+from app.core.config import settings
+from app.models.usuario import Usuario
+from app.models.refresh_token import RefreshToken
+from app.utils.enums import RolUsuario, EstadoUsuario
 
 
 @pytest.mark.asyncio

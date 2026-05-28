@@ -1,10 +1,9 @@
 """
 Celery application configuration.
 """
-from apps.backend.app.tasks import email_tasks, incapacidad_tasks, notification_tasks
 from celery import Celery
 
-from apps.backend.app.core.config import settings
+from app.core.config import settings
 
 # Create Celery app
 celery_app = Celery(
@@ -31,7 +30,7 @@ celery_app.conf.update(
 celery_app.autodiscover_tasks(["app.tasks"])
 
 # Import tasks
-from apps.backend.app.tasks import (  # noqa
+from app.tasks import (  # noqa
     report_tasks  # ← NUEVO
 )
 

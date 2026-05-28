@@ -7,18 +7,18 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 from pydantic import ValidationError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession 
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     NotFoundException,
     BadRequestException,
     ForbiddenException,
     ConflictException
 )
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.schemas.usuario import UsuarioCreate, UsuarioUpdate
-from apps.backend.app.services.usuario_service import usuario_service
-from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario
+from app.models.usuario import Usuario
+from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
+from app.services.usuario_service import usuario_service
+from app.utils.enums import RolUsuario, EstadoUsuario
 
 
 @pytest.fixture

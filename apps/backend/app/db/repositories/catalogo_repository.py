@@ -6,7 +6,7 @@ from sqlalchemy import select, or_, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
+from app.models.catalogo_cie10 import CatalogoCIE10
 
 
 class CatalogoRepository:

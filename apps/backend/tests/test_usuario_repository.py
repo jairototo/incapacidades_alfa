@@ -7,9 +7,9 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.usuario_repository import usuario_repository
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario, TipoDocumento
+from app.db.repositories.usuario_repository import usuario_repository
+from app.models.usuario import Usuario
+from app.utils.enums import RolUsuario, EstadoUsuario, TipoDocumento
 
 
 @pytest.fixture

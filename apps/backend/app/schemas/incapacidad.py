@@ -13,7 +13,7 @@ from typing import Optional, List, Any, Dict
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from apps.backend.app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
+from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
 
 
 class IncapacidadBase(BaseModel):

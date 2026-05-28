@@ -2,7 +2,7 @@
 Schemas package.
 Export all Pydantic schemas.
 """
-from apps.backend.app.schemas.incapacidad import (
+from app.schemas.incapacidad import (
     IncapacidadBase,
     IncapacidadCreate,
     IncapacidadUpdate,
@@ -17,7 +17,7 @@ from apps.backend.app.schemas.incapacidad import (
 #     SiniestroListItem,
 # )
 
-from apps.backend.app.schemas.empresa import (
+from app.schemas.empresa import (
     EmpresaBase,
     EmpresaCreate,
     EmpresaUpdate,
@@ -25,7 +25,7 @@ from apps.backend.app.schemas.empresa import (
     EmpresaListItem,
 )
 
-from apps.backend.app.schemas.empleado import (
+from app.schemas.empleado import (
     EmpleadoBase,
     EmpleadoCreate,
     EmpleadoUpdate,
@@ -33,7 +33,7 @@ from apps.backend.app.schemas.empleado import (
     EmpleadoListItem,
 )
 
-from apps.backend.app.schemas.afiliado import (
+from app.schemas.afiliado import (
     AfiliadoBase,
     AfiliadoCreate,
     AfiliadoUpdate,

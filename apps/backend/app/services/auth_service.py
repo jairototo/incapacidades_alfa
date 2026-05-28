@@ -10,22 +10,22 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from apps.backend.app.core.config import settings
-from apps.backend.app.core.security import (
+from app.core.config import settings
+from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
     create_refresh_token
 )
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     UnauthorizedException,
     NotFoundException,
     BadRequestException,
     ForbiddenException
 )
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.models.refresh_token import RefreshToken
-from apps.backend.app.schemas.auth import (
+from app.models.usuario import Usuario
+from app.models.refresh_token import RefreshToken
+from app.schemas.auth import (
     TokenResponse,
     UserProfileResponse,
     LoginResponse

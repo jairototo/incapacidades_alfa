@@ -6,10 +6,10 @@ from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.catalogo_repository import catalogo_repository
-from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
-from apps.backend.app.core.exceptions import NotFoundException, ValidationException
-from apps.backend.app.core.logging import logger
+from app.db.repositories.catalogo_repository import catalogo_repository
+from app.models.catalogo_cie10 import CatalogoCIE10
+from app.core.exceptions import NotFoundException, ValidationException
+from app.core.logging import logger
 
 
 class CatalogoService:

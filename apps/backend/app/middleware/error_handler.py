@@ -6,14 +6,14 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     AppException,
     NotFoundException,
     UnauthorizedException,
     ForbiddenException,
     BadRequestException,
 )
-from apps.backend.app.core.logging import logger
+from app.core.logging import logger
 
 
 def add_exception_handlers(app: FastAPI) -> None:

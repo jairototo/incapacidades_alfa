@@ -8,9 +8,9 @@ from datetime import datetime
 from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario
+from app.db.repositories.base_repository import BaseRepository
+from app.models.usuario import Usuario
+from app.utils.enums import RolUsuario, EstadoUsuario
 
 
 class UsuarioRepository(BaseRepository[Usuario]):

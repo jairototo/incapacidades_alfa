@@ -7,8 +7,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.documento import Documento
+from app.db.repositories.base_repository import BaseRepository
+from app.models.documento import Documento
 
 
 class DocumentoRepository(BaseRepository[Documento]):
@@ -80,7 +80,7 @@ class DocumentoRepository(BaseRepository[Documento]):
         Returns:
             Lista de documentos del siniestro
         """
-        from apps.backend.app.models.incapacidad import Incapacidad
+        from app.models.incapacidad import Incapacidad
         
         query = (
             select(Documento)

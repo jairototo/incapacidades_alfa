@@ -8,8 +8,8 @@ from sqlalchemy import String, Date, Time, Text, Integer, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, ENUM as PGEnum
 
-from apps.backend.app.models.base import BaseModel
-from apps.backend.app.utils.enums import TipoSiniestro, GravedadSiniestro, EstadoSiniestro, SyncSource
+from app.models.base import BaseModel
+from app.utils.enums import TipoSiniestro, GravedadSiniestro, EstadoSiniestro, SyncSource
 
 
 class Siniestro(BaseModel):

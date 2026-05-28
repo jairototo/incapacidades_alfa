@@ -7,16 +7,16 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     NotFoundException,
     ValidationException,
     BusinessRuleException,
     DuplicateException
 )
-from apps.backend.app.core.logging import logger
-from apps.backend.app.db.repositories.afiliado_repository import afiliado_repository
-from apps.backend.app.models.afiliado import Afiliado
-from apps.backend.app.schemas.afiliado import AfiliadoCreate, AfiliadoUpdate
+from app.core.logging import logger
+from app.db.repositories.afiliado_repository import afiliado_repository
+from app.models.afiliado import Afiliado
+from app.schemas.afiliado import AfiliadoCreate, AfiliadoUpdate
 
 
 class AfiliadoService:

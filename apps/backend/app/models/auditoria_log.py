@@ -8,8 +8,8 @@ from sqlalchemy import String, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB, INET, TIMESTAMP
 
-from apps.backend.app.models.base import BaseModel
-from apps.backend.app.utils.enums import AccionAuditoria
+from app.models.base import BaseModel
+from app.utils.enums import AccionAuditoria
 
 
 class AuditoriaLog(BaseModel):

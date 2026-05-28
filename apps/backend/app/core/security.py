@@ -12,9 +12,9 @@ from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from apps.backend.app.core.config import settings
-from apps.backend.app.core.exceptions import UnauthorizedException
-from apps.backend.app.db.session import get_db
+from app.core.config import settings
+from app.core.exceptions import UnauthorizedException
+from app.db.session import get_db
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -195,7 +195,7 @@ async def get_current_user(
         UnauthorizedException: Si el token es inválido o el usuario no existe
     """
     from sqlalchemy import select
-    from apps.backend.app.models.usuario import Usuario
+    from app.models.usuario import Usuario
     
     payload = decode_token(token)
     user_id: str = payload.get("sub")
@@ -294,7 +294,7 @@ class PermissionChecker:
         Raises:
             ForbiddenException: Si no tiene permisos
         """
-        from apps.backend.app.core.exceptions import ForbiddenException
+        from app.core.exceptions import ForbiddenException
         
         user_permissions = self.get_permissions(current_user.rol)
         

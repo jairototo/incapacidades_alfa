@@ -8,21 +8,21 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from apps.backend.app.db.repositories.siniestro_repository import siniestro_repository
-from apps.backend.app.db.repositories.empleado_repository import empleado_repository
-from apps.backend.app.db.repositories.empresa_repository import empresa_repository
-from apps.backend.app.services.historial_estado_service import historial_estado_service
-from apps.backend.app.schemas.siniestro import SiniestroCreate, SiniestroUpdate
-from apps.backend.app.models.siniestro import Siniestro
-from apps.backend.app.models.empleado import Empleado
-from apps.backend.app.models.empresa import Empresa
-from apps.backend.app.utils.enums import (
+from app.db.repositories.siniestro_repository import siniestro_repository
+from app.db.repositories.empleado_repository import empleado_repository
+from app.db.repositories.empresa_repository import empresa_repository
+from app.services.historial_estado_service import historial_estado_service
+from app.schemas.siniestro import SiniestroCreate, SiniestroUpdate
+from app.models.siniestro import Siniestro
+from app.models.empleado import Empleado
+from app.models.empresa import Empresa
+from app.utils.enums import (
     TipoSiniestro,
     EstadoSiniestro,
     EstadoEmpleado,
     EstadoEmpresa
 )
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     NotFoundException,
     ValidationException,
     BusinessRuleException

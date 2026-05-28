@@ -10,8 +10,8 @@ from uuid import UUID, uuid4
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.services.incapacidad_service import IncapacidadService
-from apps.backend.app.utils.enums import (
+from app.services.incapacidad_service import IncapacidadService
+from app.utils.enums import (
     EstadoIncapacidad,
     TipoIncapacidad,
 )
@@ -40,8 +40,8 @@ async def test_get_stats_pendientes_radicada(
     test_empleado,
 ):
     """Debe contar incapacidades en estado RADICADA como pendientes."""
-    from apps.backend.app.db.repositories.incapacidad_repository import IncapacidadRepository
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.db.repositories.incapacidad_repository import IncapacidadRepository
+    from app.models.incapacidad import Incapacidad
     
     repo = IncapacidadRepository()
     
@@ -76,7 +76,7 @@ async def test_get_stats_pendientes_en_auditoria(
     test_empleado,
 ):
     """Debe contar incapacidades en estado EN_AUDITORIA como pendientes."""
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.models.incapacidad import Incapacidad
     
     # Crear incapacidad EN_AUDITORIA
     incapacidad = Incapacidad(
@@ -108,7 +108,7 @@ async def test_get_stats_rechazadas_observadas(
     test_empleado,
 ):
     """Debe contar incapacidades en estado RECHAZADA u OBSERVADA."""
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.models.incapacidad import Incapacidad
     
     # Crear incapacidad RECHAZADA
     incapacidad1 = Incapacidad(
@@ -157,8 +157,8 @@ async def test_get_stats_auditadas_hoy(
     test_user_auditor,
 ):
     """Debe contar incapacidades auditadas hoy (cambio a APROBADA/RECHAZADA/OBSERVADA)."""
-    from apps.backend.app.models.incapacidad import Incapacidad
-    from apps.backend.app.models.historial_estado import HistorialEstado
+    from app.models.incapacidad import Incapacidad
+    from app.models.historial_estado import HistorialEstado
     
     # Crear incapacidad
     incapacidad = Incapacidad(
@@ -223,9 +223,9 @@ async def test_get_stats_filtro_empresa(
     test_empleado,
 ):
     """Debe filtrar stats por empresa_id correctamente."""
-    from apps.backend.app.models.incapacidad import Incapacidad
-    from apps.backend.app.models.empresa import Empresa
-    from apps.backend.app.models.empleado import Empleado
+    from app.models.incapacidad import Incapacidad
+    from app.models.empresa import Empresa
+    from app.models.empleado import Empleado
     
     # Crear segunda empresa y empleado
     empresa2 = Empresa(
@@ -302,7 +302,7 @@ async def test_get_stats_filtro_tipo_arl(
     test_afiliado,
 ):
     """Debe filtrar stats por tipo ARL correctamente."""
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.models.incapacidad import Incapacidad
     
     # Crear incapacidad ARL
     incap_arl = Incapacidad(
@@ -353,7 +353,7 @@ async def test_get_stats_filtro_tipo_salud(
     test_afiliado,
 ):
     """Debe filtrar stats por tipo SALUD correctamente."""
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.models.incapacidad import Incapacidad
     
     # Crear incapacidad SALUD
     incapacidad = Incapacidad(
@@ -384,7 +384,7 @@ async def test_get_stats_rango_fechas(
     test_empleado,
 ):
     """Debe filtrar stats por rango de fechas correctamente."""
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.models.incapacidad import Incapacidad
     
     # Crear incapacidad hace 5 días
     hace_5_dias = date.today() - timedelta(days=5)
@@ -425,7 +425,7 @@ async def test_get_stats_filtros_combinados(
     test_empleado,
 ):
     """Debe aplicar múltiples filtros simultáneamente."""
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.models.incapacidad import Incapacidad
     
     # Crear incapacidad con filtros específicos
     incapacidad = Incapacidad(
@@ -583,9 +583,9 @@ async def test_api_get_stats_sin_permisos(
     db_session: AsyncSession,
 ):
     """Debe rechazar usuarios sin permisos INCAPACIDAD_READ (403)."""
-    from apps.backend.app.models.usuario import Usuario
-    from apps.backend.app.utils.enums import RolUsuario
-    from apps.backend.app.core.security import create_access_token, get_password_hash
+    from app.models.usuario import Usuario
+    from app.utils.enums import RolUsuario
+    from app.core.security import create_access_token, get_password_hash
     
     # Crear usuario READONLY (sin permisos de lectura de incapacidades)
     usuario = Usuario(

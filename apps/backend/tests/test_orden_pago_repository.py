@@ -8,12 +8,12 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.orden_pago_repository import OrdenPagoRepository
-from apps.backend.app.models.orden_pago import OrdenPago
-from apps.backend.app.models.incapacidad import Incapacidad
-from apps.backend.app.models.empleado import Empleado
-from apps.backend.app.models.empresa import Empresa
-from apps.backend.app.utils.enums import (
+from app.db.repositories.orden_pago_repository import OrdenPagoRepository
+from app.models.orden_pago import OrdenPago
+from app.models.incapacidad import Incapacidad
+from app.models.empleado import Empleado
+from app.models.empresa import Empresa
+from app.utils.enums import (
     EstadoOrdenPago,
     EstadoIncapacidad,
     TipoIncapacidad,

@@ -11,9 +11,9 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.historial_estado_repository import historial_estado_repository
-from apps.backend.app.schemas.historial_estado import HistorialEstadoCreate
-from apps.backend.app.models.historial_estado import HistorialEstado
+from app.db.repositories.historial_estado_repository import historial_estado_repository
+from app.schemas.historial_estado import HistorialEstadoCreate
+from app.models.historial_estado import HistorialEstado
 
 
 class HistorialEstadoService:

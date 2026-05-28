@@ -9,7 +9,7 @@ import pytest
 from io import BytesIO
 
 from app.core.storage.filesystem import FileSystemStorage
-from apps.backend.app.core.exceptions import StorageException
+from app.core.exceptions import StorageException
 
 
 class TestFileSystemStorage:

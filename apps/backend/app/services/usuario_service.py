@@ -10,17 +10,17 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     NotFoundException,
     BadRequestException,
     ForbiddenException,
     ConflictException
 )
-from apps.backend.app.core.security import pwd_context
-from apps.backend.app.db.repositories.usuario_repository import usuario_repository
-from apps.backend.app.models.usuario import Usuario
-from apps.backend.app.schemas.usuario import UsuarioCreate, UsuarioUpdate
-from apps.backend.app.utils.enums import RolUsuario, EstadoUsuario
+from app.core.security import pwd_context
+from app.db.repositories.usuario_repository import usuario_repository
+from app.models.usuario import Usuario
+from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
+from app.utils.enums import RolUsuario, EstadoUsuario
 
 
 class UsuarioService:

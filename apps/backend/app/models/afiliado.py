@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import String, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from apps.backend.app.models.base import BaseModel
-from apps.backend.app.utils.enums import TipoDocumento, EstadoAfiliado, TipoPoliza, Genero, TipoCuenta, SyncSource
+from app.models.base import BaseModel
+from app.utils.enums import TipoDocumento, EstadoAfiliado, TipoPoliza, Genero, TipoCuenta, SyncSource
 
 if TYPE_CHECKING:
-    from apps.backend.app.models.incapacidad import Incapacidad
+    from app.models.incapacidad import Incapacidad
 
 
 class Afiliado(BaseModel):

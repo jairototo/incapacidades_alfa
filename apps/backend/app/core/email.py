@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 from jinja2 import Template
 from loguru import logger
 
-from apps.backend.app.core.config import settings
+from app.core.config import settings
 
 
 class EmailService:

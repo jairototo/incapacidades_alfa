@@ -13,8 +13,8 @@ from sqlalchemy import String, Date, Numeric, Text, Integer, ForeignKey, CheckCo
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, ENUM as PGEnum
 
-from apps.backend.app.models.base import BaseModel
-from apps.backend.app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
+from app.models.base import BaseModel
+from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
 
 
 class Incapacidad(BaseModel):

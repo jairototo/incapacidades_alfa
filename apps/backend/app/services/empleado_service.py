@@ -7,16 +7,16 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.core.exceptions import (
+from app.core.exceptions import (
     NotFoundException,
     BadRequestException,
     ConflictException
 )
-from apps.backend.app.db.repositories.empleado_repository import empleado_repository
-from apps.backend.app.db.repositories.empresa_repository import empresa_repository
-from apps.backend.app.models.empleado import Empleado
-from apps.backend.app.schemas.empleado import EmpleadoCreate, EmpleadoUpdate
-from apps.backend.app.utils.enums import EstadoEmpleado, EstadoEmpresa
+from app.db.repositories.empleado_repository import empleado_repository
+from app.db.repositories.empresa_repository import empresa_repository
+from app.models.empleado import Empleado
+from app.schemas.empleado import EmpleadoCreate, EmpleadoUpdate
+from app.utils.enums import EstadoEmpleado, EstadoEmpresa
 
 
 class EmpleadoService:

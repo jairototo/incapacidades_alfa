@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from apps.backend.app.db.session import AsyncSessionLocal
-from apps.backend.app.utils.enums import (
+from app.db.session import AsyncSessionLocal
+from app.utils.enums import (
     TipoIncapacidad, EstadoIncapacidad, Prioridad,
     EstadoEmpresa, TipoEmpresa, EstadoEmpleado,
     EstadoAfiliado, TipoPoliza, TipoDocumento, Genero,

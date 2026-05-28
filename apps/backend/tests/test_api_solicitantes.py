@@ -5,7 +5,7 @@ import pytest
 from httpx import AsyncClient
 from uuid import uuid4
 
-from apps.backend.app.models.solicitante import Solicitante
+from app.models.solicitante import Solicitante
 
 
 # ==================== TESTS CREAR SOLICITANTE ====================

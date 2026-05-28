@@ -9,9 +9,9 @@ from fastapi import APIRouter, HTTPException, Path as PathParam, Depends
 from fastapi.responses import FileResponse
 from loguru import logger
 
-from apps.backend.app.core.config import settings
-from apps.backend.app.core.security import get_current_user
-from apps.backend.app.models.usuario import Usuario
+from app.core.config import settings
+from app.core.security import get_current_user
+from app.models.usuario import Usuario
 
 
 router = APIRouter()

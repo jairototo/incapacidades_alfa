@@ -24,9 +24,9 @@ sys.path.append(str(Path(__file__).parent.parent))
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.session import AsyncSessionLocal
-from apps.backend.app.models.catalogo_cie10 import CatalogoCIE10
-from apps.backend.app.core.logging import logger
+from app.db.session import AsyncSessionLocal
+from app.models.catalogo_cie10 import CatalogoCIE10
+from app.core.logging import logger
 
 
 async def cargar_cie10_desde_csv(archivo_csv: str, session: AsyncSession) -> int:

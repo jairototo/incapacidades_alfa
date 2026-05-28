@@ -9,8 +9,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.backend.app.db.repositories.base_repository import BaseRepository
-from apps.backend.app.models.auditoria_datos_aprobados import AuditoriaDatosAprobados
+from app.db.repositories.base_repository import BaseRepository
+from app.models.auditoria_datos_aprobados import AuditoriaDatosAprobados
 
 
 class AuditoriaDatosRepository(BaseRepository[AuditoriaDatosAprobados]):

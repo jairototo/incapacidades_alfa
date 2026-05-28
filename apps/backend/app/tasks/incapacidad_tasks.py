@@ -8,10 +8,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from loguru import logger
 
-from apps.backend.app.tasks import celery_app
-from apps.backend.app.core.exceptions import NotFoundException, ValidationException
-from apps.backend.app.utils.enums import EstadoIncapacidad
-from apps.backend.app.tasks.email_tasks import send_incapacidad_radicada_email_task
+from app.tasks import celery_app
+from app.core.exceptions import NotFoundException, ValidationException
+from app.utils.enums import EstadoIncapacidad
+from app.tasks.email_tasks import send_incapacidad_radicada_email_task
 
 
 # Variables globales para lazy initialization
@@ -27,7 +27,7 @@ def get_sync_session():
     global _sync_engine, _SyncSessionLocal
     
     if _SyncSessionLocal is None:
-        from apps.backend.app.core.config import settings
+        from app.core.config import settings
         
         # Motor síncrono: reemplazar +asyncpg con psycopg2
         sync_database_uri = settings.DATABASE_URL.replace("+asyncpg", "")
@@ -85,8 +85,8 @@ def radicar_incapacidad_automatica_task(self, incapacidad_id: str):
     db: Session = get_sync_session()
     try:
         # Importar modelos (lazy import para evitar circularidad)
-        from apps.backend.app.models.incapacidad import Incapacidad
-        from apps.backend.app.models.historial_estado import HistorialEstado
+        from app.models.incapacidad import Incapacidad
+        from app.models.historial_estado import HistorialEstado
         
         # 1. Obtener incapacidad (query síncrona)
         incapacidad = db.query(Incapacidad).filter(Incapacidad.id == incap_uuid).first()
@@ -227,7 +227,7 @@ def procesar_incapacidades_radicadas_pendientes_task():
     
     db: Session = get_sync_session()
     try:
-        from apps.backend.app.models.incapacidad import Incapacidad
+        from app.models.incapacidad import Incapacidad
         
         # Buscar todas las incapacidades en estado RADICADA
         incapacidades_pendientes = db.query(Incapacidad).filter(

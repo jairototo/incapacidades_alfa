@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from loguru import logger
 from sqlalchemy import text
 
-from apps.backend.app.db.session import engine
-from apps.backend.app.core.config import settings
+from app.db.session import engine
+from app.core.config import settings
 
 
 def create_start_app_handler(app: FastAPI) -> Callable:
