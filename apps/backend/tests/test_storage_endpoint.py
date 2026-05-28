@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 
 from app.main import app
-from app.core.storage.filesystem import FileSystemStorage
+from app.core.storage_core.filesystem import FileSystemStorage
 
 
 class TestStorageEndpoint:

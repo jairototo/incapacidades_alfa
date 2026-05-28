@@ -141,7 +141,7 @@ venv.bak/
 # ===========================================
 # Storage y archivos subidos
 # ===========================================
-./storage/
+storage/
 uploads/
 pdf_documentos/
 documents/

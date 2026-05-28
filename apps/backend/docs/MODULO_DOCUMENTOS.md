@@ -60,7 +60,7 @@ El bucket se crea automáticamente en el startup de la aplicación:
 
 ```python
 # app/core/events.py
-from app.core.storage import storage_client
+from app.core.storage_core import storage_client
 logger.info(f"Storage client initialized (bucket: {storage_client.bucket_name})")
 ```
 

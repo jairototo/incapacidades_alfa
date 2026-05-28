@@ -130,9 +130,9 @@ FILESYSTEM_SERVE_FILES: bool = True  # Servir archivos directamente
 
 ```python
 from app.core.config import settings
-from app.core.storage.base import StorageBackend
-from app.core.storage.filesystem import FileSystemStorage
-from app.core.storage.minio import MinIOStorage
+from app.core.storage_core.base import StorageBackend
+from app.core.storage_core.filesystem import FileSystemStorage
+from app.core.storage_core.minio import MinIOStorage
 
 def get_storage_backend() -> StorageBackend:
     """Factory para obtener backend de storage según configuración."""
@@ -224,7 +224,7 @@ router.include_router(
 
 **Archivo**: `app/services/documento_service.py` (MODIFICAR)
 
-- Cambiar import: `from app.core.storage import storage_backend`
+- Cambiar import: `from app.core.storage_core import storage_backend`
 - Reemplazar `storage_client` por `storage_backend`
 - Mantener toda la lógica de validación existente
 - **NO cambiar** firmas de métodos públicos (compatibilidad)
@@ -246,7 +246,7 @@ async def startup_event():
     
     elif settings.STORAGE_BACKEND == "minio":
         # Inicializar MinIO (código actual)
-        from app.core.storage import storage_backend
+        from app.core.storage_core import storage_backend
         if hasattr(storage_backend, 'create_bucket'):
             await storage_backend.create_bucket(settings.STORAGE_BUCKET)
         logger.info("MinIO storage inicializado")

@@ -8,7 +8,7 @@ from datetime import datetime
 import pytest
 from io import BytesIO
 
-from app.core.storage.filesystem import FileSystemStorage
+from app.core.storage_core.filesystem import FileSystemStorage
 from app.core.exceptions import StorageException
 
 

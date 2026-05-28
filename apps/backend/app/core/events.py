@@ -29,7 +29,7 @@ def create_start_app_handler(app: FastAPI) -> Callable:
         
         # Initialize storage backend
         try:
-            from app.core.storage import storage_backend
+            from app.core.storage_core import storage_backend
             
             if settings.STORAGE_BACKEND == "filesystem":
                 # Crear directorio base si no existe

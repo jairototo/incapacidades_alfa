@@ -16,7 +16,7 @@ from app.core.exceptions import (
     ValidationException,
     FileException
 )
-from app.core.storage import storage_backend
+from app.core.storage_core import storage_backend
 from app.db.repositories.documento_repository import DocumentoRepository
 from app.models.documento import Documento
 from app.schemas.documento import DocumentoCreate, DocumentoUpdate, DocumentoResponse

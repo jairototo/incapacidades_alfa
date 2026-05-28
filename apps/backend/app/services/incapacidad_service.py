@@ -35,7 +35,7 @@ from app.utils.enums import (
     Prioridad,
     TipoDocumentoArchivo
 )
-from app.core.storage import storage_backend
+from app.core.storage_core import storage_backend
 
 
 # Matriz de transiciones de estados permitidas
