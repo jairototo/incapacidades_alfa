@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Base styles — Seguros Alfa Brand Book
+   Tipografía web: Roboto (cargada desde Google Fonts en index.html)
+   Reglas: alineación izquierda, bold para títulos, regular para cuerpo,
+           ratio tipográfico 2:1 (título = 2× tamaño del cuerpo)
+───────────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  html {
+    font-family: 'Roboto', Verdana, system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: theme('colors.white');
+    color: theme('colors.alfa-gray.900');
+    /* Alineación general: izquierda (Brand Book) */
+    text-align: left;
+  }
+
+  /* ── Jerarquía tipográfica (ratio 2:1) ─────────────────────────────────── */
+  h1 {
+    @apply text-3xl font-bold text-brand-900 leading-tight;  /* 30–32px bold */
+  }
+  h2 {
+    @apply text-2xl font-bold text-brand-900 leading-snug;   /* 24px bold */
+  }
+  h3 {
+    @apply text-xl font-bold text-brand-900 leading-snug;    /* 20px bold */
+  }
+  h4 {
+    @apply text-lg font-medium text-brand-900;               /* 18px medium */
+  }
+  h5, h6 {
+    @apply text-base font-medium text-brand-900;
+  }
+  p {
+    @apply text-base font-normal leading-relaxed;            /* 16px regular */
+  }
+  a {
+    @apply text-brand-600 hover:text-brand-700 transition-colors;
+  }
+
+  /* Textos legales: justificados (Brand Book) */
+  .text-legal {
+    @apply text-justify text-sm leading-relaxed;
+  }
+
+  /* Calls-to-action o info clave: centrado (Brand Book) */
+  .text-cta {
+    @apply text-center;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Componentes reutilizables — sistema de diseño Alfa
+───────────────────────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* Botones */
+  .btn-primary {
+    @apply bg-brand-600 text-white font-medium rounded-md px-4 py-2
+           hover:bg-brand-700 active:bg-brand-800
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors duration-150;
+  }
+
+  .btn-secondary {
+    @apply border border-brand-600 text-brand-600 bg-white font-medium rounded-md px-4 py-2
+           hover:bg-brand-50 active:bg-brand-100
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors duration-150;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 text-white font-medium rounded-md px-4 py-2
+           hover:bg-red-700 active:bg-red-800
+           focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors duration-150;
+  }
+
+  /* Badges de estado */
+  .badge-success {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-brand-100 text-brand-700;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-alfa-yellow-light/30 text-amber-800;
+  }
+
+  .badge-info {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-alfa-blue/15 text-alfa-blue-dark;
+  }
+
+  .badge-error {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-red-100 text-red-700;
+  }
+
+  /* Card genérico */
+  .card {
+    @apply bg-white rounded-lg border border-gray-200 shadow-sm p-6;
+  }
+
+  /* Campo de formulario */
+  .form-input {
+    @apply block w-full rounded-md border border-gray-300 px-3 py-2
+           text-base font-normal text-gray-900
+           placeholder:text-gray-400
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
+           disabled:bg-gray-50 disabled:text-gray-500
+           transition-colors duration-150;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-brand-900 mb-1;
+  }
+}
+
