@@ -8,22 +8,15 @@ export interface StepperProps {
 }
 
 /**
- * Stepper component para mostrar el progreso del wizard
- * Muestra los pasos completados, el paso actual y los pasos pendientes
+ * Stepper — Brand Book Seguros Alfa
+ * Usa tokens semánticos: primary (#009B76), foreground (#004953), muted
  */
 export function Stepper({ currentStep, totalSteps, steps }: StepperProps) {
-  const defaultSteps = [
-    'Tipo de Incapacidad',
-    'Datos Personales',
-    'Datos Incapacidad',
-    'Documentos',
-    'Confirmación',
-  ];
-
+  const defaultSteps = ['Datos del Solicitante', 'Incapacidad y Documentos'];
   const stepLabels = steps || defaultSteps.slice(0, totalSteps);
 
   return (
-    <div className="w-full py-6">
+    <div className="w-full py-4">
       <div className="flex items-center justify-between">
         {stepLabels.map((label, index) => {
           const stepNumber = index + 1;
@@ -38,12 +31,9 @@ export function Stepper({ currentStep, totalSteps, steps }: StepperProps) {
                 <div
                   className={cn(
                     'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300',
-                    isCompleted &&
-                      'bg-blue-600 border-blue-600 text-white',
-                    isCurrent &&
-                      'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200',
-                    isPending &&
-                      'bg-white border-gray-300 text-gray-400'
+                    isCompleted && 'bg-primary border-primary text-primary-foreground',
+                    isCurrent && 'bg-primary border-primary text-primary-foreground shadow-md',
+                    isPending && 'bg-background border-border text-muted-foreground'
                   )}
                 >
                   {isCompleted ? (
@@ -52,25 +42,25 @@ export function Stepper({ currentStep, totalSteps, steps }: StepperProps) {
                     <span className="text-sm font-semibold">{stepNumber}</span>
                   )}
                 </div>
-                
-                {/* Step Label - Hidden on mobile */}
+
+                {/* Step Label — oculto en mobile */}
                 <span
                   className={cn(
                     'mt-2 text-xs font-medium text-center transition-colors duration-300 hidden sm:block',
-                    (isCompleted || isCurrent) && 'text-blue-600',
-                    isPending && 'text-gray-400'
+                    (isCompleted || isCurrent) && 'text-primary',
+                    isPending && 'text-muted-foreground'
                   )}
                 >
                   {label}
                 </span>
               </div>
 
-              {/* Connector Line */}
+              {/* Línea conectora */}
               {index < totalSteps - 1 && (
                 <div
                   className={cn(
                     'h-0.5 flex-1 mx-2 transition-all duration-300',
-                    isCompleted ? 'bg-blue-600' : 'bg-gray-300'
+                    isCompleted ? 'bg-primary' : 'bg-border'
                   )}
                 />
               )}
@@ -79,9 +69,9 @@ export function Stepper({ currentStep, totalSteps, steps }: StepperProps) {
         })}
       </div>
 
-      {/* Current Step Label - Visible on mobile */}
-      <div className="mt-4 text-center sm:hidden">
-        <span className="text-sm font-medium text-blue-600">
+      {/* Label del paso actual — visible solo en mobile */}
+      <div className="mt-3 text-center sm:hidden">
+        <span className="text-sm font-medium text-primary">
           {stepLabels[currentStep - 1]}
         </span>
       </div>

@@ -1,189 +1,176 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stepper } from './Stepper';
-import { DatosSolicitanteForm } from './DatosSolicitanteForm';
-import { TipoIncapacidadSelector } from './TipoIncapacidadSelector';
-import { DatosPersonalesForm } from './DatosPersonalesForm';
-import { DatosIncapacidadForm } from './DatosIncapacidadForm';
-import { DocumentosForm } from './DocumentosForm';
-import { ResumenRadicacionForm } from './ResumenRadicacionForm';
+import { Paso1SolicitanteEmpresaEmpleado } from './Paso1SolicitanteEmpresaEmpleado';
+import { Paso2IncapacidadDocumentos, type Paso2FormData } from './Paso2IncapacidadDocumentos';
 import { ConfirmacionExitosa } from './ConfirmacionExitosa';
-import { useCreateIncapacidad, transformWizardToDTO } from '@/services/incapacidadService';
-import { uploadMultipleDocumentos } from '@/services/documentoService';
+import {
+  crearPreIncapacidad,
+  subirTodosLosDocumentos,
+  formatDateForApi,
+} from '@/services/preIncapacidadService';
 import { useToast } from '@/hooks/use-toast';
-import type { Solicitante } from '@/types/solicitante';
-import type { DatosPersonalesFormData } from './DatosPersonalesForm';
-import type { DatosIncapacidadARL, DatosIncapacidadSalud, DocumentosFormData } from '@/schemas/radicacionSchema';
+import type { Paso1FormData } from '@/schemas/radicacionSchema';
+
+const WIZARD_STEPS = ['Datos del Solicitante', 'Incapacidad y Documentos'];
 
 export interface WizardFormData {
-  solicitante?: Solicitante;
-  tipo?: string;
-  datosPersonales?: DatosPersonalesFormData;
-  datosIncapacidad?: DatosIncapacidadARL | DatosIncapacidadSalud;
-  documentos?: DocumentosFormData;
+  paso1?: Paso1FormData;
+  paso2?: Paso2FormData;
 }
 
 /**
- * Componente principal del wizard de radicación de incapacidades
- * Maneja el estado y navegación entre los 6 pasos (0-5)
+ * Wizard de radicación de incapacidades ARL — Portal Externo.
+ * 2 pasos:
+ *   1. Solicitante + Empresa + Empleado (datos planos, sin búsqueda en BD)
+ *   2. Datos de incapacidad + Documentos adjuntos
+ *
+ * Envía a POST /api/v1/pre-incapacidades/radicar y luego sube documentos.
  */
 export function RadicarIncapacidadWizard() {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(1); // 1-indexed para Stepper
   const [formData, setFormData] = useState<WizardFormData>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [numeroRadicacion, setNumeroRadicacion] = useState<string>('');
+  const [numeroRadicacion, setNumeroRadicacion] = useState<number | null>(null);
   const [showConfirmacion, setShowConfirmacion] = useState(false);
 
   const navigate = useNavigate();
   const { toast } = useToast();
-  const createIncapacidadMutation = useCreateIncapacidad();
 
-  // Paso 0: Datos del Solicitante
-  const handleSolicitanteBack = () => {
-    toast({
-      title: 'Cancelar radicación',
-      description: '¿Está seguro de que desea cancelar?',
-      variant: 'default',
-    });
-    // TODO: Implementar confirmación de cancelación
-  };
+  // ── Paso 1 ────────────────────────────────────────────────────────────────
 
-  const handleSolicitanteContinue = (solicitante: Solicitante) => {
-    setFormData({ ...formData, solicitante });
-    setCurrentStep(1);
-  };
-
-  // Paso 1: Tipo de Incapacidad
-  const handleTipoContinue = (tipo: string) => {
-    setFormData({ ...formData, tipo });
+  const handlePaso1Continue = (paso1: Paso1FormData) => {
+    setFormData((prev) => ({ ...prev, paso1 }));
     setCurrentStep(2);
   };
 
-  const handleTipoBack = () => {
-    setCurrentStep(0);
+  const handlePaso1Cancel = () => {
+    navigate('/');
   };
 
-  // Paso 2: Datos Personales
-  const handleDatosPersonalesBack = () => {
+  // ── Paso 2 ────────────────────────────────────────────────────────────────
+
+  const handlePaso2Back = () => {
     setCurrentStep(1);
   };
 
-  const handleDatosPersonalesContinue = (datosPersonales: DatosPersonalesFormData) => {
-    setFormData({ ...formData, datosPersonales });
-    setCurrentStep(3);
-  };
+  const handlePaso2Submit = async (paso2: Paso2FormData) => {
+    if (!formData.paso1) return;
 
-  // Paso 3: Datos de Incapacidad
-  const handleDatosIncapacidadBack = () => {
-    setCurrentStep(2);
-  };
-
-  const handleDatosIncapacidadContinue = (datosIncapacidad: DatosIncapacidadARL | DatosIncapacidadSalud) => {
-    setFormData({ ...formData, datosIncapacidad });
-    setCurrentStep(4);
-  };
-
-  // Paso 4: Documentos
-  const handleDocumentosBack = () => {
-    setCurrentStep(3);
-  };
-
-  const handleDocumentosContinue = (documentos: DocumentosFormData) => {
-    setFormData({ ...formData, documentos });
-    setCurrentStep(5);
-  };
-
-  // Paso 5: Resumen
-  const handleResumenBack = () => {
-    setCurrentStep(4);
-  };
-
-  const handleResumenSubmit = async () => {
     setIsSubmitting(true);
+    const paso1 = formData.paso1;
+    const { incapacidad, documentos } = paso2;
 
     try {
-      // 1. Transformar datos del wizard al formato DTO del backend
-      const incapacidadDTO = transformWizardToDTO(formData);
-      
-      // 2. Agregar solicitante_id si existe
-      if (formData.solicitante) {
-        incapacidadDTO.solicitante_id = formData.solicitante.id;
-      }
+      // ── 1. Crear pre-incapacidad ─────────────────────────────────────────
+      const diasTotales =
+        incapacidad.fecha_inicio && incapacidad.fecha_fin
+          ? Math.max(
+              1,
+              Math.round(
+                (incapacidad.fecha_fin.getTime() - incapacidad.fecha_inicio.getTime()) /
+                  (1000 * 60 * 60 * 24)
+              ) + 1
+            )
+          : 1;
 
-      // 3. Crear incapacidad en el backend
-      const incapacidadCreada = await createIncapacidadMutation.mutateAsync(incapacidadDTO);
-
-      // 4. Subir documentos si existen
-      if (formData.documentos) {
-        const documentosParaSubir = [];
-        
-        // Convertir documentos al formato esperado
-        if (formData.documentos.incapacidad_medica) {
-          documentosParaSubir.push(
-            ...formData.documentos.incapacidad_medica.map((file) => ({
-              file,
-              tipo: 'INCAPACIDAD_MEDICA' as const,
-            }))
-          );
-        }
-        
-        if (formData.documentos.historia_clinica) {
-          documentosParaSubir.push(
-            ...formData.documentos.historia_clinica.map((file) => ({
-              file,
-              tipo: 'HISTORIA_CLINICA' as const,
-            }))
-          );
-        }
-        
-        if (formData.documentos.soportes_adicionales) {
-          documentosParaSubir.push(
-            ...formData.documentos.soportes_adicionales.map((file) => ({
-              file,
-              tipo: 'OTRO' as const,
-            }))
-          );
-        }
-
-        if (documentosParaSubir.length > 0) {
-          const resultadosUpload = await uploadMultipleDocumentos(
-            incapacidadCreada.id,
-            documentosParaSubir
-          );
-
-          // Verificar si hubo errores en upload de documentos
-          const errores = resultadosUpload.filter((r) => !r.success);
-          if (errores.length > 0) {
-            console.warn('Algunos documentos no se pudieron subir:', errores);
-            toast({
-              title: 'Advertencia',
-              description: `Incapacidad creada, pero ${errores.length} documento(s) no se pudieron subir.`,
-              variant: 'default',
-            });
-          }
-        }
-      }
-
-      // 5. Mostrar confirmación exitosa
-      setNumeroRadicacion(incapacidadCreada.numero);
-      setShowConfirmacion(true);
-
-      toast({
-        title: 'Éxito',
-        description: `Incapacidad ${incapacidadCreada.numero} radicada exitosamente`,
-        variant: 'default',
+      const preIncapacidad = await crearPreIncapacidad({
+        solicitante: {
+          correo: paso1.solicitante.correo,
+          nombres: paso1.solicitante.nombres,
+          apellidos: paso1.solicitante.apellidos || undefined,
+          telefono: paso1.solicitante.telefono || undefined,
+        },
+        empresa:
+          paso1.empresa && (paso1.empresa.nit || paso1.empresa.nombre)
+            ? {
+                nit: paso1.empresa.nit || undefined,
+                nombre: paso1.empresa.nombre || undefined,
+              }
+            : undefined,
+        empleado: {
+          tipo_documento: paso1.empleado.tipo_documento,
+          numero_documento: paso1.empleado.numero_documento,
+          nombres: paso1.empleado.nombres,
+          apellidos: paso1.empleado.apellidos || undefined,
+          email: paso1.empleado.email || undefined,
+          telefono: paso1.empleado.telefono || undefined,
+        },
+        incapacidad: {
+          tipo_enfermedad: incapacidad.tipo_enfermedad,
+          fecha_inicio: formatDateForApi(incapacidad.fecha_inicio),
+          fecha_fin: formatDateForApi(incapacidad.fecha_fin),
+          dias_totales: diasTotales,
+          diagnostico_cie10: incapacidad.diagnostico_cie10,
+          descripcion_diagnostico: incapacidad.descripcion_diagnostico || undefined,
+          nombre_medico: incapacidad.nombre_medico,
+          registro_medico: incapacidad.registro_medico,
+          ips: incapacidad.ips || undefined,
+          observaciones: incapacidad.observaciones || undefined,
+        },
       });
+
+      // ── 2. Subir documentos ──────────────────────────────────────────────
+      const archivosParaSubir: {
+        file: File;
+        tipo: 'INCAPACIDAD_MEDICA' | 'HISTORIA_CLINICA' | 'SOPORTE_ADICIONAL';
+      }[] = [];
+
+      if (documentos.incapacidad_medica?.length) {
+        archivosParaSubir.push(
+          ...documentos.incapacidad_medica.map((file) => ({
+            file,
+            tipo: 'INCAPACIDAD_MEDICA' as const,
+          }))
+        );
+      }
+      if (documentos.historia_clinica?.length) {
+        archivosParaSubir.push(
+          ...documentos.historia_clinica.map((file) => ({
+            file,
+            tipo: 'HISTORIA_CLINICA' as const,
+          }))
+        );
+      }
+      if (documentos.soportes_adicionales?.length) {
+        archivosParaSubir.push(
+          ...documentos.soportes_adicionales.map((file) => ({
+            file,
+            tipo: 'SOPORTE_ADICIONAL' as const,
+          }))
+        );
+      }
+
+      if (archivosParaSubir.length > 0) {
+        const resultados = await subirTodosLosDocumentos(
+          preIncapacidad.id,
+          archivosParaSubir
+        );
+
+        const errores = resultados.filter((r) => !r.success);
+        if (errores.length > 0) {
+          // No bloqueante — la radicación ya fue creada. El job reintentará.
+          toast({
+            title: 'Advertencia',
+            description: `Radicación creada, pero ${errores.length} documento(s) presentaron fallas de subida. Serán reintentados automáticamente.`,
+            variant: 'default',
+          });
+        }
+      }
+
+      // ── 3. Mostrar confirmación ──────────────────────────────────────────
+      setNumeroRadicacion(preIncapacidad.numero_radicacion);
+      setShowConfirmacion(true);
     } catch (error: any) {
       console.error('Error al radicar incapacidad:', error);
 
-      // Mostrar mensaje de error detallado
       const errorMessage =
-        error.response?.data?.error?.message ||
-        error.response?.data?.detail ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.error?.message ||
         'Ocurrió un error al radicar la incapacidad. Por favor intente nuevamente.';
 
       toast({
-        title: 'Error al radicar incapacidad',
+        title: 'Error al radicar',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -192,12 +179,13 @@ export function RadicarIncapacidadWizard() {
     }
   };
 
+  // ── Reinicio ──────────────────────────────────────────────────────────────
+
   const handleRadicarOtra = () => {
-    // Reset completo del wizard
     setFormData({});
-    setCurrentStep(0);
+    setCurrentStep(1);
     setShowConfirmacion(false);
-    setNumeroRadicacion('');
+    setNumeroRadicacion(null);
   };
 
   const handleConsultarEstado = () => {
@@ -205,13 +193,12 @@ export function RadicarIncapacidadWizard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Mostrar confirmación exitosa si ya se completó */}
+    <div className="min-h-screen bg-muted py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {showConfirmacion ? (
           <div className="bg-white rounded-lg shadow-sm p-8">
             <ConfirmacionExitosa
-              numeroRadicacion={numeroRadicacion}
+              numeroRadicacion={numeroRadicacion!}
               onRadicarOtra={handleRadicarOtra}
               onConsultarEstado={handleConsultarEstado}
             />
@@ -220,114 +207,50 @@ export function RadicarIncapacidadWizard() {
           <>
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Radicar Incapacidad
-              </h1>
-              <p className="text-gray-600">
-                Complete los siguientes pasos para radicar su incapacidad
-              </p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Radicar Incapacidad</h1>
+              <p className="text-muted-foreground">Complete los dos pasos para radicar su incapacidad ARL</p>
             </div>
 
             {/* Stepper */}
             <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-              <Stepper currentStep={currentStep} totalSteps={6} />
+              <Stepper
+                currentStep={currentStep}
+                totalSteps={2}
+                steps={WIZARD_STEPS}
+              />
             </div>
 
-            {/* Wizard Content */}
+            {/* Contenido del paso */}
             <div className="bg-white rounded-lg shadow-sm p-8">
-              {/* Paso 0: Datos del Solicitante */}
-              {currentStep === 0 && (
-                <DatosSolicitanteForm
-                  initialData={formData.solicitante}
-                  onNext={handleSolicitanteContinue}
-                  onBack={handleSolicitanteBack}
-                />
-              )}
-
-              {/* Paso 1: Tipo de Incapacidad */}
               {currentStep === 1 && (
-                <TipoIncapacidadSelector 
-                  onContinue={handleTipoContinue}
-                  onBack={handleTipoBack}
+                <Paso1SolicitanteEmpresaEmpleado
+                  initialData={formData.paso1}
+                  onContinue={handlePaso1Continue}
+                  onCancel={handlePaso1Cancel}
                 />
               )}
 
-              {/* Paso 2: Datos Personales */}
-              {currentStep === 2 && formData.tipo && (
-                <DatosPersonalesForm
-                  tipo={formData.tipo as 'ARL' | 'SALUD'}
-                  initialData={formData.datosPersonales}
-                  onContinue={handleDatosPersonalesContinue}
-                  onBack={handleDatosPersonalesBack}
+              {currentStep === 2 && (
+                <Paso2IncapacidadDocumentos
+                  initialData={formData.paso2}
+                  onBack={handlePaso2Back}
+                  onContinue={handlePaso2Submit}
                 />
-              )}
-
-              {/* Paso 3: Datos de Incapacidad */}
-              {currentStep === 3 && formData.tipo && (
-                <DatosIncapacidadForm
-                  tipo={formData.tipo as 'ARL' | 'SALUD'}
-                  initialData={formData.datosIncapacidad}
-                  onContinue={handleDatosIncapacidadContinue}
-                  onBack={handleDatosIncapacidadBack}
-                />
-              )}
-
-              {/* Paso 4: Documentos */}
-              {currentStep === 4 && formData.tipo && (
-                <DocumentosForm
-                  tipo={formData.tipo as 'ARL' | 'SALUD'}
-                  initialData={formData.documentos}
-                  onBack={handleDocumentosBack}
-                  onContinue={handleDocumentosContinue}
-                />
-              )}
-
-              {/* Paso 5: Resumen y confirmación */}
-              {currentStep === 5 && (
-                <ResumenRadicacionForm
-                  wizardData={formData}
-                  onBack={handleResumenBack}
-                  onSubmit={handleResumenSubmit}
-                  isSubmitting={isSubmitting}
-                />
-              )}
-
-              {/* Paso 2: Fallback si no hay tipo */}
-              {currentStep === 2 && !formData.tipo && (
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    Paso 2: Datos Personales
-                  </h2>
-                  <p className="text-gray-500 italic">
-                    Debe seleccionar el tipo de incapacidad primero
-                  </p>
-                  <button
-                    onClick={() => setCurrentStep(1)}
-                    className="mt-6 px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                  >
-                    Volver al Paso 1
-                  </button>
-                </div>
-              )}
-
-              {/* Pasos 6+: Placeholder */}
-              {currentStep > 5 && (
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    Paso {currentStep}
-                  </h2>
-                  <p className="text-gray-500 italic">
-                    Este paso no existe. Máximo 6 pasos (0-5)
-                  </p>
-                  <button
-                    onClick={() => setCurrentStep(5)}
-                    className="mt-6 px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                  >
-                    Volver al Paso 5
-                  </button>
-                </div>
               )}
             </div>
+
+            {/* Overlay de envío */}
+            {isSubmitting && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-8 max-w-sm mx-4 text-center shadow-xl">
+                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Radicando incapacidad...</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Por favor espere. Estamos procesando su solicitud y subiendo los documentos.
+                  </p>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

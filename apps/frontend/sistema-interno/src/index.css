@@ -2,81 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Sistema Interno — Seguros Alfa Brand Book
+   Paleta oficial: https://zeroheight.com/24509f59d/p/645c19-paleta-de-color
+   Tipografía: Roboto (Google Fonts, cargada en index.html)
+   Tailwind: v3  |  Zod: v3
+   ─────────────────────────────────────────────────────────────────────────────
+   IMPORTANTE: Este frontend usa Tailwind v3. No copiar clases ni schemas Zod
+   al portal-externo (usa Tailwind v4 y Zod v4).
+───────────────────────────────────────────────────────────────────────────── */
+
 @layer base {
   :root {
-    --background: 210 20% 98%; /* fondo claro, neutro */
-    --foreground: 220 15% 18%; /* texto principal oscuro */
+    /* ── Fondo y texto base ─────────────────────────────────────────────── */
+    --background:           0   0% 100%;    /* blanco puro */
+    --foreground:         187 100% 16%;    /* #004953 Azul Profundo — texto principal */
 
-    --card: 0 0% 100%; /* blanco para tarjetas */
-    --card-foreground: 220 15% 18%;
+    /* ── Cards / Popovers ──────────────────────────────────────────────── */
+    --card:                 0   0% 100%;
+    --card-foreground:    187 100% 16%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 18%;
+    --popover:              0   0% 100%;
+    --popover-foreground: 187 100% 16%;
 
-    /* Azul corporativo (Seguros Alfa logo) */
-    --primary: 174.0 69% 38%;  
-    --primary-foreground: 210 40% 98%;
-    
-    /* Amarillo acento del logo */
-    --secondary: 47 97% 60%;
-    --secondary-foreground: 222 15% 15%;
+    /* ── Primario — Verde Claro #009B76 ────────────────────────────────── */
+    --primary:            166 100% 30%;
+    --primary-foreground:   0   0% 100%;   /* blanco sobre verde */
 
-    /* Colores de apoyo */
-    --muted: 214 31% 92%;
-    --muted-foreground: 215 16% 46%;
+    /* ── Secundario — Verde Limón #7AB800 ──────────────────────────────── */
+    --secondary:           80 100% 36%;
+    --secondary-foreground: 0   0%  10%;   /* texto oscuro sobre limón */
 
-    /* Gris oscuro / neutral para acentos menores */
-    --accent: 220 15% 30%;
-    --accent-foreground: 210 40% 98%;
+    /* ── Muted — verde muy suave ────────────────────────────────────────── */
+    --muted:              166  30% 94%;
+    --muted-foreground:   175  20% 40%;
 
-    /* Semánticos */
-    --destructive: 355 65% 55%;
-    --destructive-foreground: 210 40% 98%;
+    /* ── Acento — Amarillo #FECB00 ─────────────────────────────────────── */
+    --accent:              48 100% 50%;
+    --accent-foreground:  187 100% 16%;   /* Azul Profundo sobre amarillo */
 
-    /* Bordes / inputs */
-    --border: 214 25% 88%;
-    --input: 214 25% 90%;
-    --ring: 217 69% 23%;
+    /* ── Destructive — rojo estándar ────────────────────────────────────── */
+    --destructive:          0  72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* ── Bordes e inputs ─────────────────────────────────────────────────── */
+    --border:             166  20% 88%;
+    --input:              166  20% 90%;
+    --ring:               166 100% 30%;   /* Verde Claro para focus rings */
 
     --radius: 0.5rem;
+
+    /* ── Colores secundarios puntuales ──────────────────────────────────── */
+    --color-info:         190 100% 35%;   /* #0094B3 Azul secundario */
+    --color-warning:       48 100% 50%;   /* #FECB00 Amarillo (mismo que accent) */
+    --color-special:      289  60% 30%;   /* #6B1F7C Morado */
+    --color-dark-green:   175 100% 18%;   /* #005D55 Verde Oscuro */
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+  /* ── Tipografía — Brand Book Alfa (ratio 2:1) ──────────────────────────── */
+  html {
+    font-family: 'Roboto', Verdana, system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-}
 
-@layer base {
+  body {
+    @apply bg-background text-foreground;
+    text-align: left; /* Brand Book: alineación izquierda por defecto */
+  }
+
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  /* ── Jerarquía tipográfica (ratio 2:1) ─────────────────────────────────── */
+  h1 { @apply text-3xl font-bold leading-tight; }    /* 30–32px bold */
+  h2 { @apply text-2xl font-bold leading-snug; }     /* 24px bold */
+  h3 { @apply text-xl  font-bold leading-snug; }     /* 20px bold */
+  h4 { @apply text-lg  font-medium; }                /* 18px medium */
+  h5, h6 { @apply text-base font-medium; }           /* 16px medium */
+  p  { @apply text-base font-normal leading-relaxed; }/* 16px regular */
+  a  { @apply text-primary hover:text-primary/80 transition-colors; }
+
+  /* ── Clases especiales de alineación (Brand Book) ──────────────────────── */
+  .text-legal { @apply text-justify text-sm leading-relaxed; }
+  .text-cta   { @apply text-center; }
+}
+
+@layer components {
+  /* ── Keyframes (Shadcn/ui accordion) ───────────────────────────────────── */
+  @keyframes accordion-down {
+    from { height: 0; }
+    to   { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to   { height: 0; }
   }
 }

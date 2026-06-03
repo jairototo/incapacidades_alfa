@@ -93,24 +93,24 @@ export function AutocompleteEmpresa({
         {/* Search/Check Icon */}
         <div className="pointer-events-none absolute right-3 top-[38px] flex items-center">
           {readOnly && selectedId ? (
-            <Check className="h-4 w-4 text-green-600" />
+            <Check className="h-4 w-4 text-primary" />
           ) : (
-            <Search className="h-4 w-4 text-gray-400" />
+            <Search className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
       </div>
 
       {/* Dropdown */}
       {showDropdown && (
-        <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-background shadow-lg">
           {isLoading && (
-            <div className="px-4 py-3 text-center text-sm text-gray-500">
+            <div className="px-4 py-3 text-center text-sm text-muted-foreground">
               Buscando empresas...
             </div>
           )}
 
           {!isLoading && empresas.length === 0 && (
-            <div className="px-4 py-3 text-center text-sm text-gray-500">
+            <div className="px-4 py-3 text-center text-sm text-muted-foreground">
               No se encontraron empresas
             </div>
           )}
@@ -124,20 +124,20 @@ export function AutocompleteEmpresa({
                     onClick={() => handleSelect(empresa)}
                     className={cn(
                       'flex w-full items-center gap-3 px-4 py-2 text-left transition-colors',
-                      'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none'
+                      'hover:bg-muted focus:bg-muted focus:outline-none'
                     )}
                   >
-                    <Building2 className="h-5 w-5 flex-shrink-0 text-blue-600" />
+                    <Building2 className="h-5 w-5 flex-shrink-0 text-primary" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {empresa.razon_social}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         NIT: {empresa.nit}
                       </p>
                     </div>
                     {selectedId === empresa.id && (
-                      <Check className="h-4 w-4 text-blue-600" />
+                      <Check className="h-4 w-4 text-primary" />
                     )}
                   </button>
                 </li>
@@ -149,7 +149,7 @@ export function AutocompleteEmpresa({
 
       {/* Selected empresa indicator */}
       {selectedId && query && (
-        <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+        <div className="mt-2 flex items-center gap-2 text-sm text-primary">
           <Check className="h-4 w-4" />
           <span>Empresa seleccionada</span>
         </div>

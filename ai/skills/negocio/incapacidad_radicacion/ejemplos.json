@@ -1,0 +1,171 @@
+{
+  "_comment": "Ejemplos de payloads para la API de radicación de incapacidades. Ver reglas en reglas_negocio.md y validaciones en validaciones.md",
+  "_api_endpoint": "POST /api/v1/incapacidades/radicar",
+  "_docs": "docs/modulos/backend/MODULO_SOLICITANTE_COMPLETADO.md",
+
+  "arl_completo": {
+    "_descripcion": "Incapacidad ARL (accidente de trabajo) con todos los campos",
+    "tipo_incapacidad": "ARL",
+    "solicitante": {
+      "tipo_documento": "CC",
+      "numero_documento": "1098765432",
+      "primer_nombre": "María",
+      "segundo_nombre": "Fernanda",
+      "primer_apellido": "González",
+      "segundo_apellido": "Ríos",
+      "correo": "mfgonzalez@empresa.com.co",
+      "telefono": "3201234567"
+    },
+    "empleado": {
+      "tipo_documento": "CC",
+      "numero_documento": "1098765432",
+      "primer_nombre": "María",
+      "primer_apellido": "González",
+      "segundo_apellido": "Ríos",
+      "empresa_nit": "900123456",
+      "empresa_razon_social": "Construcciones Andinas SAS"
+    },
+    "incapacidad": {
+      "fecha_inicio": "2026-05-15",
+      "fecha_fin": "2026-05-25",
+      "dias_incapacidad": 10,
+      "codigo_cie10": "S52.0",
+      "diagnostico": "Fractura de la cabeza del radio",
+      "fecha_accidente": "2026-05-15",
+      "hora_accidente": "09:30",
+      "lugar_accidente": "Obra Calle 80 con Carrera 50, Bogotá",
+      "descripcion_accidente": "El trabajador resbaló en el andamio durante labores de instalación de fachada y cayó golpeándose el brazo derecho contra la estructura metálica",
+      "actividad_realizada": "Instalación de fachada en andamio"
+    },
+    "declaracion_veracidad": true,
+    "aceptacion_tratamiento_datos": true
+  },
+
+  "arl_minimo": {
+    "_descripcion": "Incapacidad ARL con campos mínimos requeridos (RN005 — recepción parcial permitida)",
+    "tipo_incapacidad": "ARL",
+    "solicitante": {
+      "tipo_documento": "CC",
+      "numero_documento": "79854321",
+      "primer_nombre": "Carlos",
+      "primer_apellido": "Mejía",
+      "correo": "carlos.mejia@gmail.com",
+      "telefono": "3114567890"
+    },
+    "empleado": {
+      "tipo_documento": "CC",
+      "numero_documento": "79854321",
+      "primer_nombre": "Carlos",
+      "primer_apellido": "Mejía",
+      "empresa_nit": "800654321",
+      "empresa_razon_social": "Servicios Industriales Ltda"
+    },
+    "incapacidad": {
+      "fecha_inicio": "2026-06-01",
+      "fecha_fin": "2026-06-07",
+      "dias_incapacidad": 6,
+      "codigo_cie10": "T14.0",
+      "fecha_accidente": "2026-06-01",
+      "hora_accidente": "14:00",
+      "descripcion_accidente": "Trabajador sufrió cortada en la mano izquierda al manipular herramienta de corte sin guantes de protección durante mantenimiento de maquinaria",
+      "lugar_accidente": "Planta de producción — Bodega 3",
+      "actividad_realizada": "Mantenimiento preventivo de maquinaria"
+    },
+    "declaracion_veracidad": true,
+    "aceptacion_tratamiento_datos": true
+  },
+
+  "salud_completo": {
+    "_descripcion": "Incapacidad SALUD (enfermedad general) para afiliado — no vinculado laboralmente",
+    "tipo_incapacidad": "SALUD",
+    "solicitante": {
+      "tipo_documento": "CC",
+      "numero_documento": "52789654",
+      "primer_nombre": "Lucía",
+      "segundo_nombre": "Patricia",
+      "primer_apellido": "Vargas",
+      "segundo_apellido": "Castro",
+      "correo": "lucia.vargas@hotmail.com",
+      "telefono": "3009876543"
+    },
+    "afiliado": {
+      "tipo_documento": "CC",
+      "numero_documento": "52789654",
+      "primer_nombre": "Lucía",
+      "segundo_nombre": "Patricia",
+      "primer_apellido": "Vargas",
+      "segundo_apellido": "Castro",
+      "fecha_nacimiento": "1985-03-22",
+      "eps": "SURA"
+    },
+    "incapacidad": {
+      "fecha_inicio": "2026-05-20",
+      "fecha_fin": "2026-05-30",
+      "dias_incapacidad": 10,
+      "codigo_cie10": "J18.1",
+      "diagnostico": "Neumonía lobar",
+      "nombre_medico": "Dr. Andrés Torres",
+      "registro_medico": "54321-CO"
+    },
+    "declaracion_veracidad": true,
+    "aceptacion_tratamiento_datos": true
+  },
+
+  "salud_extranjero": {
+    "_descripcion": "Incapacidad SALUD para afiliado extranjero con documento PEP",
+    "tipo_incapacidad": "SALUD",
+    "solicitante": {
+      "tipo_documento": "PEP",
+      "numero_documento": "PEP-2024-123456",
+      "primer_nombre": "Andrés",
+      "primer_apellido": "Rodríguez",
+      "correo": "andres.rodriguez@example.com",
+      "telefono": "3155551234"
+    },
+    "afiliado": {
+      "tipo_documento": "PEP",
+      "numero_documento": "PEP-2024-123456",
+      "primer_nombre": "Andrés",
+      "primer_apellido": "Rodríguez",
+      "fecha_nacimiento": "1990-07-10",
+      "eps": "NUEVA EPS"
+    },
+    "incapacidad": {
+      "fecha_inicio": "2026-06-02",
+      "fecha_fin": "2026-06-08",
+      "dias_incapacidad": 6,
+      "codigo_cie10": "A09",
+      "diagnostico": "Gastroenteritis infecciosa"
+    },
+    "declaracion_veracidad": true,
+    "aceptacion_tratamiento_datos": true
+  },
+
+  "respuesta_exitosa": {
+    "_descripcion": "Estructura de respuesta al radicar exitosamente (HTTP 201)",
+    "id": 1247,
+    "numero_radicado": "INC-2026-001247",
+    "estado": "RADICADA",
+    "fecha_radicacion": "2026-06-02T14:23:11.456789",
+    "tipo_incapacidad": "ARL",
+    "mensaje": "Incapacidad radicada exitosamente. Conserve su número de radicado para consultas."
+  },
+
+  "error_validacion": {
+    "_descripcion": "Respuesta HTTP 422 cuando la validación falla",
+    "detail": [
+      {
+        "type": "value_error",
+        "loc": ["body", "incapacidad", "codigo_cie10"],
+        "msg": "Formato CIE-10 inválido. Ejemplo: A09, J18.1",
+        "input": "abc123"
+      },
+      {
+        "type": "value_error",
+        "loc": ["body", "incapacidad"],
+        "msg": "fecha_fin debe ser posterior a fecha_inicio",
+        "input": {}
+      }
+    ]
+  }
+}

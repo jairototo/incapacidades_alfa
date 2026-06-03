@@ -17,6 +17,8 @@ from app.models.auditoria_log import AuditoriaLog
 from app.models.refresh_token import RefreshToken
 from app.models.catalogo_cie10 import CatalogoCIE10
 from app.models.auditoria_datos_aprobados import AuditoriaDatosAprobados
+from app.models.pre_incapacidad import PreIncapacidad
+from app.models.pre_documento import PreDocumento
 
 __all__ = [
     "Base",
@@ -35,4 +37,6 @@ __all__ = [
     "RefreshToken",
     "CatalogoCIE10",
     "AuditoriaDatosAprobados",
+    "PreIncapacidad",
+    "PreDocumento",
 ]

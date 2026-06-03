@@ -1,7 +1,7 @@
 """
 Main API router for v1.
 """
-from app.api.v1.endpoints import afiliados, auth, catalogos, documentos, empleados, empresas, health, historial_estado, incapacidades, ordenes_pago, siniestros, solicitantes, storage
+from app.api.v1.endpoints import afiliados, auth, catalogos, documentos, empleados, empresas, health, historial_estado, incapacidades, ordenes_pago, pre_incapacidades, siniestros, solicitantes, storage
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
@@ -25,3 +25,4 @@ api_router.include_router(historial_estado.router, prefix="/historial", tags=["h
 api_router.include_router(documentos.router, prefix="/documentos", tags=["documentos"])
 api_router.include_router(storage.router, prefix="/storage", tags=["storage"])
 api_router.include_router(ordenes_pago.router, prefix="/ordenes-pago", tags=["ordenes-pago"])
+api_router.include_router(pre_incapacidades.router, prefix="/pre-incapacidades", tags=["pre-incapacidades"])

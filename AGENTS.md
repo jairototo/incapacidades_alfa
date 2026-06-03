@@ -140,15 +140,18 @@ Access token: 15 min. Refresh token: 7 days, SHA256-hashed in DB.
 
 ## Enums / Constants
 
-Never hardcode numeric IDs. Use `ActividadID` enum in `app/utils/enums.py`:
-
-| Constant | ID |
-|----------|----|
-| `CIERRE_CASO` | 20 |
-| `DEVOLUCION_RADICACION` | 332 |
-| `DEVOLUCION_VALIDACION` | 333 |
-| `PAGO_IT` | 335 |
-| `DEVOLUCION_ANALISIS` | 561 |
+ """Estado de la incapacidad en el workflow."""
+    RADICADA = "RADICADA"
+    EN_AUDITORIA = "EN_AUDITORIA"
+    OBSERVADA = "OBSERVADA"
+    APROBADA = "APROBADA"
+    APROBADA_PARCIALMENTE = "APROBADA_PARCIALMENTE"  # Estado para aprobación parcial
+    RECHAZADA = "RECHAZADA"
+    EN_PAGO = "EN_PAGO"
+    EN_PAGO_PARCIAL = "EN_PAGO_PARCIAL"  # Estado para pago parcial
+    PAGADA = "PAGADA"
+    PAGADA_PARCIALMENTE = "PAGADA_PARCIALMENTE"  # Estado para pago parcial completado
+    CANCELADA = "CANCELADA"
 
 State machine: `RADICADA → EN_AUDITORIA → {OBSERVADA, APROBADA, RECHAZADA} → EN_PAGO → PAGADA`
 
