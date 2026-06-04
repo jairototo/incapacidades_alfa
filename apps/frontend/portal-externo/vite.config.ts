@@ -20,7 +20,8 @@ export default defineConfig({
     },
     host: '0.0.0.0',
     allowedHosts: [
-      '.ts.net'
+      '.ts.net',
+      '.tplinkdns.com'
     ]
   },
   // @ts-expect-error - Vitest config
