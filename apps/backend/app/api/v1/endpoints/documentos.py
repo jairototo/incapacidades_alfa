@@ -117,11 +117,11 @@ async def get_documento(
     - **documento_id**: ID del documento
     
     Returns:
-     Información del documento
-     """
-     service = DocumentoService(db)
-     documento = await service.get_documento(documento_id)
-     return DocumentoResponse.model_validate(documento)
+        Información del documento
+    """
+    service = DocumentoService(db)
+    documento = await service.get_documento(documento_id)
+    return DocumentoResponse.model_validate(documento)
 
 
 @router.get(
