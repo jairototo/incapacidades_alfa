@@ -19,6 +19,11 @@ interface DocumentosViewerProps {
   documentos: Documento[];
 }
 
+interface DocumentoPreview {
+  documentoId: string;
+  url: string;
+}
+
 /**
  * Componente para visualizar y descargar documentos de una incapacidad
  * Soporta preview de PDFs e imágenes
@@ -27,6 +32,27 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Documento | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<Map<string, string>>(new Map());
+
+  // Cargar URLs de preview para imágenes al montar el componente
+  const isImage = (fileName: string | undefined) => {
+    if (!fileName) return false;
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
+  };
+
+  const loadImagePreview = async (documento: Documento) => {
+    if (!isImage(documento.nombre_original) || previewUrls.has(documento.id)) {
+      return;
+    }
+
+    try {
+      const url = await incapacidadService.getDownloadUrl(documento.id);
+      setPreviewUrls(prev => new Map(prev).set(documento.id, url));
+    } catch (error) {
+      console.error('Error al cargar preview de imagen:', error);
+    }
+  };
 
   const handleDownload = async (documento: Documento) => {
     try {
@@ -102,56 +128,100 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
     <div className="space-y-6">
       {/* Lista de Documentos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {documentos.map((documento) => (
-          <Card key={documento.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  {getFileIcon(documento.nombre_original)}
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-sm font-medium truncate">
-                      {documento.nombre_original || 'Sin nombre'}
-                    </CardTitle>
-                    <Badge variant="secondary" className="mt-1">
-                      {documento.tipo_documento}
-                    </Badge>
+        {documentos.map((documento) => {
+          const imgIsImage = isImage(documento.nombre_original);
+          const imageUrl = previewUrls.get(documento.id);
+          
+          // Cargar preview cuando el componente se monta o cuando cambian los documentos
+          if (imgIsImage && !imageUrl) {
+            loadImagePreview(documento);
+          }
+          
+          return (
+            <Card key={documento.id} className="hover:shadow-lg transition-shadow overflow-hidden flex flex-col">
+              {/* Image Preview - mostrada directamente para imágenes */}
+              {imgIsImage && imageUrl && (
+                <div 
+                  className="w-full h-48 bg-slate-100 flex items-center justify-center overflow-hidden border-b border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors"
+                  onClick={() => {
+                    setSelectedDoc(documento);
+                    setPreviewUrl(imageUrl);
+                  }}
+                >
+                  <img
+                    src={imageUrl}
+                    alt={documento.nombre_original || 'Documento'}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              )}
+              
+              {/* Placeholder mientras carga la imagen */}
+              {imgIsImage && !imageUrl && (
+                <div className="w-full h-48 bg-slate-100 flex items-center justify-center border-b border-slate-200">
+                  <div className="text-center">
+                    <ImageIcon className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-xs text-slate-500">Cargando imagen...</p>
                   </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-xs text-slate-500">
-                <p>Subido: {formatDate(documento.created_at)}</p>
-              </div>
+              )}
+              
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    {getFileIcon(documento.nombre_original)}
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-sm font-medium truncate">
+                        {documento.nombre_original || 'Sin nombre'}
+                      </CardTitle>
+                      <Badge variant="secondary" className="mt-1">
+                        {documento.tipo_documento}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 flex-1 flex flex-col justify-between">
+                <div className="text-xs text-slate-500">
+                  <p>Subido: {formatDate(documento.created_at)}</p>
+                </div>
 
-              <div className="flex gap-2">
-                {canPreview(documento.nombre_original) && (
+                <div className="flex gap-2">
+                  {canPreview(documento.nombre_original) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedDoc(documento);
+                        if (imageUrl) {
+                          setPreviewUrl(imageUrl);
+                        } else {
+                          handlePreview(documento);
+                        }
+                      }}
+                      disabled={loadingDocId === documento.id}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Ver
+                    </Button>
+                  )}
+                  
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => handlePreview(documento)}
+                    className={canPreview(documento.nombre_original) ? 'flex-1' : 'w-full'}
+                    onClick={() => handleDownload(documento)}
                     disabled={loadingDocId === documento.id}
                   >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Ver
+                    <Download className="h-4 w-4 mr-1" />
+                    {loadingDocId === documento.id ? 'Descargando...' : 'Descargar'}
                   </Button>
-                )}
-                
-                <Button
-                  variant="default"
-                  size="sm"
-                  className={canPreview(documento.nombre_original) ? 'flex-1' : 'w-full'}
-                  onClick={() => handleDownload(documento)}
-                  disabled={loadingDocId === documento.id}
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  {loadingDocId === documento.id ? 'Descargando...' : 'Descargar'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Preview Modal */}
