@@ -69,8 +69,11 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
           setLoadingPreviewIds(prev => new Set(prev).add(documento.id));
           
           try {
-            const url = await incapacidadService.getDownloadUrl(documento.id);
-            setPreviewUrls(prev => new Map(prev).set(documento.id, url));
+            // Usar el nuevo endpoint /view que sirve el archivo directamente
+            // El API lo va a servir con los headers CORS correctos
+            const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
+            const viewUrl = `${baseURL}/documentos/${documento.id}/view`;
+            setPreviewUrls(prev => new Map(prev).set(documento.id, viewUrl));
           } catch (error) {
             console.error(`Error al cargar preview para ${documento.id}:`, error);
           } finally {

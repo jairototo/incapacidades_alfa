@@ -355,3 +355,32 @@ class DocumentoService:
             Número de documentos
         """
         return await self.repository.count_by_incapacidad(self.db, incapacidad_id)
+    
+    async def get_documento_contenido(self, documento_id: UUID) -> bytes:
+        """
+        Obtiene el contenido del documento desde el storage.
+        
+        Args:
+            documento_id: ID del documento
+            
+        Returns:
+            Contenido del archivo en bytes
+            
+        Raises:
+            NotFoundException: Si el documento no existe
+            FileException: Si hay error leyendo el archivo
+        """
+        documento = await self.get_documento(documento_id)
+        
+        try:
+            # Obtener el contenido del archivo del storage
+            contenido = self.storage.get_file_content(documento.ruta_storage)
+            if contenido is None:
+                raise FileException(f"No se pudo leer el contenido del archivo: {documento.ruta_storage}")
+            logger.info(f"Contenido obtenido para documento: {documento_id}")
+            return contenido
+        except FileException:
+            raise
+        except Exception as e:
+            logger.error(f"Error obteniendo contenido del documento {documento_id}: {e}")
+            raise FileException(f"Error obteniendo contenido del documento: {str(e)}")

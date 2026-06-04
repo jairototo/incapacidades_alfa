@@ -3,8 +3,10 @@ Endpoints para gestión de documentos.
 """
 from typing import List
 from uuid import UUID
+import logging
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -15,6 +17,8 @@ from app.schemas.documento import (
     DocumentoUploadResponse
 )
 from app.services.documento_service import DocumentoService
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -113,11 +117,66 @@ async def get_documento(
     - **documento_id**: ID del documento
     
     Returns:
-        Información del documento
+     Información del documento
+     """
+     service = DocumentoService(db)
+     documento = await service.get_documento(documento_id)
+     return DocumentoResponse.model_validate(documento)
+
+
+@router.get(
+    "/{documento_id}/view",
+    dependencies=[Depends(PermissionChecker([Permissions.DOCUMENTO_READ]))],
+    summary="Ver documento",
+    description="Sirve el documento directamente para visualización en navegador (imagenes, PDFs)"
+)
+async def view_documento(
+    documento_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Sirve el documento directamente para visualización.
+    
+    - **documento_id**: ID del documento
+    
+    Returns:
+        El archivo con los headers aproppiados para visualización en el navegador
     """
     service = DocumentoService(db)
     documento = await service.get_documento(documento_id)
-    return DocumentoResponse.model_validate(documento)
+    
+    try:
+        # Obtener el contenido del archivo del storage
+        file_content = await service.get_documento_contenido(documento_id)
+        
+        # Determinar el content-type basado en la extensión
+        filename = documento.nombre_original.lower()
+        if filename.endswith('.pdf'):
+            content_type = 'application/pdf'
+        elif filename.endswith(('.jpg', '.jpeg')):
+            content_type = 'image/jpeg'
+        elif filename.endswith('.png'):
+            content_type = 'image/png'
+        elif filename.endswith('.gif'):
+            content_type = 'image/gif'
+        elif filename.endswith('.webp'):
+            content_type = 'image/webp'
+        else:
+            content_type = 'application/octet-stream'
+        
+        logger.info(f"Sirviendo documento {documento_id} con content-type: {content_type}")
+        
+        return StreamingResponse(
+            iter([file_content]),
+            media_type=content_type,
+            headers={
+                'Content-Disposition': f'inline; filename="{documento.nombre_original}"'
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error sirviendo documento {documento_id}: {e}")
+        raise
 
 
 @router.get(

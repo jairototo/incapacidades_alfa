@@ -199,44 +199,6 @@ export const incapacidadService = {
   },
 
   /**
-   * Obtener documentos de una incapacidad
-   * GET /api/v1/incapacidades/{incapacidad_id}/documentos
-   */
-  async getDocumentos(id: string): Promise<Documento[]> {
-    // const { data } = await api.get<Documento[]>(`/incapacidades/${id}/documentos`);
-    const { data } = await api.get<Documento[]>(`/documentos/incapacidades/${id}`);
-    return data;
-  },
-
-  /**
-   * Descargar documento autenticado
-   * GET /api/v1/documentos/{documento_id}/download
-   * Returns: Blob (archivo)
-   */
-  async descargarDocumento(documentoId: string): Promise<Blob> {
-    const { data } = await api.get(`/documentos/${documentoId}/download`, {
-      responseType: 'blob',
-    });
-    return data;
-  },
-
-  /**
-   * Descargar documento público (sin autenticación)
-   * GET /api/v1/incapacidades/{numero}/documentos/{documento_id}/download
-   * Returns: PresignedUrlResponse con URL temporal
-   * 
-   * NOTA: Solo documentos públicos (INCAPACIDAD_MEDICA)
-   */
-  async descargarDocumentoPublico(
-    numero: string,
-    documentoId: string
-  ): Promise<{ url: string; expires_in: number }> {
-    const { data } = await api.get(`/incapacidades/${numero}/documentos/${documentoId}/download`);
-    return data;
-  },
-
-  /**
-   * Obtener URL de descarga firmada (autenticado)
    * GET /api/v1/documentos/{documento_id}/download-url
    * Returns: PresignedUrlResponse
    */
