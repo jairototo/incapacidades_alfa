@@ -18,6 +18,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    host: '0.0.0.0',
+    allowedHosts: [
+      '.ts.net'
+    ]
   },
   // @ts-expect-error - Vitest config
   test: {
