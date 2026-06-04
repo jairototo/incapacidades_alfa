@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,31 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
+/**
+ * Verificar si es imagen
+ */
+const isImage = (fileName: string | undefined) => {
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
+};
+
+/**
+ * Verificar si es PDF
+ */
+const isPdf = (fileName: string | undefined) => {
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ext === 'pdf';
+};
+
+/**
+ * Verificar si se puede previsualizar
+ */
+const canPreview = (fileName: string | undefined) => {
+  return isImage(fileName) || isPdf(fileName);
+};
+
 interface DocumentosViewerProps {
   documentos: Documento[];
 }
@@ -26,32 +51,58 @@ interface DocumentoPreview {
 
 /**
  * Componente para visualizar y descargar documentos de una incapacidad
- * Soporta preview de PDFs e imágenes
+ * Soporta preview de PDFs e imágenes directamente en las tarjetas
  */
 export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Documento | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Map<string, string>>(new Map());
+  const [loadingPreviewIds, setLoadingPreviewIds] = useState<Set<string>>(new Set());
 
-  // Cargar URLs de preview para imágenes al montar el componente
-  const isImage = (fileName: string | undefined) => {
-    if (!fileName) return false;
+  // Cargar URLs de preview para TODAS las imágenes y PDFs
+  useEffect(() => {
+    const loadPreviews = async () => {
+      for (const documento of documentos) {
+        if ((isImage(documento.nombre_original) || isPdf(documento.nombre_original)) && 
+            !previewUrls.has(documento.id)) {
+          setLoadingPreviewIds(prev => new Set(prev).add(documento.id));
+          
+          try {
+            const url = await incapacidadService.getDownloadUrl(documento.id);
+            setPreviewUrls(prev => new Map(prev).set(documento.id, url));
+          } catch (error) {
+            console.error(`Error al cargar preview para ${documento.id}:`, error);
+          } finally {
+            setLoadingPreviewIds(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(documento.id);
+              return newSet;
+            });
+          }
+        }
+      }
+    };
+
+    loadPreviews();
+  }, [documentos]);
+
+  const getFileIcon = (fileName: string | undefined) => {
+    if (!fileName) {
+      return <FileIcon className="h-8 w-8 text-slate-500" />;
+    }
+    
     const ext = fileName.split('.').pop()?.toLowerCase();
-    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
-  };
-
-  const loadImagePreview = async (documento: Documento) => {
-    if (!isImage(documento.nombre_original) || previewUrls.has(documento.id)) {
-      return;
+    
+    if (ext === 'pdf') {
+      return <FileText className="h-8 w-8 text-red-500" />;
     }
-
-    try {
-      const url = await incapacidadService.getDownloadUrl(documento.id);
-      setPreviewUrls(prev => new Map(prev).set(documento.id, url));
-    } catch (error) {
-      console.error('Error al cargar preview de imagen:', error);
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+      return <ImageIcon className="h-8 w-8 text-blue-500" />;
     }
+    
+    return <FileIcon className="h-8 w-8 text-slate-500" />;
   };
 
   const handleDownload = async (documento: Documento) => {
@@ -88,31 +139,6 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
     }
   };
 
-  const getFileIcon = (fileName: string | undefined) => {
-    if (!fileName) {
-      return <FileIcon className="h-8 w-8 text-slate-500" />;
-    }
-    
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    
-    if (ext === 'pdf') {
-      return <FileText className="h-8 w-8 text-red-500" />;
-    }
-    
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
-      return <ImageIcon className="h-8 w-8 text-blue-500" />;
-    }
-    
-    return <FileIcon className="h-8 w-8 text-slate-500" />;
-  };
-
-  const canPreview = (fileName: string | undefined) => {
-    if (!fileName) return false;
-    
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    return ext === 'pdf' || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
-  };
-
   if (documentos.length === 0) {
     return (
       <Alert>
@@ -129,41 +155,51 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
       {/* Lista de Documentos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {documentos.map((documento) => {
-          const imgIsImage = isImage(documento.nombre_original);
-          const imageUrl = previewUrls.get(documento.id);
-          
-          // Cargar preview cuando el componente se monta o cuando cambian los documentos
-          if (imgIsImage && !imageUrl) {
-            loadImagePreview(documento);
-          }
+          const isImg = isImage(documento.nombre_original);
+          const isPdf = isPdf(documento.nombre_original);
+          const hasPreview = isImg || isPdf;
+          const previewUrl = previewUrls.get(documento.id);
+          const isLoadingPreview = loadingPreviewIds.has(documento.id);
           
           return (
             <Card key={documento.id} className="hover:shadow-lg transition-shadow overflow-hidden flex flex-col">
-              {/* Image Preview - mostrada directamente para imágenes */}
-              {imgIsImage && imageUrl && (
-                <div 
-                  className="w-full h-48 bg-slate-100 flex items-center justify-center overflow-hidden border-b border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors"
-                  onClick={() => {
-                    setSelectedDoc(documento);
-                    setPreviewUrl(imageUrl);
-                  }}
-                >
-                  <img
-                    src={imageUrl}
-                    alt={documento.nombre_original || 'Documento'}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-              )}
-              
-              {/* Placeholder mientras carga la imagen */}
-              {imgIsImage && !imageUrl && (
-                <div className="w-full h-48 bg-slate-100 flex items-center justify-center border-b border-slate-200">
-                  <div className="text-center">
-                    <ImageIcon className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-xs text-slate-500">Cargando imagen...</p>
-                  </div>
-                </div>
+              {/* Preview - Imágenes y PDFs */}
+              {hasPreview && (
+                <>
+                  {previewUrl ? (
+                    <div 
+                      className="w-full h-48 bg-slate-100 flex items-center justify-center overflow-hidden border-b border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors"
+                      onClick={() => {
+                        setSelectedDoc(documento);
+                        setPreviewUrl(previewUrl);
+                      }}
+                    >
+                      {isImg ? (
+                        <img
+                          src={previewUrl}
+                          alt={documento.nombre_original || 'Documento'}
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      ) : isPdf ? (
+                        <div className="text-center">
+                          <FileText className="h-16 w-16 text-red-500 mx-auto mb-2" />
+                          <p className="text-sm font-medium text-slate-700">PDF Preview</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : isLoadingPreview ? (
+                    <div className="w-full h-48 bg-slate-100 flex items-center justify-center border-b border-slate-200">
+                      <div className="text-center">
+                        {isImg ? (
+                          <ImageIcon className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                        ) : (
+                          <FileText className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                        )}
+                        <p className="text-xs text-slate-500">Cargando...</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
               )}
               
               <CardHeader className="pb-3">
@@ -193,14 +229,15 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
                       size="sm"
                       className="flex-1"
                       onClick={() => {
-                        setSelectedDoc(documento);
-                        if (imageUrl) {
-                          setPreviewUrl(imageUrl);
+                        const url = previewUrls.get(documento.id);
+                        if (url) {
+                          setSelectedDoc(documento);
+                          setPreviewUrl(url);
                         } else {
                           handlePreview(documento);
                         }
                       }}
-                      disabled={loadingDocId === documento.id}
+                      disabled={loadingDocId === documento.id || isLoadingPreview}
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       Ver
