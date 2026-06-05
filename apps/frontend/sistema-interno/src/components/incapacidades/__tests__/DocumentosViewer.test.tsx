@@ -14,36 +14,36 @@ vi.mock('@/services/incapacidadService', () => ({
 const mockDocumentos = [
   {
     id: 'doc-1',
-    nombre_original: 'incapacidad_medica.pdf', // Cambiado de nombre_archivo
+    nombre_original: 'incapacidad_medica.pdf',
     tipo_documento: 'INCAPACIDAD_MEDICA',
     mime_type: 'application/pdf',
-    tamano_bytes: 102400, // 100 KB (cambiado de tamano)
+    tamano_bytes: 102400,
     ruta_archivo: '/documentos/incapacidad_medica.pdf',
-    uploaded_by: 'user-123', // Cambiado de uploaded_by_id
+    uploaded_by: 'user-123',
     created_at: '2024-01-10T10:30:00Z',
-    extension: 'pdf', // Agregado
+    extension: 'pdf',
   },
   {
     id: 'doc-2',
-    nombre_original: 'historia_clinica.pdf', // Cambiado de nombre_archivo
+    nombre_original: 'historia_clinica.pdf',
     tipo_documento: 'HISTORIA_CLINICA',
     mime_type: 'application/pdf',
-    tamano_bytes: 204800, // 200 KB (cambiado de tamano)
+    tamano_bytes: 204800,
     ruta_archivo: '/documentos/historia_clinica.pdf',
-    uploaded_by: 'user-123', // Cambiado de uploaded_by_id
+    uploaded_by: 'user-123',
     created_at: '2024-01-10T11:00:00Z',
-    extension: 'pdf', // Agregado
+    extension: 'pdf',
   },
   {
     id: 'doc-3',
-    nombre_original: 'radiografia.jpg', // Cambiado de nombre_archivo
+    nombre_original: 'radiografia.jpg',
     tipo_documento: 'SOPORTE_MEDICO',
     mime_type: 'image/jpeg',
-    tamano_bytes: 512000, // 500 KB (cambiado de tamano)
+    tamano_bytes: 512000,
     ruta_archivo: '/documentos/radiografia.jpg',
-    uploaded_by: 'user-123', // Cambiado de uploaded_by_id
+    uploaded_by: 'user-123',
     created_at: '2024-01-10T12:00:00Z',
-    extension: 'jpg', // Agregado
+    extension: 'jpg',
   },
 ];
 
@@ -60,116 +60,105 @@ describe('DocumentosViewer', () => {
     ).toBeInTheDocument();
   });
 
-  it('debe renderizar grid de documentos con información correcta', () => {
+  it('debe renderizar tabs horizontales con todos los documentos', () => {
     render(<DocumentosViewer documentos={mockDocumentos} />);
 
-    // Debe mostrar los nombres de todos los documentos
-    expect(screen.getByText('incapacidad_medica.pdf')).toBeInTheDocument();
-    expect(screen.getByText('historia_clinica.pdf')).toBeInTheDocument();
-    expect(screen.getByText('radiografia.jpg')).toBeInTheDocument();
+    // Debe mostrar los nombres de todos los documentos en los tabs (aparecen múltiples veces)
+    expect(screen.getAllByText('incapacidad_medica.pdf').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('historia_clinica.pdf').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('radiografia.jpg').length).toBeGreaterThan(0);
+  });
 
-    // Debe mostrar tipos de documento
+  it('debe auto-seleccionar el primer documento al montar', () => {
+    render(<DocumentosViewer documentos={mockDocumentos} />);
+
+    // El primer documento debe estar seleccionado (mostrar su tipo de documento)
     expect(screen.getByText('INCAPACIDAD_MEDICA')).toBeInTheDocument();
-    expect(screen.getByText('HISTORIA_CLINICA')).toBeInTheDocument();
-    expect(screen.getByText('SOPORTE_MEDICO')).toBeInTheDocument();
+    // El nombre debe aparecer al menos en el tab
+    expect(screen.getAllByText('incapacidad_medica.pdf').length).toBeGreaterThan(0);
+  });
 
-    // Debe mostrar fechas de subida (formato: DD/MM/YYYY)
-    const fechasSubida = screen.getAllByText(/Subido:/);
-    expect(fechasSubida).toHaveLength(3);
+  it('debe cambiar la vista al seleccionar un tab diferente', async () => {
+    const user = userEvent.setup();
+    render(<DocumentosViewer documentos={mockDocumentos} />);
+
+    // Inicialmente debe mostrar el primer documento
+    expect(screen.getByText('INCAPACIDAD_MEDICA')).toBeInTheDocument();
+
+    // Click en el tab del segundo documento (PDF)
+    const historiaTab = screen.getByText('historia_clinica.pdf');
+    await user.click(historiaTab);
+
+    // Debe mostrar información del segundo documento
+    expect(screen.getByText('HISTORIA_CLINICA')).toBeInTheDocument();
+  });
+
+  it('debe cambiar a vista de imagen al seleccionar un documento de imagen', async () => {
+    const user = userEvent.setup();
+    render(<DocumentosViewer documentos={mockDocumentos} />);
+
+    // Click en el tab de la imagen
+    const radiografiaTab = screen.getByText('radiografia.jpg');
+    await user.click(radiografiaTab);
+
+    // Debe mostrar información del documento de imagen
+    expect(screen.getByText('SOPORTE_MEDICO')).toBeInTheDocument();
   });
 
   it('debe manejar documentos sin nombre_original correctamente', () => {
     const documentoSinNombre = {
       id: 'doc-no-name',
-      nombre_original: undefined, // Cambiado de nombre_archivo
+      nombre_original: undefined,
       tipo_documento: 'OTRO',
       mime_type: 'application/octet-stream',
-      tamano_bytes: 1024, // Cambiado de tamano
+      tamano_bytes: 1024,
       ruta_archivo: '/documentos/archivo_sin_nombre',
-      uploaded_by: 'user-123', // Cambiado de uploaded_by_id
+      uploaded_by: 'user-123',
       created_at: '2024-01-10T10:00:00Z',
-      extension: '', // Agregado
+      extension: '',
     };
 
     render(<DocumentosViewer documentos={[documentoSinNombre] as any} />);
 
-    // Debe mostrar "Sin nombre" como fallback
-    expect(screen.getByText('Sin nombre')).toBeInTheDocument();
+    // Debe mostrar "Sin nombre" como fallback (aparece en tab + info header)
+    expect(screen.getAllByText('Sin nombre').length).toBeGreaterThan(0);
 
     // Debe mostrar el tipo de documento
     expect(screen.getByText('OTRO')).toBeInTheDocument();
   });
 
-  it('debe abrir modal de vista previa al hacer click en "Ver"', async () => {
-    const user = userEvent.setup();
+  it('debe mostrar iframe para PDF en el inline viewer', async () => {
     render(<DocumentosViewer documentos={mockDocumentos} />);
 
-    // Click en botón "Ver" del primer documento (PDF)
-    const verButtons = screen.getAllByText('Ver');
-    await user.click(verButtons[0]);
-
-    // Debe abrir modal con el nombre del documento (aparece 2 veces: en card y en modal)
-    const nombreDocumento = screen.getAllByText('incapacidad_medica.pdf');
-    expect(nombreDocumento.length).toBeGreaterThan(1); // Al menos en card y modal
-
-    // Debe haber botón "Cerrar" en el modal
-    expect(screen.getByText('Cerrar')).toBeInTheDocument();
-
-    // Debe haber un iframe para PDF con title
-    const iframe = screen.getByTitle('Vista previa PDF');
+    // El primer documento es PDF, debe mostrar iframe
+    const iframe = screen.getByTitle(/Vista previa de incapacidad_medica.pdf/);
     expect(iframe).toBeInTheDocument();
-    expect(iframe).toHaveAttribute('src', '/api/documentos/doc-1/download');
   });
 
-  it('debe mostrar vista previa de imagen en el modal', async () => {
+  it('debe mostrar imagen para archivos JPG en el inline viewer', async () => {
     const user = userEvent.setup();
     render(<DocumentosViewer documentos={mockDocumentos} />);
 
-    // Click en botón "Ver" del tercer documento (imagen)
-    const verButtons = screen.getAllByText('Ver');
-    await user.click(verButtons[2]);
+    // Click en el tab de la imagen
+    const radiografiaTab = screen.getByText('radiografia.jpg');
+    await user.click(radiografiaTab);
 
-    // Debe abrir modal con el nombre del archivo (aparece 2 veces)
-    const nombreDocumento = screen.getAllByText('radiografia.jpg');
-    expect(nombreDocumento.length).toBeGreaterThan(1); // En card y modal
-
-    // Debe haber una etiqueta <img> con alt text
+    // Debe haber una etiqueta <img>
     const img = screen.getByAltText('radiografia.jpg');
     expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute('src', '/api/documentos/doc-3/download');
-  });
-
-  it('debe cerrar el modal al hacer click en "Cerrar"', async () => {
-    const user = userEvent.setup();
-    render(<DocumentosViewer documentos={mockDocumentos} />);
-
-    // Abrir modal
-    const verButtons = screen.getAllByText('Ver');
-    await user.click(verButtons[0]);
-
-    // Verificar que el modal está abierto (aparece botón "Cerrar")
-    const cerrarBtn = screen.getByRole('button', { name: /Cerrar/i });
-    expect(cerrarBtn).toBeInTheDocument();
-
-    // Click en botón "Cerrar"
-    await user.click(cerrarBtn);
-
-    // El modal debe desaparecer (botón "Cerrar" ya no está)
-    expect(screen.queryByRole('button', { name: /Cerrar/i })).not.toBeInTheDocument();
   });
 
   it('debe llamar a getDownloadUrl al hacer click en "Descargar"', async () => {
     const user = userEvent.setup();
     render(<DocumentosViewer documentos={mockDocumentos} />);
 
-    // Simular click en "Descargar"
-    const descargarButtons = screen.getAllByText('Descargar');
-    
     // Mockear window.open
     const originalWindowOpen = window.open;
     window.open = vi.fn();
 
-    await user.click(descargarButtons[0]);
+    // Click en botón "Descargar"
+    const descargarBtn = screen.getByRole('button', { name: /Descargar/ });
+    await user.click(descargarBtn);
 
     // Verificar que se llamó a getDownloadUrl
     expect(incapacidadService.getDownloadUrl).toHaveBeenCalledWith('doc-1');
@@ -181,16 +170,30 @@ describe('DocumentosViewer', () => {
     window.open = originalWindowOpen;
   });
 
-  it('debe mostrar iconos diferentes según el tipo de archivo', () => {
+  it('debe mostrar fechas de subida para cada documento', () => {
     render(<DocumentosViewer documentos={mockDocumentos} />);
 
-    // Debe renderizar los 3 documentos con sus nombres
-    expect(screen.getByText('incapacidad_medica.pdf')).toBeInTheDocument();
-    expect(screen.getByText('historia_clinica.pdf')).toBeInTheDocument();
-    expect(screen.getByText('radiografia.jpg')).toBeInTheDocument();
+    // Debe mostrar fechas de subida (formato: DD/MM/YYYY)
+    const fechasSubida = screen.getAllByText(/Subido:/);
+    expect(fechasSubida.length).toBeGreaterThan(0);
+  });
 
-    // Debe haber botones "Ver" para PDFs e imágenes (todos son previsualizables)
-    const verButtons = screen.getAllByText('Ver');
-    expect(verButtons).toHaveLength(3);
+  it('debe desabilitar botón de descarga mientras se está descargando', async () => {
+    const user = userEvent.setup();
+
+    // Mock getDownloadUrl para que se demore
+    (incapacidadService.getDownloadUrl as any).mockImplementation(
+      () => new Promise(resolve => setTimeout(() => resolve('/download-url'), 100))
+    );
+
+    render(<DocumentosViewer documentos={mockDocumentos} />);
+
+    const descargarBtn = screen.getByRole('button', { name: /Descargar/ });
+
+    // Click en botón
+    await user.click(descargarBtn);
+
+    // Debe estar deshabilitado mientras se descarga
+    expect(descargarBtn).toBeDisabled();
   });
 });

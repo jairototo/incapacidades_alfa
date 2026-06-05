@@ -86,5 +86,12 @@ class PreIncapacidad(BaseModel):
         lazy="selectin",
     )
 
+    validation_inconsistencias: Mapped[List["ValidationInconsistencia"]] = relationship(
+        "ValidationInconsistencia",
+        back_populates="pre_incapacidad",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
     def __repr__(self) -> str:
         return f"<PreIncapacidad {self.numero_radicacion} [{self.estado}]>"

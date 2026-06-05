@@ -134,7 +134,13 @@ class Incapacidad(BaseModel):
         uselist=False,
         cascade="all, delete-orphan"
     )
-    
+
+    validation_inconsistencias: Mapped[list["ValidationInconsistencia"]] = relationship(
+        "ValidationInconsistencia",
+        back_populates="incapacidad",
+        cascade="all, delete-orphan"
+    )
+
     radicado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[radicado_por_id])
     auditado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[auditado_por_id])
     aprobado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[aprobado_por_id])
