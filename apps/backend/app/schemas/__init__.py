@@ -41,6 +41,20 @@ from app.schemas.afiliado import (
     AfiliadoListItem,
 )
 
+from app.schemas.validation_inconsistencia import (
+    ValidationInconsistenciaCreate,
+    ValidationInconsistenciaRead,
+    ValidationSummary,
+    PromotionResult,
+)
+
+from app.schemas.pre_incapacidad import (
+    PreIncapacidadCreate,
+    PreIncapacidadResponse,
+    PreIncapacidadRadicadaResponse,
+    PreIncapacidadPromotionResponse,
+)
+
 # from app.schemas.usuario import (
 #     UsuarioBase,
 #     UsuarioCreate,
@@ -109,5 +123,15 @@ __all__ = [
     "IncapacidadUpdate",
     "IncapacidadInDB",
     "IncapacidadAuditar",
+    # PreIncapacidad
+    "PreIncapacidadCreate",
+    "PreIncapacidadResponse",
+    "PreIncapacidadRadicadaResponse",
+    "PreIncapacidadPromotionResponse",
+    # Validation Inconsistencia
+    "ValidationInconsistenciaCreate",
+    "ValidationInconsistenciaRead",
+    "ValidationSummary",
+    "PromotionResult",
 ]
 

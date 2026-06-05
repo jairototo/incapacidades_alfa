@@ -222,3 +222,13 @@ class PreIncapacidadRadicadaResponse(BaseModel):
     mensaje: str = "Radicación recibida exitosamente. Será procesada en breve."
 
     model_config = {"from_attributes": True}
+
+
+class PreIncapacidadPromotionResponse(BaseModel):
+    """Response para radicación exitosa con promoción encolada."""
+    numero_radicacion: int
+    estado: str  # "PENDIENTE"
+    validation_enqueued: bool
+    mensaje: str = "Radicación recibida. Procesamiento iniciado."
+
+    model_config = {"from_attributes": True}
