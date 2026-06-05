@@ -28,6 +28,12 @@ from app.db.repositories.historial_estado_repository import (
     HistorialEstadoRepository,
     historial_estado_repository
 )
+from app.db.repositories.pre_incapacidad_repository import (
+    PreIncapacidadRepository
+)
+from app.db.repositories.validation_inconsistencia_repository import (
+    ValidationInconsistenciaRepository
+)
 
 __all__ = [
     "BaseRepository",
@@ -43,4 +49,6 @@ __all__ = [
     "siniestro_repository",
     "HistorialEstadoRepository",
     "historial_estado_repository",
+    "PreIncapacidadRepository",
+    "ValidationInconsistenciaRepository",
 ]
