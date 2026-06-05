@@ -159,8 +159,8 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {documentos.map((documento) => {
           const isImg = isImage(documento.nombre_original);
-          const isPdf = isPdf(documento.nombre_original);
-          const hasPreview = isImg || isPdf;
+          const isPdf2 = isPdf(documento.nombre_original);
+          const hasPreview = isImg || isPdf2;
           const previewUrl = previewUrls.get(documento.id);
           const isLoadingPreview = loadingPreviewIds.has(documento.id);
           
@@ -183,7 +183,7 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
                           alt={documento.nombre_original || 'Documento'}
                           className="max-w-full max-h-full object-contain"
                         />
-                      ) : isPdf ? (
+                      ) : isPdf2 ? (
                         <div className="text-center">
                           <FileText className="h-16 w-16 text-red-500 mx-auto mb-2" />
                           <p className="text-sm font-medium text-slate-700">PDF Preview</p>

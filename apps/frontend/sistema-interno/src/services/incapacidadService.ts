@@ -199,6 +199,16 @@ export const incapacidadService = {
   },
 
   /**
+   * Obtener documentos de una incapacidad
+   * GET /api/v1/incapacidades/{incapacidad_id}/documentos
+   */
+  async getDocumentos(id: string): Promise<Documento[]> {
+    // const { data } = await api.get<Documento[]>(`/incapacidades/${id}/documentos`);
+    const { data } = await api.get<Documento[]>(`/documentos/incapacidades/${id}`);
+    return data;
+  },
+  
+  /**
    * GET /api/v1/documentos/{documento_id}/download-url
    * Returns: PresignedUrlResponse
    */
