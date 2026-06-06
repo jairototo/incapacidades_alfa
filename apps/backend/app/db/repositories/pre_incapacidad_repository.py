@@ -103,26 +103,11 @@ class PreDocumentoRepository:
     async def create(
         self,
         db: AsyncSession,
-        pre_incapacidad_id: UUID,
-        tipo_documento: str,
-        nombre_original: str,
-        tamanio_bytes: int,
-        hash_md5: str,
-        hash_sha256: str,
-        ruta_storage: str,
-        estado_subida: str,
+        data: dict,
     ) -> PreDocumento:
-        """Crear nuevo pre-documento."""
-        doc = PreDocumento(
-            pre_incapacidad_id=pre_incapacidad_id,
-            tipo_documento=tipo_documento,
-            nombre_original=nombre_original,
-            tamanio_bytes=tamanio_bytes,
-            hash_md5=hash_md5,
-            hash_sha256=hash_sha256,
-            ruta_storage=ruta_storage,
-            estado_subida=estado_subida,
-        )
+        """Crear nuevo pre-documento desde diccionario."""
+        doc = PreDocumento(**data)
         db.add(doc)
         await db.flush()
+        await db.refresh(doc)
         return doc
