@@ -274,6 +274,94 @@ def procesar_incapacidades_radicadas_pendientes_task():
             "status": "error",
             "error": str(e)
         }
-    
+
     finally:
         db.close()
+
+
+@celery_app.task(
+    name="promote_pre_incapacidad",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={'max_retries': 2, 'countdown': 60},
+    retry_backoff=True,
+    acks_late=True
+)
+def promote_pre_incapacidad_task(self, pre_incapacidad_id: str):
+    """
+    Tarea de Celery para promocionar pre-incapacidad a incapacidad (ASÍNCRONA).
+
+    Args:
+        pre_incapacidad_id: UUID de la pre-incapacidad (como string)
+
+    Returns:
+        dict: Resultado de la promoción
+
+    Raises:
+        Exception: Si falla después de 2 reintentos
+    """
+    import asyncio
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.orm import sessionmaker
+
+    logger.info(f"[CELERY] Iniciando promoción de pre-incapacidad {pre_incapacidad_id}")
+
+    try:
+        pre_inc_uuid = UUID(pre_incapacidad_id)
+    except ValueError as e:
+        logger.error(f"[CELERY] ID de pre-incapacidad inválido: {pre_incapacidad_id}")
+        return {
+            "status": "error",
+            "pre_incapacidad_id": pre_incapacidad_id,
+            "error": "ID inválido"
+        }
+
+    async def run_promotion():
+        """Ejecutar promoción en contexto async."""
+        from app.core.config import settings
+        from app.services.pre_incapacidad_promotion_service import PromotePreIncapacidadService
+
+        # Crear sesión async
+        engine = create_async_engine(settings.DATABASE_URL, echo=False)
+        async_session = sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,
+            autocommit=False
+        )
+
+        async with async_session() as db:
+            service = PromotePreIncapacidadService(db)
+            result = await service.promote_pre_incapacidad(pre_inc_uuid)
+
+            await engine.dispose()
+
+            return result
+
+    try:
+        # Ejecutar async function en sync context
+        result = asyncio.run(run_promotion())
+
+        logger.success(
+            f"[CELERY] Pre-incapacidad {pre_incapacidad_id} promoción completada. "
+            f"Success: {result.success}, Issues: {result.validation_summary.total_issues}"
+        )
+
+        return {
+            "status": "success" if result.success else "validation_failed",
+            "pre_incapacidad_id": str(result.pre_incapacidad_id),
+            "success": result.success,
+            "total_issues": result.validation_summary.total_issues,
+            "errors": result.validation_summary.errors,
+            "warnings": result.validation_summary.warnings,
+            "error_message": result.error_message,
+        }
+
+    except Exception as e:
+        logger.error(f"[CELERY] Error promocionando pre-incapacidad {pre_incapacidad_id}: {str(e)}")
+        return {
+            "status": "error",
+            "pre_incapacidad_id": pre_incapacidad_id,
+            "error": str(e)
+        }

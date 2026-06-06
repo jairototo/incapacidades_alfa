@@ -44,9 +44,20 @@ async def radicar_pre_incapacidad(
     - Sin empresa: se asume trabajador independiente.
     - Todos los campos de texto se capturan tal como los ingresa el usuario.
     - La incapacidad real se creará en un job posterior de procesamiento.
+    - Enqeueues async promotion task after creation (fire-and-forget).
     """
     service = PreIncapacidadService(db)
     pre_inc = await service.radicar(data)
+
+    # Enqueue promotion task (fire-and-forget)
+    try:
+        from app.tasks.incapacidad_tasks import promote_pre_incapacidad_task
+        promote_pre_incapacidad_task.delay(str(pre_inc.id))
+    except Exception as e:
+        # Log but don't fail the endpoint if task enqueueing fails
+        import logging
+        logging.error(f"Failed to enqueue promotion task for {pre_inc.id}: {e}")
+
     return PreIncapacidadRadicadaResponse(
         id=pre_inc.id,
         numero_radicacion=pre_inc.numero_radicacion,

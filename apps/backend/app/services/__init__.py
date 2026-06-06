@@ -10,6 +10,7 @@ from app.services.incapacidad_service import IncapacidadService, incapacidad_ser
 from app.services.siniestro_service import SiniestroService, siniestro_service
 from app.services.historial_estado_service import HistorialEstadoService, historial_estado_service
 from app.services.pre_incapacidad_validation_service import PreIncapacidadValidationService
+from app.services.pre_incapacidad_promotion_service import PromotePreIncapacidadService
 
 __all__ = [
     "AfiliadoService",
@@ -25,4 +26,5 @@ __all__ = [
     "HistorialEstadoService",
     "historial_estado_service",
     "PreIncapacidadValidationService",
+    "PromotePreIncapacidadService",
 ]
