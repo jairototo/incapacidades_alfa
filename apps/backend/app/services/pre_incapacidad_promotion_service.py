@@ -21,7 +21,7 @@ class PromotePreIncapacidadService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.pre_inc_repo = PreIncapacidadRepository(db)
+        self.pre_inc_repo = PreIncapacidadRepository()
         self.validation_repo = ValidationInconsistenciaRepository(db)
 
     async def promote_pre_incapacidad(
@@ -47,7 +47,7 @@ class PromotePreIncapacidadService:
         """
         try:
             # 1. Fetch pre-incapacidad
-            pre_inc = await self.pre_inc_repo.get_by_id(pre_incapacidad_id)
+            pre_inc = await self.pre_inc_repo.get_by_id(self.db, pre_incapacidad_id)
             if not pre_inc:
                 logger.error(f"Pre-incapacidad {pre_incapacidad_id} not found")
                 return PromotionResult(
@@ -113,7 +113,7 @@ class PromotePreIncapacidadService:
                     f"Pre-incapacidad {pre_incapacidad_id} validation failed - "
                     f"has {counts['ERROR']} errors. Not creating incapacidad."
                 )
-                await self.pre_inc_repo.update_estado(pre_incapacidad_id, "RECHAZADA")
+                await self.pre_inc_repo.update_estado(self.db, pre_incapacidad_id, "RECHAZADA")
 
                 return PromotionResult(
                     success=False,
@@ -129,7 +129,7 @@ class PromotePreIncapacidadService:
                 f"Pre-incapacidad {pre_incapacidad_id} validation passed - "
                 f"creating incapacidad..."
             )
-            await self.pre_inc_repo.update_estado(pre_incapacidad_id, "PROCESADA")
+            await self.pre_inc_repo.update_estado(self.db, pre_incapacidad_id, "PROCESADA")
 
             return PromotionResult(
                 success=True,
@@ -142,6 +142,7 @@ class PromotePreIncapacidadService:
         except Exception as e:
             logger.error(f"Error promoting pre-incapacidad {pre_incapacidad_id}: {str(e)}")
             await self.pre_inc_repo.update_error(
+                self.db,
                 pre_incapacidad_id,
                 f"Error durante promoción: {str(e)}"
             )

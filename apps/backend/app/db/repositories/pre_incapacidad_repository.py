@@ -1,51 +1,128 @@
 """
-Repository para Pre-Incapacidades con métodos para promoción.
+Repository para Pre-Incapacidades y Pre-Documentos con métodos para promoción.
 """
 from uuid import UUID
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models.pre_incapacidad import PreIncapacidad
+from app.models.pre_documento import PreDocumento
 from app.core.exceptions import NotFoundException
 
 
 class PreIncapacidadRepository:
     """Repository para Pre-Incapacidades."""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self):
+        """Constructor sin db — compatible con servicio."""
+        pass
 
-    async def get_by_id(self, id: UUID) -> Optional[PreIncapacidad]:
+    async def get_by_id(self, db: AsyncSession, id: UUID) -> Optional[PreIncapacidad]:
         """Obtener pre-incapacidad por ID con relationships."""
         query = select(PreIncapacidad).where(PreIncapacidad.id == id)
-        result = await self.db.execute(query)
+        result = await db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_by_numero_radicacion(self, numero: int) -> Optional[PreIncapacidad]:
+    async def get_by_id_with_documentos(
+        self, db: AsyncSession, id: UUID
+    ) -> Optional[PreIncapacidad]:
+        """Obtener pre-incapacidad por ID con documentos cargados."""
+        query = select(PreIncapacidad).where(PreIncapacidad.id == id)
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_by_numero_radicacion(
+        self, db: AsyncSession, numero: int
+    ) -> Optional[PreIncapacidad]:
         """Obtener pre-incapacidad por número de radicación."""
         query = select(PreIncapacidad).where(PreIncapacidad.numero_radicacion == numero)
-        result = await self.db.execute(query)
+        result = await db.execute(query)
         return result.scalar_one_or_none()
 
-    async def update_estado(self, id: UUID, nuevo_estado: str) -> PreIncapacidad:
+    async def create_with_numero(
+        self, db: AsyncSession, data: dict
+    ) -> PreIncapacidad:
+        """Crear nueva pre-incapacidad con número secuencial."""
+        pre_inc = PreIncapacidad(**data)
+        db.add(pre_inc)
+        await db.flush()
+        await db.refresh(pre_inc)
+        return pre_inc
+
+    async def update_estado(
+        self, db: AsyncSession, id: UUID, nuevo_estado: str
+    ) -> PreIncapacidad:
         """Actualizar estado de pre-incapacidad."""
-        pre_inc = await self.get_by_id(id)
+        pre_inc = await self.get_by_id(db, id)
         if not pre_inc:
             raise NotFoundException(f"PreIncapacidad {id} not found")
 
         pre_inc.estado = nuevo_estado
-        self.db.add(pre_inc)
-        await self.db.flush()
+        db.add(pre_inc)
+        await db.flush()
         return pre_inc
 
-    async def update_error(self, id: UUID, error_msg: str) -> PreIncapacidad:
+    async def update_error(
+        self, db: AsyncSession, id: UUID, error_msg: str
+    ) -> PreIncapacidad:
         """Registrar error de procesamiento."""
-        pre_inc = await self.get_by_id(id)
+        pre_inc = await self.get_by_id(db, id)
         if not pre_inc:
             raise NotFoundException(f"PreIncapacidad {id} not found")
 
         pre_inc.error_procesamiento = error_msg
-        self.db.add(pre_inc)
-        await self.db.flush()
+        db.add(pre_inc)
+        await db.flush()
         return pre_inc
+
+
+class PreDocumentoRepository:
+    """Repository para Pre-Documentos (documentos de pre-incapacidades)."""
+
+    def __init__(self):
+        """Constructor sin db — compatible con servicio legacy."""
+        pass
+
+    async def get_by_id(self, db: AsyncSession, id: UUID) -> Optional[PreDocumento]:
+        """Obtener pre-documento por ID."""
+        query = select(PreDocumento).where(PreDocumento.id == id)
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_by_pre_incapacidad(
+        self, db: AsyncSession, pre_incapacidad_id: UUID
+    ) -> List[PreDocumento]:
+        """Obtener todos los documentos de una pre-incapacidad."""
+        query = select(PreDocumento).where(
+            PreDocumento.pre_incapacidad_id == pre_incapacidad_id
+        )
+        result = await db.execute(query)
+        return result.scalars().all()
+
+    async def create(
+        self,
+        db: AsyncSession,
+        pre_incapacidad_id: UUID,
+        tipo_documento: str,
+        nombre_original: str,
+        tamanio_bytes: int,
+        hash_md5: str,
+        hash_sha256: str,
+        ruta_storage: str,
+        estado_subida: str,
+    ) -> PreDocumento:
+        """Crear nuevo pre-documento."""
+        doc = PreDocumento(
+            pre_incapacidad_id=pre_incapacidad_id,
+            tipo_documento=tipo_documento,
+            nombre_original=nombre_original,
+            tamanio_bytes=tamanio_bytes,
+            hash_md5=hash_md5,
+            hash_sha256=hash_sha256,
+            ruta_storage=ruta_storage,
+            estado_subida=estado_subida,
+        )
+        db.add(doc)
+        await db.flush()
+        return doc
