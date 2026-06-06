@@ -263,10 +263,10 @@ class PreIncapacidadValidationService:
             if not self.empleado:
                 issues.append(ValidationInconsistenciaCreate(
                     pre_incapacidad_id=self.pre_inc.id,
-                    categoria="INTEGRATION_CHECK",
+                    categoria="FRAUD_ALERT",
                     severidad="ERROR",
                     codigo="EMPLEADO_NOT_FOUND",
-                    descripcion=f"Empleado {self.pre_inc.empleado_numero_documento} no encontrado en BD",
+                    descripcion=f"Empleado {self.pre_inc.empleado_numero_documento} no encontrado en BD (posible fraude)",
                     campo_afectado="empleado_id",
                     valor_encontrado=self.pre_inc.empleado_numero_documento,
                 ))
@@ -287,10 +287,10 @@ class PreIncapacidadValidationService:
             if not self.empresa:
                 issues.append(ValidationInconsistenciaCreate(
                     pre_incapacidad_id=self.pre_inc.id,
-                    categoria="INTEGRATION_CHECK",
+                    categoria="FRAUD_ALERT",
                     severidad="ERROR",
                     codigo="EMPRESA_NOT_FOUND",
-                    descripcion=f"Empresa NIT {self.pre_inc.empresa_nit} no encontrada en BD",
+                    descripcion=f"Empresa NIT {self.pre_inc.empresa_nit} no encontrada en BD (posible fraude)",
                     campo_afectado="empresa_id",
                     valor_encontrado=self.pre_inc.empresa_nit,
                 ))
