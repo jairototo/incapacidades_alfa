@@ -104,6 +104,8 @@ async def subir_documento_pre_incapacidad(
         content_type=file.content_type or "application/octet-stream",
         tipo_documento=tipo_documento,
     )
+    # Commit transaction explicitly to ensure pre_documento is visible to other sessions
+    await db.commit()
     return PreDocumentoResponse.model_validate(pre_doc)
 
 
