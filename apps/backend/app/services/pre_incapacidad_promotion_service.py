@@ -68,17 +68,19 @@ class PromotePreIncapacidadService:
             empleado = None
             empresa = None
 
-            if pre_inc.tipo == "ARL":
-                empleado = await empleado_repository.get_by_documento(
-                    self.db,
-                    pre_inc.empleado_numero_documento,
-                    pre_inc.empresa_nit or "",
-                )
-
+            # Fetch empresa first (by NIT)
             if pre_inc.empresa_nit:
                 empresa = await empresa_repository.get_by_nit(
                     self.db,
                     pre_inc.empresa_nit,
+                )
+
+            # Fetch empleado (requires empresa_id, not NIT)
+            if pre_inc.tipo == "ARL" and empresa:
+                empleado = await empleado_repository.get_by_documento(
+                    self.db,
+                    pre_inc.empleado_numero_documento,
+                    empresa.id,  # ← Use empresa.id (UUID), not empresa_nit (string)
                 )
 
             # 3. Validar
