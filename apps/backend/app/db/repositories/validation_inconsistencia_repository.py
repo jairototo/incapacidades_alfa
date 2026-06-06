@@ -66,4 +66,5 @@ class ValidationInconsistenciaRepository:
             )
         )
         result = await self.db.execute(query)
-        return result.scalar_one_or_none() is not None
+        # Use scalars().first() instead of scalar_one_or_none() to handle multiple rows
+        return result.scalars().first() is not None
