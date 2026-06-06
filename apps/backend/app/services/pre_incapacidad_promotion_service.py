@@ -84,19 +84,37 @@ class PromotePreIncapacidadService:
                 )
 
             # 3. Validar
-            validation_service = PreIncapacidadValidationService(
-                pre_incapacidad=pre_inc,
-                empleado=empleado,
-                empresa=empresa,
-            )
-            issues = await validation_service.validate_all()
+            try:
+                logger.debug(f"Starting validation for pre-incapacidad {pre_incapacidad_id}")
+                validation_service = PreIncapacidadValidationService(
+                    pre_incapacidad=pre_inc,
+                    empleado=empleado,
+                    empresa=empresa,
+                )
+                issues = await validation_service.validate_all()
+                logger.debug(f"Validation produced {len(issues)} issues")
+            except Exception as e:
+                logger.error(f"Validation failed for {pre_incapacidad_id}: {str(e)}")
+                raise
 
             # 4. Persistir issues a DB
-            for issue_schema in issues:
-                await self.validation_repo.create(issue_schema)
+            try:
+                logger.debug(f"Persisting {len(issues)} validation issues")
+                for issue_schema in issues:
+                    await self.validation_repo.create(issue_schema)
+                logger.debug(f"Issues persisted successfully")
+            except Exception as e:
+                logger.error(f"Failed to persist validation issues for {pre_incapacidad_id}: {str(e)}")
+                raise
 
             # Contar issues por severidad
-            counts = await self.validation_repo.count_by_severidad(pre_incapacidad_id)
+            try:
+                logger.debug(f"Counting issues by severidad for {pre_incapacidad_id}")
+                counts = await self.validation_repo.count_by_severidad(pre_incapacidad_id)
+                logger.debug(f"Issue counts: {counts}")
+            except Exception as e:
+                logger.error(f"Failed to count issues for {pre_incapacidad_id}: {str(e)}")
+                raise
 
             # Construir summary
             validation_summary = ValidationSummary(
@@ -108,7 +126,13 @@ class PromotePreIncapacidadService:
             )
 
             # 5. Verificar si hay ERRORs
-            has_errors = await self.validation_repo.has_errors(pre_incapacidad_id)
+            try:
+                logger.debug(f"Checking for errors in {pre_incapacidad_id}")
+                has_errors = await self.validation_repo.has_errors(pre_incapacidad_id)
+                logger.debug(f"Has errors: {has_errors}")
+            except Exception as e:
+                logger.error(f"Failed to check errors for {pre_incapacidad_id}: {str(e)}")
+                raise
 
             if has_errors:
                 logger.warning(
