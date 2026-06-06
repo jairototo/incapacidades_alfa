@@ -45,9 +45,13 @@ async def radicar_pre_incapacidad(
     - Todos los campos de texto se capturan tal como los ingresa el usuario.
     - La incapacidad real se creará en un job posterior de procesamiento.
     - Enqeueues async promotion task after creation (fire-and-forget).
+    - IMPORTANTE: Documentos son críticos - si fallan, esta radicación debería fallar también.
     """
     service = PreIncapacidadService(db)
     pre_inc = await service.radicar(data)
+
+    # Commit transaction explicitly to ensure pre-incapacidad is visible to other sessions
+    await db.commit()
 
     # Enqueue promotion task (fire-and-forget)
     try:

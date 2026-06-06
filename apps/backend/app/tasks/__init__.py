@@ -29,9 +29,10 @@ celery_app.conf.update(
 # Auto-discover tasks
 celery_app.autodiscover_tasks(["app.tasks"])
 
-# Import tasks
+# Import tasks (ensure they are registered)
 from app.tasks import (  # noqa
-    report_tasks  # ← NUEVO
+    report_tasks,
+    incapacidad_tasks,
 )
 
 
