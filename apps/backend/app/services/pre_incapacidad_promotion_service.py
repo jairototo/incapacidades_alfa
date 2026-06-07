@@ -71,6 +71,7 @@ class PromotePreIncapacidadService:
             if clear_existing_issues:
                 deleted = await self.validation_repo.delete_by_pre_incapacidad(pre_incapacidad_id)
                 await self.db.commit()
+                await self.db.refresh(pre_inc)  # re-load after commit to avoid expired ORM object
                 logger.info(f"Cleared {deleted} existing issues for {pre_incapacidad_id}")
 
             # 2. Fetch related entities
@@ -225,6 +226,15 @@ class PromotePreIncapacidadService:
             )
 
         except Exception as e:
+            # Re-raise infrastructure exceptions so Celery retry mechanism fires
+            from sqlalchemy.exc import SQLAlchemyError
+            try:
+                from asyncpg import PostgresError as _PgError
+            except ImportError:
+                _PgError = None
+            is_infra = isinstance(e, SQLAlchemyError) or (_PgError and isinstance(e, _PgError))
+            if is_infra:
+                raise
             logger.error(f"Error promoting pre-incapacidad {pre_incapacidad_id}: {str(e)}")
             await self.pre_inc_repo.update_error(
                 self.db,

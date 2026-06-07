@@ -4,7 +4,7 @@ Repository para almacenar y consultar inconsistencias de validación.
 from uuid import UUID
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, delete
 
 from app.models.validation_inconsistencia import ValidationInconsistencia
 from app.schemas.validation_inconsistencia import ValidationInconsistenciaCreate
@@ -53,7 +53,7 @@ class ValidationInconsistenciaRepository:
         }
 
         for issue in issues:
-            counts[issue.severidad] += 1
+            counts[issue.severidad] = counts.get(issue.severidad, 0) + 1
 
         return counts
 
@@ -71,8 +71,7 @@ class ValidationInconsistenciaRepository:
 
     async def delete_by_pre_incapacidad(self, pre_inc_id: UUID) -> int:
         """Elimina todas las inconsistencias de una pre-incapacidad. Retorna el número eliminado."""
-        from sqlalchemy import delete as sa_delete
-        stmt = sa_delete(ValidationInconsistencia).where(
+        stmt = delete(ValidationInconsistencia).where(
             ValidationInconsistencia.pre_incapacidad_id == pre_inc_id
         )
         result = await self.db.execute(stmt)

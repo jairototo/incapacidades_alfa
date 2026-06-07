@@ -155,7 +155,6 @@ def send_devolucion_pre_incapacidad_email_task(
     """Envía carta de devolución formal al solicitante."""
     logger.info(f"[EMAIL] Enviando devolución radicación {numero_radicacion} a {correo_solicitante}")
     try:
-        from datetime import datetime as dt
         context = {
             "solicitante_nombre": solicitante_nombre,
             "numero_radicacion": numero_radicacion,
@@ -166,8 +165,8 @@ def send_devolucion_pre_incapacidad_email_task(
             "dias_totales": dias_totales,
             "motivo": motivo,
             "usuario_nombre": usuario_nombre,
-            "fecha_devolucion": dt.utcnow().strftime("%d de %B de %Y"),
-            "year": dt.utcnow().year,
+            "fecha_devolucion": datetime.utcnow().strftime("%d de %B de %Y"),
+            "year": datetime.utcnow().year,
         }
         success = email_service.send_template_email(
             to=correo_solicitante,

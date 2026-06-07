@@ -28,32 +28,32 @@
       <p>Comunicación Oficial</p>
     </div>
     <div class="body">
-      <p>{{ fecha_devolucion }}</p>
-      <p>Señor(a) <strong>{{ solicitante_nombre }}</strong>,</p>
+      <p>{{ fecha_devolucion | e }}</p>
+      <p>Señor(a) <strong>{{ solicitante_nombre | e }}</strong>,</p>
       <p>Por medio de la presente, nos dirigimos a usted en relación con la radicación de incapacidad
       enviada a través de nuestro portal, para informarle que la misma ha sido revisada por nuestro
       equipo de gestión y <strong>requiere corrección o información adicional</strong> antes de poder
       ser procesada.</p>
       <div class="ref">
         <strong>Referencia de la solicitud:</strong><br>
-        Radicación N° {{ numero_radicacion }}
+        Radicación N° {{ numero_radicacion | e }}
       </div>
       <p><strong>Datos de la radicación:</strong></p>
       <table class="datos">
-        <tr><td>Empleado:</td><td>{{ empleado_nombre }} — {{ empleado_documento }}</td></tr>
-        <tr><td>Empresa:</td><td>{{ empresa_nombre }}</td></tr>
+        <tr><td>Empleado:</td><td>{{ empleado_nombre | e }} — {{ empleado_documento | e }}</td></tr>
+        <tr><td>Empresa:</td><td>{{ empresa_nombre | e }}</td></tr>
         <tr><td>Fecha inicio:</td><td>{{ fecha_inicio }}</td></tr>
         <tr><td>Días solicitados:</td><td>{{ dias_totales }}</td></tr>
       </table>
       <p><strong>Motivo de la devolución:</strong></p>
       <div class="motivo-box">
-        <p>{{ motivo }}</p>
+        <p>{{ motivo | e }}</p>
       </div>
       <p>Le solicitamos amablemente corregir la información señalada y radicar nuevamente su solicitud
       a través del portal de radicación en el menor tiempo posible.</p>
       <div class="firma">
         <p>Cordialmente,</p>
-        <p><strong>{{ usuario_nombre }}</strong><br>
+        <p><strong>{{ usuario_nombre | e }}</strong><br>
         Equipo de Gestión de Incapacidades<br>
         Seguros Alfa</p>
       </div>
