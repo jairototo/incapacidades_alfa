@@ -79,11 +79,21 @@ def add_exception_handlers(app: FastAPI) -> None:
             "Validation error on request",
             extra={"path": request.url.path, "errors": str(exc.errors())}
         )
+        # Pydantic v2 can include raw Exception objects in ctx — convert to strings
+        safe_errors = []
+        for err in exc.errors():
+            err_copy = dict(err)
+            if "ctx" in err_copy:
+                err_copy["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v
+                    for k, v in err_copy["ctx"].items()
+                }
+            safe_errors.append(err_copy)
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "detail": "Validation error",
-                "errors": exc.errors()
+                "errors": safe_errors,
             }
         )
     
