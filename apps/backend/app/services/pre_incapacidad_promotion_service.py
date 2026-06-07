@@ -3,6 +3,7 @@ Servicio de promoción de pre-incapacidades a incapacidades completas.
 Orquesta validación, persistencia de issues, y creación de incapacidad.
 """
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +28,8 @@ class PromotePreIncapacidadService:
     async def promote_pre_incapacidad(
         self,
         pre_incapacidad_id: UUID,
+        clear_existing_issues: bool = False,
+        usuario_id: Optional[UUID] = None,
     ) -> PromotionResult:
         """
         Promocionar una pre-incapacidad a incapacidad.
@@ -63,6 +66,12 @@ class PromotePreIncapacidadService:
                     error_message="Pre-incapacidad no encontrada",
                     timestamp=datetime.utcnow(),
                 )
+
+            # 1b. Optionally clear existing validation issues (for manual re-promotion)
+            if clear_existing_issues:
+                deleted = await self.validation_repo.delete_by_pre_incapacidad(pre_incapacidad_id)
+                await self.db.commit()
+                logger.info(f"Cleared {deleted} existing issues for {pre_incapacidad_id}")
 
             # 2. Fetch related entities
             empleado = None
@@ -152,19 +161,65 @@ class PromotePreIncapacidadService:
                     timestamp=datetime.utcnow(),
                 )
 
-            # 6. Crear incapacidad (MOCK para ahora)
-            # TODO: Implementar creación de incapacidad cuando service esté disponible
+            # 6. Crear incapacidad real
             logger.info(
                 f"Pre-incapacidad {pre_incapacidad_id} validation passed - "
                 f"creating incapacidad..."
             )
+            incapacidad_id = None
+            try:
+                from app.services.incapacidad_service import incapacidad_service
+                from app.schemas.incapacidad import IncapacidadCreate
+                from app.utils.enums import TipoIncapacidad
+
+                inc_tipo = TipoIncapacidad(pre_inc.tipo)
+
+                if inc_tipo == TipoIncapacidad.ARL:
+                    # ARL requires empleado_id and empresa_id (UUID) from resolved entities
+                    if not empleado or not empresa:
+                        raise ValueError(
+                            "empleado y empresa son requeridos para crear incapacidad ARL"
+                        )
+                    inc_data = IncapacidadCreate(
+                        tipo=inc_tipo,
+                        empleado_id=empleado.id,
+                        empresa_id=empresa.id,
+                        fecha_inicio=pre_inc.fecha_inicio,
+                        fecha_fin=pre_inc.fecha_fin,
+                        diagnostico_cie10=pre_inc.diagnostico_cie10,
+                        descripcion_diagnostico=pre_inc.descripcion_diagnostico,
+                        nombre_medico=pre_inc.nombre_medico,
+                        registro_medico=pre_inc.registro_medico,
+                        ips=pre_inc.ips,
+                        valor_dia=pre_inc.valor_dia,
+                        observaciones=pre_inc.observaciones,
+                    )
+                else:
+                    # SALUD — not yet supported via pre-incapacidad flow
+                    raise ValueError(
+                        f"Tipo de incapacidad '{pre_inc.tipo}' no soportado en flujo de promoción"
+                    )
+
+                incapacidad = await incapacidad_service.create_incapacidad(
+                    self.db,
+                    inc_data,
+                    usuario_id=usuario_id,
+                )
+                incapacidad_id = incapacidad.id
+                logger.info(
+                    f"Created incapacidad {incapacidad_id} from pre-incapacidad {pre_incapacidad_id}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to create incapacidad from {pre_incapacidad_id}: {e}")
+                raise
+
             await self.pre_inc_repo.update_estado(self.db, pre_incapacidad_id, "PROCESADA")
-            await self.db.commit()  # Commit estado change
+            await self.db.commit()
 
             return PromotionResult(
                 success=True,
                 pre_incapacidad_id=pre_incapacidad_id,
-                incapacidad_id=None,  # TODO: set when created
+                incapacidad_id=incapacidad_id,
                 validation_summary=validation_summary,
                 timestamp=datetime.utcnow(),
             )

@@ -137,3 +137,45 @@ def send_incapacidad_radicada_email_task(
             "to": correo_solicitante,
             "error": str(e)
         }
+
+
+@celery_app.task(name="send_devolucion_pre_incapacidad_email")
+def send_devolucion_pre_incapacidad_email_task(
+    correo_solicitante: str,
+    solicitante_nombre: str,
+    numero_radicacion: str,
+    empleado_nombre: str,
+    empleado_documento: str,
+    empresa_nombre: str,
+    fecha_inicio: str,
+    dias_totales: int,
+    motivo: str,
+    usuario_nombre: str,
+):
+    """Envía carta de devolución formal al solicitante."""
+    logger.info(f"[EMAIL] Enviando devolución radicación {numero_radicacion} a {correo_solicitante}")
+    try:
+        from datetime import datetime as dt
+        context = {
+            "solicitante_nombre": solicitante_nombre,
+            "numero_radicacion": numero_radicacion,
+            "empleado_nombre": empleado_nombre,
+            "empleado_documento": empleado_documento,
+            "empresa_nombre": empresa_nombre,
+            "fecha_inicio": fecha_inicio,
+            "dias_totales": dias_totales,
+            "motivo": motivo,
+            "usuario_nombre": usuario_nombre,
+            "fecha_devolucion": dt.utcnow().strftime("%d de %B de %Y"),
+            "year": dt.utcnow().year,
+        }
+        success = email_service.send_template_email(
+            to=correo_solicitante,
+            subject=f"Devolución Radicación N° {numero_radicacion} — Información Requerida",
+            template_name="devolucion_pre_incapacidad.html",
+            context=context,
+        )
+        return {"status": "sent" if success else "failed", "to": correo_solicitante}
+    except Exception as e:
+        logger.error(f"[EMAIL] Error al enviar devolución: {e}")
+        return {"status": "error", "error": str(e)}

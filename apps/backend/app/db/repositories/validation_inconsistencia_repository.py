@@ -68,3 +68,12 @@ class ValidationInconsistenciaRepository:
         result = await self.db.execute(query)
         # Use scalars().first() instead of scalar_one_or_none() to handle multiple rows
         return result.scalars().first() is not None
+
+    async def delete_by_pre_incapacidad(self, pre_inc_id: UUID) -> int:
+        """Elimina todas las inconsistencias de una pre-incapacidad. Retorna el número eliminado."""
+        from sqlalchemy import delete as sa_delete
+        stmt = sa_delete(ValidationInconsistencia).where(
+            ValidationInconsistencia.pre_incapacidad_id == pre_inc_id
+        )
+        result = await self.db.execute(stmt)
+        return result.rowcount

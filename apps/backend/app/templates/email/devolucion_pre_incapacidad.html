@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Devolución de Radicación</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+    .container { max-width: 680px; margin: auto; background: #fff; border: 1px solid #ddd; }
+    .header { background: #003366; color: #fff; padding: 24px 32px; }
+    .header h1 { margin: 0; font-size: 20px; letter-spacing: 1px; text-transform: uppercase; }
+    .header p { margin: 4px 0 0; font-size: 13px; opacity: 0.8; }
+    .body { padding: 32px; color: #333; line-height: 1.7; }
+    .ref { font-size: 13px; color: #555; margin-bottom: 24px; border-left: 3px solid #003366; padding-left: 12px; }
+    .ref strong { color: #003366; }
+    .motivo-box { background: #fef9e7; border: 1px solid #f0c040; border-radius: 4px; padding: 16px 20px; margin: 24px 0; }
+    .footer { background: #f8f9fa; border-top: 1px solid #ddd; padding: 16px 32px; font-size: 12px; color: #777; }
+    .firma { margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; }
+    table.datos { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+    table.datos td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; }
+    table.datos td:first-child { color: #555; width: 180px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Seguros Alfa — Gestión de Incapacidades</h1>
+      <p>Comunicación Oficial</p>
+    </div>
+    <div class="body">
+      <p>{{ fecha_devolucion }}</p>
+      <p>Señor(a) <strong>{{ solicitante_nombre }}</strong>,</p>
+      <p>Por medio de la presente, nos dirigimos a usted en relación con la radicación de incapacidad
+      enviada a través de nuestro portal, para informarle que la misma ha sido revisada por nuestro
+      equipo de gestión y <strong>requiere corrección o información adicional</strong> antes de poder
+      ser procesada.</p>
+      <div class="ref">
+        <strong>Referencia de la solicitud:</strong><br>
+        Radicación N° {{ numero_radicacion }}
+      </div>
+      <p><strong>Datos de la radicación:</strong></p>
+      <table class="datos">
+        <tr><td>Empleado:</td><td>{{ empleado_nombre }} — {{ empleado_documento }}</td></tr>
+        <tr><td>Empresa:</td><td>{{ empresa_nombre }}</td></tr>
+        <tr><td>Fecha inicio:</td><td>{{ fecha_inicio }}</td></tr>
+        <tr><td>Días solicitados:</td><td>{{ dias_totales }}</td></tr>
+      </table>
+      <p><strong>Motivo de la devolución:</strong></p>
+      <div class="motivo-box">
+        <p>{{ motivo }}</p>
+      </div>
+      <p>Le solicitamos amablemente corregir la información señalada y radicar nuevamente su solicitud
+      a través del portal de radicación en el menor tiempo posible.</p>
+      <div class="firma">
+        <p>Cordialmente,</p>
+        <p><strong>{{ usuario_nombre }}</strong><br>
+        Equipo de Gestión de Incapacidades<br>
+        Seguros Alfa</p>
+      </div>
+    </div>
+    <div class="footer">
+      <p>Este es un mensaje automático generado por el sistema de gestión de incapacidades de Seguros Alfa.</p>
+      <p>&copy; {{ year }} Seguros Alfa. Todos los derechos reservados.</p>
+    </div>
+  </div>
+</body>
+</html>
