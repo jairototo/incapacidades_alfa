@@ -6,17 +6,26 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
-from sqlalchemy import func
+from loguru import logger
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
+from app.db.repositories.validation_inconsistencia_repository import ValidationInconsistenciaRepository
 from app.db.session import get_db
+from app.models.pre_incapacidad import PreIncapacidad
 from app.models.usuario import Usuario
+from app.models.validation_inconsistencia import ValidationInconsistencia
 from app.schemas.pre_incapacidad import (
-    PreIncapacidadCreate,
+    DevolucionRequest,
+    DevolucionResponse,
     PreDocumentoResponse,
+    PreIncapacidadCreate,
+    PreIncapacidadListItem,
     PreIncapacidadRadicadaResponse,
     PreIncapacidadResponse,
+    PreIncapacidadUpdate,
+    PromocionResponse,
 )
 from app.services.pre_incapacidad_service import (
     PreIncapacidadService,
@@ -63,8 +72,7 @@ async def radicar_pre_incapacidad(
         promote_pre_incapacidad_task.delay(str(pre_inc.id))
     except Exception as e:
         # Log but don't fail the endpoint if task enqueueing fails
-        import logging
-        logging.error(f"Failed to enqueue promotion task for {pre_inc.id}: {e}")
+        logger.error(f"Failed to enqueue promotion task for {pre_inc.id}: {e}")
 
     return PreIncapacidadRadicadaResponse(
         id=pre_inc.id,
@@ -115,16 +123,6 @@ async def subir_documento_pre_incapacidad(
 
 # ── Internal endpoints (require JWT authentication) ────────────────────────────
 
-from app.schemas.pre_incapacidad import (  # noqa: E402 (already imported above, extended here)
-    PreIncapacidadListItem,
-    PreIncapacidadUpdate,
-    DevolucionRequest,
-    DevolucionResponse,
-    PromocionResponse,
-)
-from app.db.repositories.validation_inconsistencia_repository import ValidationInconsistenciaRepository
-
-
 @router.get(
     "/",
     response_model=list[PreIncapacidadListItem],
@@ -140,17 +138,13 @@ async def listar_pre_incapacidades(
     current_user: Usuario = Depends(get_current_user),
 ) -> list[PreIncapacidadListItem]:
     """Lista pre-incapacidades de la bandeja interna con conteo de issues."""
-    from app.models.pre_incapacidad import PreIncapacidad
-    from app.models.validation_inconsistencia import ValidationInconsistencia
-    from sqlalchemy import select
-
     query = select(PreIncapacidad)
 
     if estado:
         query = query.where(PreIncapacidad.estado == estado)
     else:
         query = query.where(
-            PreIncapacidad.estado.in_(["PENDIENTE", "RECHAZADA", "ERROR"])
+            PreIncapacidad.estado.in_(["PENDIENTE", "RECHAZADA", "ERROR", "DEVUELTA"])
         )
 
     if search:
@@ -164,18 +158,35 @@ async def listar_pre_incapacidades(
     result = await db.execute(query)
     pre_incapacidades = result.scalars().all()
 
-    items = []
-    for pre_inc in pre_incapacidades:
+    # Batch-load issue counts for all IDs in one query (avoid N+1)
+    pre_inc_ids = [p.id for p in pre_incapacidades]
+
+    if pre_inc_ids:
         count_query = select(
+            ValidationInconsistencia.pre_incapacidad_id,
             ValidationInconsistencia.severidad,
             func.count(ValidationInconsistencia.id).label("cnt")
         ).where(
-            ValidationInconsistencia.pre_incapacidad_id == pre_inc.id
-        ).group_by(ValidationInconsistencia.severidad)
-
+            ValidationInconsistencia.pre_incapacidad_id.in_(pre_inc_ids)
+        ).group_by(
+            ValidationInconsistencia.pre_incapacidad_id,
+            ValidationInconsistencia.severidad,
+        )
         count_result = await db.execute(count_query)
-        counts = {row.severidad: row.cnt for row in count_result}
 
+        # Build nested dict: {pre_inc_id: {severidad: count}}
+        counts_map: dict = {}
+        for row in count_result:
+            pid = row.pre_incapacidad_id
+            if pid not in counts_map:
+                counts_map[pid] = {}
+            counts_map[pid][row.severidad] = row.cnt
+    else:
+        counts_map = {}
+
+    items = []
+    for pre_inc in pre_incapacidades:
+        counts = counts_map.get(pre_inc.id, {})
         items.append(PreIncapacidadListItem(
             id=pre_inc.id,
             numero_radicacion=pre_inc.numero_radicacion,
@@ -196,6 +207,8 @@ async def listar_pre_incapacidades(
     return items
 
 
+# Public endpoint — used by portal externo to check radicación status.
+# validation_inconsistencias are included but do not contain PII beyond what the solicitante already submitted.
 @router.get(
     "/{pre_incapacidad_id}",
     response_model=PreIncapacidadResponse,
@@ -288,8 +301,7 @@ async def devolver_pre_incapacidad(
         )
         email_sent = True
     except Exception as e:
-        import logging
-        logging.error(f"Failed to enqueue devolucion email for {pre_incapacidad_id}: {e}")
+        logger.error(f"Failed to enqueue devolucion email for {pre_incapacidad_id}: {e}")
 
     return DevolucionResponse(
         id=pre_inc.id,

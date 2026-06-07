@@ -36,7 +36,7 @@ class PreIncapacidad(BaseModel):
         nullable=False,
         default="PENDIENTE",
         index=True,
-        comment="PENDIENTE | PROCESADA | RECHAZADA | ERROR",
+        comment="PENDIENTE | PROCESADA | RECHAZADA | ERROR | DEVUELTA",
     )
 
     # ── Solicitante (datos planos) ───────────────────────────────────────────

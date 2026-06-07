@@ -19,7 +19,7 @@ from app.schemas.validation_inconsistencia import ValidationInconsistenciaRead
 TIPOS_DOCUMENTO = ["CC", "CE", "PA", "TI"]
 TIPOS_ENFERMEDAD = ["ACCIDENTE_TRABAJO", "ENFERMEDAD_LABORAL", "ACCIDENTE_TRAYECTO"]
 TIPOS_DOCUMENTO_ARCHIVO = ["INCAPACIDAD_MEDICA", "HISTORIA_CLINICA", "SOPORTE_ADICIONAL"]
-ESTADOS_PRE_INCAPACIDAD = ["PENDIENTE", "PROCESADA", "RECHAZADA", "ERROR"]
+ESTADOS_PRE_INCAPACIDAD = ["PENDIENTE", "PROCESADA", "RECHAZADA", "ERROR", "DEVUELTA"]
 
 _REGEX_SOLO_LETRAS = re.compile(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']+$")
 _REGEX_CIE10 = re.compile(r"^[A-Z]\d{2}(\.\d{1,2})?$")
@@ -258,8 +258,7 @@ class PreIncapacidadListItem(BaseModel):
     total_warnings: int = 0
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class PreIncapacidadUpdate(BaseModel):
