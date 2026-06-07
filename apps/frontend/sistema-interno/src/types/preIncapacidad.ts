@@ -36,7 +36,7 @@ export interface PreIncapacidadDetalle {
   id: string;
   numero_radicacion: number;
   estado: EstadoPreIncapacidad;
-  tipo: string;
+  tipo: 'ARL' | 'SALUD';
   tipo_enfermedad: string;
   solicitante_correo: string;
   solicitante_nombres: string;
