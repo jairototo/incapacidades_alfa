@@ -78,6 +78,9 @@ class PreIncapacidad(BaseModel):
     # ── Trazabilidad de procesamiento ─────────────────────────────────────────
     error_procesamiento: Mapped[Optional[str]] = mapped_column(Text)
 
+    # ── Devolución (set by internal users) ───────────────────────────────────
+    motivo_devolucion: Mapped[Optional[str]] = mapped_column(Text)
+
     # ── Relaciones ────────────────────────────────────────────────────────────
     documentos: Mapped[List["PreDocumento"]] = relationship(
         "PreDocumento",

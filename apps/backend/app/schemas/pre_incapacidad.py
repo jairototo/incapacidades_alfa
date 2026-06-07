@@ -237,3 +237,70 @@ class PreIncapacidadPromotionResponse(BaseModel):
     mensaje: str = "Radicación recibida. Procesamiento iniciado."
 
     model_config = {"from_attributes": True}
+
+
+# ── Internal schemas (requires authentication) ─────────────────────────────────
+
+class PreIncapacidadListItem(BaseModel):
+    """Fila resumida para la bandeja interna."""
+    id: UUID
+    numero_radicacion: int
+    estado: str
+    tipo: str
+    empleado_nombres: str
+    empleado_numero_documento: str
+    empresa_nit: Optional[str]
+    empresa_nombre: Optional[str]
+    fecha_inicio: date
+    fecha_fin: date
+    dias_totales: int
+    total_errores: int = 0
+    total_warnings: int = 0
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PreIncapacidadUpdate(BaseModel):
+    """Campos editables por el usuario interno para corregir datos."""
+    empresa_nit: Optional[str] = None
+    empresa_nombre: Optional[str] = None
+    empleado_tipo_documento: Optional[str] = None
+    empleado_numero_documento: Optional[str] = None
+    empleado_nombres: Optional[str] = None
+    empleado_apellidos: Optional[str] = None
+    empleado_email: Optional[str] = None
+    tipo_enfermedad: Optional[str] = None
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
+    diagnostico_cie10: Optional[str] = None
+    descripcion_diagnostico: Optional[str] = None
+    nombre_medico: Optional[str] = None
+    registro_medico: Optional[str] = None
+    ips: Optional[str] = None
+    valor_dia: Optional[Decimal] = None
+
+
+class DevolucionRequest(BaseModel):
+    """Cuerpo del request para devolver una pre-incapacidad."""
+    motivo: str = Field(..., min_length=20, max_length=2000,
+                        description="Motivo de devolución (mínimo 20 caracteres)")
+
+
+class DevolucionResponse(BaseModel):
+    """Respuesta de la operación de devolución."""
+    id: UUID
+    estado: str
+    motivo_devolucion: str
+    email_enviado: bool
+
+
+class PromocionResponse(BaseModel):
+    """Respuesta de la operación de promoción manual."""
+    success: bool
+    pre_incapacidad_id: UUID
+    incapacidad_id: Optional[UUID] = None
+    errors: int
+    warnings: int
+    message: str
