@@ -57,9 +57,10 @@ Sistema de gestión de incapacidades para aseguradora con cobertura de ARL y pó
 │  │ - Validación │  │  Service     │  │  Service     │          │
 │  └──────────────┘  │              │  │              │          │
 │                    │ - Generación │  │ - Logs       │          │
-│  ┌──────────────┐  │ - Estados    │  │ - Trazabilidad│         │
-│  │  Empleado    │  └──────────────┘  └──────────────┘          │
-│  │  Service     │                                               │
+│  ┌──────────────┐  │ - Sync       │  │ - Consultas   │          │
+|  │  Empleado    │  | - Estados    │  │ - Trazabilidad│         │
+│  │  Service     │  └──────────────┘  └──────────────┘          │
+│  │              │                                               │
 │  │              │  ┌──────────────┐  ┌──────────────┐          │
 │  │ - Sync       │  │ Afiliado     │  │ Integration  │          │
 │  │ - Validación │  │ Service      │  │ Service      │          │
@@ -135,13 +136,11 @@ Sistema de gestión de incapacidades para aseguradora con cobertura de ARL y pó
 - Axios (HTTP client)
 
 **Funcionalidades**:
-- Wizard de radicación de incapacidades (5 pasos)
+- Wizard de radicación de incapacidades (2 pasos)
 - Consulta de estado por número o documento
 - Upload de documentos (PDF, JPG, PNG hasta 10MB)
 - Validaciones en tiempo real
 - Diseño responsive (mobile-first)
-
-**Despliegue**: Vercel/Netlify (JAMstack)
 
 ---
 
