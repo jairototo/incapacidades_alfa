@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Search,
   ClipboardList,
+  Inbox,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -45,6 +46,18 @@ const menuItems: MenuItem[] = [
         label: 'Pendientes',
         icon: ClipboardList,
         href: '/incapacidades/pendientes',
+        roles: ['ADMIN', 'AUDITOR'],
+      },
+    ],
+  },
+  {
+    label: 'Pre-Incapacidades',
+    icon: Inbox,
+    children: [
+      {
+        label: 'Bandeja',
+        icon: ClipboardList,
+        href: '/pre-incapacidades/bandeja',
         roles: ['ADMIN', 'AUDITOR'],
       },
     ],

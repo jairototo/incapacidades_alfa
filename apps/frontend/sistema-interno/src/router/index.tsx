@@ -9,6 +9,8 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { ConsultaPage } from '@/pages/incapacidades/ConsultaPage';
 import { PendientesPage } from '@/pages/incapacidades/PendientesPage';
 import { GestionarPage } from '@/pages/incapacidades/GestionarPage';
+import { BandejaPage } from '@/pages/pre-incapacidades/BandejaPage';
+import { GestionarPreIncapacidadPage } from '@/pages/pre-incapacidades/GestionarPreIncapacidadPage';
 import { RolUsuario } from '@/types/auth';
 
 /**
@@ -74,6 +76,22 @@ export const router = createBrowserRouter([
             ],
           },
           
+          // Pre-Incapacidades - Solo ADMIN y AUDITOR
+          {
+            path: '/pre-incapacidades',
+            element: <ProtectedRoute allowedRoles={[RolUsuario.ADMIN, RolUsuario.AUDITOR]} />,
+            children: [
+              {
+                path: 'bandeja',
+                element: <BandejaPage />,
+              },
+              {
+                path: ':id/gestionar',
+                element: <GestionarPreIncapacidadPage />,
+              },
+            ],
+          },
+
           // Órdenes de Pago - Solo ADMIN y APROBADOR
           {
             path: '/ordenes-pago',
