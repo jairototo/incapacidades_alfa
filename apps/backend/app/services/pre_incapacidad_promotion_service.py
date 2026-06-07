@@ -102,6 +102,8 @@ class PromotePreIncapacidadService:
                 logger.debug(f"Persisting {len(issues)} validation issues")
                 for issue_schema in issues:
                     await self.validation_repo.create(issue_schema)
+                # Commit transaction explicitly to ensure issues are persisted to DB
+                await self.db.commit()
                 logger.debug(f"Issues persisted successfully")
             except Exception as e:
                 logger.error(f"Failed to persist validation issues for {pre_incapacidad_id}: {str(e)}")
@@ -140,6 +142,7 @@ class PromotePreIncapacidadService:
                     f"has {counts['ERROR']} errors. Not creating incapacidad."
                 )
                 await self.pre_inc_repo.update_estado(self.db, pre_incapacidad_id, "RECHAZADA")
+                await self.db.commit()  # Commit estado change
 
                 return PromotionResult(
                     success=False,
@@ -156,6 +159,7 @@ class PromotePreIncapacidadService:
                 f"creating incapacidad..."
             )
             await self.pre_inc_repo.update_estado(self.db, pre_incapacidad_id, "PROCESADA")
+            await self.db.commit()  # Commit estado change
 
             return PromotionResult(
                 success=True,
@@ -172,6 +176,7 @@ class PromotePreIncapacidadService:
                 pre_incapacidad_id,
                 f"Error durante promoción: {str(e)}"
             )
+            await self.db.commit()  # Commit error state change
 
             return PromotionResult(
                 success=False,
