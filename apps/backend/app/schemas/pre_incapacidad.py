@@ -10,6 +10,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
+# Import for validation inconsistencies response
+from app.schemas.validation_inconsistencia import ValidationInconsistenciaRead
+
 
 # ── Enums como literales ───────────────────────────────────────────────────────
 
@@ -209,6 +212,8 @@ class PreIncapacidadResponse(BaseModel):
     empresa_nombre: Optional[str] = None
     # Documentos
     documentos: List[PreDocumentoResponse] = []
+    # Validation issues found during promotion
+    validation_inconsistencias: List[ValidationInconsistenciaRead] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}
