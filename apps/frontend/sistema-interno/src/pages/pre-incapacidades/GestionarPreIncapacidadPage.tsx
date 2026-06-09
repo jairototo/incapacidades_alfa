@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   AlertCircle,
-  FileText,
   Edit3,
   CheckCircle2,
   ChevronLeft,
@@ -25,10 +24,25 @@ import { useToast } from '@/hooks/use-toast';
 import { ValidationInconsistenciasList } from '@/components/pre-incapacidades/ValidationInconsistenciasList';
 import { DevolucionModal } from '@/components/pre-incapacidades/DevolucionModal';
 import { ResolverEntidadesPanel } from '@/components/pre-incapacidades/ResolverEntidadesPanel';
+import { DocumentosViewer } from '@/components/incapacidades/DocumentosViewer';
 
 import { preIncapacidadService } from '@/services/preIncapacidadService';
-import type { PreIncapacidadUpdate } from '@/types/preIncapacidad';
+import type { PreIncapacidadUpdate, PreDocumento } from '@/types/preIncapacidad';
+import type { Documento } from '@/types/incapacidad';
 import { formatDate } from '@/utils/formatters';
+
+function toDocumento(d: PreDocumento): Documento {
+  return {
+    id: d.id,
+    tipo_documento: d.tipo_documento,
+    nombre_original: d.nombre_original,
+    extension: d.nombre_original.split('.').pop() ?? '',
+    tamano_bytes: 0,
+    mime_type: '',
+    uploaded_by: '',
+    created_at: d.created_at,
+  };
+}
 
 function estadoBadgeVariant(estado: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (estado) {
@@ -200,31 +214,12 @@ export function GestionarPreIncapacidadPage() {
         {/* Document sidebar */}
         {showDocs && (
           <div className="w-1/2 flex-shrink-0">
-            <Card className="sticky top-6">
-              <div className="p-4 border-b flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-600" />
-                <span className="font-semibold">Documentos Adjuntos</span>
-                <Badge variant="secondary">{preInc.documentos.length}</Badge>
-              </div>
-              <div className="p-4 overflow-y-auto max-h-[calc(100vh-220px)]">
-                {preInc.documentos.length === 0 ? (
-                  <p className="text-slate-500 text-sm text-center py-4">Sin documentos adjuntos</p>
-                ) : (
-                  <div className="space-y-3">
-                    {preInc.documentos.map((doc) => (
-                      <div key={doc.id} className="border rounded-lg p-3 bg-slate-50">
-                        <p className="text-sm font-medium">{doc.tipo_documento}</p>
-                        <p className="text-xs text-slate-500 truncate">{doc.nombre_original}</p>
-                        <Badge
-                          variant={doc.estado_subida === 'OK' ? 'default' : 'destructive'}
-                          className="text-xs mt-1"
-                        >
-                          {doc.estado_subida}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            <Card className="sticky top-6 overflow-y-auto max-h-[calc(100vh-180px)]">
+              <div className="p-4">
+                <DocumentosViewer
+                  documentos={preInc.documentos.map(toDocumento)}
+                  viewUrlPrefix="pre-incapacidades/documentos"
+                />
               </div>
             </Card>
           </div>

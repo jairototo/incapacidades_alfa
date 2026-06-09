@@ -6,6 +6,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -337,4 +338,48 @@ async def promover_pre_incapacidad(
         errors=result.validation_summary.errors,
         warnings=result.validation_summary.warnings,
         message="Incapacidad creada exitosamente" if result.success else result.error_message or "Validación fallida",
+    )
+
+
+@router.get(
+    "/documentos/{doc_id}/view",
+    summary="[Interno] Ver documento de pre-incapacidad",
+    description="Sirve el archivo adjunto de una pre-incapacidad directamente para visualización inline.",
+)
+async def view_pre_documento(
+    doc_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    from app.models.pre_documento import PreDocumento
+    from app.core.exceptions import NotFoundException
+    from app.services.documento_service import DocumentoService
+
+    result = await db.execute(select(PreDocumento).where(PreDocumento.id == doc_id))
+    pre_doc = result.scalar_one_or_none()
+    if not pre_doc:
+        raise NotFoundException(f"Documento {doc_id} no encontrado")
+
+    # Reuse storage layer from DocumentoService
+    doc_service = DocumentoService(db)
+    contenido = doc_service.storage.get_file_content(pre_doc.ruta_storage)
+    if contenido is None:
+        raise NotFoundException(f"Archivo no encontrado en storage: {pre_doc.ruta_storage}")
+
+    filename = pre_doc.nombre_original.lower()
+    if filename.endswith(".pdf"):
+        content_type = "application/pdf"
+    elif filename.endswith((".jpg", ".jpeg")):
+        content_type = "image/jpeg"
+    elif filename.endswith(".png"):
+        content_type = "image/png"
+    elif filename.endswith(".webp"):
+        content_type = "image/webp"
+    else:
+        content_type = pre_doc.mime_type or "application/octet-stream"
+
+    return StreamingResponse(
+        iter([contenido]),
+        media_type=content_type,
+        headers={"Content-Disposition": f'inline; filename="{pre_doc.nombre_original}"'},
     )

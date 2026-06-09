@@ -34,13 +34,17 @@ const isPdf = (fileName: string | undefined) => {
 
 interface DocumentosViewerProps {
   documentos: Documento[];
+  /** URL path prefix for the view endpoint. Defaults to 'documentos'. Override to 'pre-incapacidades/documentos' for PreDocumento records. */
+  viewUrlPrefix?: string;
+  /** Custom download function. Defaults to incapacidadService.getDownloadUrl. */
+  downloadFn?: (id: string) => Promise<string>;
 }
 
 /**
  * Componente para visualizar documentos con tabs horizontales e inline viewer
  * Auto-carga el primer documento al montar el componente
  */
-export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
+export function DocumentosViewer({ documentos, viewUrlPrefix = 'documentos', downloadFn }: DocumentosViewerProps) {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Map<string, string>>(new Map());
   const [loadingPreviewIds, setLoadingPreviewIds] = useState<Set<string>>(new Set());
@@ -63,7 +67,7 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
 
           try {
             const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
-            const viewUrl = `${baseURL}/documentos/${documento.id}/view`;
+            const viewUrl = `${baseURL}/${viewUrlPrefix}/${documento.id}/view`;
             setPreviewUrls(prev => new Map(prev).set(documento.id, viewUrl));
           } catch (error) {
             console.error(`Error loading preview for ${documento.id}:`, error);
@@ -102,7 +106,8 @@ export function DocumentosViewer({ documentos }: DocumentosViewerProps) {
   const handleDownload = async (documento: Documento) => {
     try {
       setDownloadingDocId(documento.id);
-      const url = await incapacidadService.getDownloadUrl(documento.id);
+      const resolveFn = downloadFn ?? incapacidadService.getDownloadUrl.bind(incapacidadService);
+      const url = await resolveFn(documento.id);
       window.open(url, '_blank');
     } catch (error) {
       console.error('Error downloading document:', error);
