@@ -208,12 +208,12 @@ export function BandejaPage() {
             className="pl-9"
           />
         </div>
-        <Select value={estado} onValueChange={setEstado}>
+        <Select value={estado || 'ALL'} onValueChange={(v) => setEstado(v === 'ALL' ? '' : v)}>
           <SelectTrigger className="w-44">
             <SelectValue placeholder="Todos los estados" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="ALL">Todos</SelectItem>
             <SelectItem value="PENDIENTE">Pendiente</SelectItem>
             <SelectItem value="RECHAZADA">Rechazada</SelectItem>
             <SelectItem value="ERROR">Error</SelectItem>
