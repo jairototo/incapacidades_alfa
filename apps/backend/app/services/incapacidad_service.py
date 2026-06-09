@@ -162,8 +162,49 @@ class IncapacidadService:
         
         # Crear incapacidad
         incapacidad = await self.repository.create(db, incapacidad_dict)
-        
+
         # Recargar con relaciones para que la serialización funcione correctamente
+        return await self.repository.get_by_id_with_relations(db, incapacidad.id)
+
+    async def create_from_pre_incapacidad(
+        self,
+        db: AsyncSession,
+        pre_inc: Any,
+        empleado: Optional[Any] = None,
+        empresa: Optional[Any] = None,
+        usuario_id: Optional[UUID] = None,
+    ) -> Incapacidad:
+        """
+        Create an Incapacidad directly from a PreIncapacidad — bypasses strict entity validation.
+        Used by the unified background job to always create a record, even when empleado/empresa
+        aren't in the DB yet. numero = str(pre_inc.numero_radicacion).
+        """
+        self._validate_fechas(pre_inc.fecha_inicio, pre_inc.fecha_fin)
+        dias_totales = (pre_inc.fecha_fin - pre_inc.fecha_inicio).days + 1
+
+        incapacidad_dict: Dict[str, Any] = {
+            'numero': str(pre_inc.numero_radicacion),
+            'tipo': TipoIncapacidad(pre_inc.tipo),
+            'fecha_inicio': pre_inc.fecha_inicio,
+            'fecha_fin': pre_inc.fecha_fin,
+            'dias_totales': dias_totales,
+            'diagnostico_cie10': pre_inc.diagnostico_cie10,
+            'descripcion_diagnostico': pre_inc.descripcion_diagnostico,
+            'nombre_medico': pre_inc.nombre_medico,
+            'registro_medico': pre_inc.registro_medico,
+            'ips': pre_inc.ips,
+            'valor_dia': pre_inc.valor_dia,
+            'observaciones': pre_inc.observaciones,
+            'estado': EstadoIncapacidad.RADICADA,
+            'fecha_radicacion': datetime.utcnow(),
+            'empleado_id': empleado.id if empleado else None,
+            'empresa_id': empresa.id if empresa else None,
+        }
+
+        if usuario_id:
+            incapacidad_dict['radicado_por_id'] = usuario_id
+
+        incapacidad = await self.repository.create(db, incapacidad_dict)
         return await self.repository.get_by_id_with_relations(db, incapacidad.id)
 
     async def get_incapacidad(
