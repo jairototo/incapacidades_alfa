@@ -60,6 +60,7 @@ export interface PreIncapacidadDetalle {
   valor_dia: string | null;
   error_procesamiento: string | null;
   motivo_devolucion: string | null;
+  incapacidad_id: string | null;
   created_at: string;
   documentos: PreDocumento[];
   validation_inconsistencias: ValidationInconsistenciaRead[];

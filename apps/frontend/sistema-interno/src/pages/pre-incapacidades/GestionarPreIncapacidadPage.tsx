@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Loader2,
   CornerDownLeft,
+  UserX,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,12 @@ export function GestionarPreIncapacidadPage() {
     enabled: !!id,
   });
 
+  const { data: incapacidad } = useQuery({
+    queryKey: ['pre-incapacidad-incapacidad', id, preInc?.incapacidad_id],
+    queryFn: () => preIncapacidadService.getIncapacidad(id!),
+    enabled: !!id && !!preInc?.incapacidad_id,
+  });
+
   const updateMutation = useMutation({
     mutationFn: (data: PreIncapacidadUpdate) =>
       preIncapacidadService.actualizar(id!, data),
@@ -134,6 +141,9 @@ export function GestionarPreIncapacidadPage() {
   const errorCount = preInc.validation_inconsistencias.filter((i) => i.severidad === 'ERROR').length;
   const canPromote = !['PROCESADA', 'DEVUELTA'].includes(preInc.estado);
   const canDevolver = !['PROCESADA', 'DEVUELTA'].includes(preInc.estado);
+  const empleadoNoEncontrado = preInc.validation_inconsistencias.some(
+    (i) => i.codigo === 'EMPLEADO_NOT_FOUND'
+  );
 
   return (
     <div className="space-y-6">
@@ -199,13 +209,29 @@ export function GestionarPreIncapacidadPage() {
         </div>
       </div>
 
-      {/* Processed notice */}
-      {preInc.estado === 'PROCESADA' && (
-        <Card className="p-4 bg-green-50 border-green-200">
-          <p className="text-green-800 text-sm font-medium flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4" />
-            Esta pre-incapacidad fue promovida exitosamente a una incapacidad completa.
-          </p>
+      {/* Incapacidad vinculada (shown after unified job completes) */}
+      {preInc.incapacidad_id && (
+        <Card className="p-4 border-blue-200 bg-blue-50 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-blue-900 text-sm font-semibold flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Incapacidad N°{preInc.numero_radicacion} creada en el sistema
+            </p>
+            {incapacidad && (
+              <Badge variant={incapacidad.estado === 'EN_AUDITORIA' ? 'default' : 'secondary'}>
+                {incapacidad.estado}
+              </Badge>
+            )}
+          </div>
+          {empleadoNoEncontrado && (
+            <div className="flex items-start gap-2 rounded bg-yellow-50 border border-yellow-200 p-3 text-yellow-800 text-xs">
+              <UserX className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                <strong>Empleado no encontrado en BD.</strong> La incapacidad fue creada pero
+                requiere resolución manual antes de poder procesar el pago.
+              </span>
+            </div>
+          )}
         </Card>
       )}
 

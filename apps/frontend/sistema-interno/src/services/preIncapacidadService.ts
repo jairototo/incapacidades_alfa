@@ -8,6 +8,7 @@ import type {
   PromocionResponse,
   BandejaFiltros,
 } from '@/types/preIncapacidad';
+import type { Incapacidad } from '@/types/incapacidad';
 
 export const preIncapacidadService = {
   async listar(filtros: BandejaFiltros = {}): Promise<PreIncapacidadListItem[]> {
@@ -41,5 +42,10 @@ export const preIncapacidadService = {
   async promover(id: string): Promise<PromocionResponse> {
     const { data } = await api.post<PromocionResponse>(`/pre-incapacidades/${id}/promover`);
     return data;
+  },
+
+  async getIncapacidad(preIncapacidadId: string): Promise<Incapacidad> {
+    const res = await api.get<Incapacidad>(`/pre-incapacidades/${preIncapacidadId}/incapacidad`);
+    return res.data;
   },
 };
