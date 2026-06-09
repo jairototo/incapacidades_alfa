@@ -256,6 +256,37 @@ async def actualizar_pre_incapacidad(
     return PreIncapacidadResponse.model_validate(pre_inc)
 
 
+@router.get(
+    "/{pre_incapacidad_id}/incapacidad",
+    summary="[Interno] Obtener incapacidad vinculada",
+    description="Retorna la incapacidad creada por el job unificado para esta pre-incapacidad.",
+)
+async def get_incapacidad_vinculada(
+    pre_incapacidad_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    from app.core.exceptions import NotFoundException
+    from sqlalchemy import select as sa_select
+    from app.models.pre_incapacidad import PreIncapacidad
+
+    result = await db.execute(
+        sa_select(PreIncapacidad).where(PreIncapacidad.id == pre_incapacidad_id)
+    )
+    pre_inc = result.scalar_one_or_none()
+    if not pre_inc:
+        raise NotFoundException(f"Pre-incapacidad {pre_incapacidad_id} no encontrada")
+
+    if not pre_inc.incapacidad_id:
+        raise NotFoundException(
+            f"Pre-incapacidad {pre_incapacidad_id} aún no tiene incapacidad vinculada"
+        )
+
+    from app.services.incapacidad_service import incapacidad_service
+    incapacidad = await incapacidad_service.get_incapacidad(db, pre_inc.incapacidad_id)
+    return incapacidad
+
+
 @router.post(
     "/{pre_incapacidad_id}/devolver",
     response_model=DevolucionResponse,
