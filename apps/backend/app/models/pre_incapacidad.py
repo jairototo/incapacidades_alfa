@@ -6,7 +6,8 @@ pendientes de procesamiento por job/tarea programada.
 from datetime import date
 from decimal import Decimal
 from typing import Optional, List
-from sqlalchemy import String, Integer, Date, Numeric, Text, BigInteger, Sequence
+from uuid import UUID
+from sqlalchemy import String, Integer, Date, Numeric, Text, BigInteger, Sequence, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -81,6 +82,15 @@ class PreIncapacidad(BaseModel):
     # ── Devolución (set by internal users) ───────────────────────────────────
     motivo_devolucion: Mapped[Optional[str]] = mapped_column(Text)
 
+    # ── Vínculo con incapacidad creada (1-to-1, set after unified job) ──────────
+    incapacidad_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("incapacidad.id"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+
     # ── Relaciones ────────────────────────────────────────────────────────────
     documentos: Mapped[List["PreDocumento"]] = relationship(
         "PreDocumento",
@@ -94,6 +104,12 @@ class PreIncapacidad(BaseModel):
         back_populates="pre_incapacidad",
         cascade="all, delete-orphan",
         lazy="selectin",
+    )
+
+    incapacidad: Mapped[Optional["Incapacidad"]] = relationship(
+        "Incapacidad",
+        foreign_keys=[incapacidad_id],
+        lazy="select",
     )
 
     def __repr__(self) -> str:

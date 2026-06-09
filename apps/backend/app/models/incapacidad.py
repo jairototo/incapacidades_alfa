@@ -29,9 +29,9 @@ class Incapacidad(BaseModel):
     
     __table_args__ = (
         CheckConstraint(
-            "(tipo = 'ARL' AND empleado_id IS NOT NULL AND empresa_id IS NOT NULL AND afiliado_id IS NULL) OR "
+            "(tipo = 'ARL' AND afiliado_id IS NULL) OR "
             "(tipo = 'SALUD' AND afiliado_id IS NOT NULL AND empleado_id IS NULL AND empresa_id IS NULL)",
-            name="check_tipo_incapacidad_relacion"
+            name="chk_incapacidad_tipo_relacion"
         ),
     )
     
