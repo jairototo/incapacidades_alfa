@@ -674,3 +674,39 @@ AND EXTRACT(EPOCH FROM (NOW() - i.created_at))/86400 >
     END
 ORDER BY dias_en_estado DESC;
 ```
+
+---
+
+## 9. Flujo Unificado Pre-Incapacidad → Incapacidad (desde 2026-06-09)
+
+El job de Celery `promote_pre_incapacidad_task` crea directamente una `Incapacidad` completa
+desde la `PreIncapacidad` en un solo paso:
+
+1. **Portal externo** radica `PreIncapacidad` → estado `PENDIENTE`
+2. **Celery job** (`promote_pre_incapacidad_task`) se ejecuta:
+   a. Resuelve empresa (por NIT) y empleado (por documento + empresa_id) — pueden no encontrarse
+   b. Corre `PreIncapacidadValidationService.validate_all()` — guarda issues en `validation_inconsistencia`
+   c. Crea `Incapacidad` directamente con `numero = str(pre_incapacidad.numero_radicacion)`
+   d. Vincula `pre_incapacidad.incapacidad_id = incapacidad.id`
+   e. Si empleado encontrado: corre reglas RN008/RN009 de auditoría (traslapes + duplicados)
+   f. Llama `radicar_incapacidad()` → `Incapacidad` pasa de `RADICADA` a `EN_AUDITORIA`
+   g. Actualiza `PreIncapacidad.estado = PROCESADA`
+3. **Gestión interna** (`/pre-incapacidades/{id}/gestionar`):
+   - Muestra `validation_inconsistencias` con alertas de empleado/empresa no encontrado como WARNING
+   - Muestra "Incapacidad N°XXX creada" con estado actual de la incapacidad
+   - Permite "Promover manualmente" para re-ejecutar el job si se corrigieron datos
+
+### Manejo de empleado/empresa no encontrado
+
+Cuando el empleado o la empresa no se encuentran en la BD:
+- Se crea la incapacidad con `empleado_id = NULL` y/o `empresa_id = NULL`
+- Se registra un WARNING `EMPLEADO_NOT_FOUND` / `EMPRESA_NOT_FOUND` en `validation_inconsistencia`
+- La incapacidad pasa a `EN_AUDITORIA` — el auditor puede resolver manualmente
+
+### Constraint DB relajado (migración `unified_flow_relax_arl_constraint_add_incapacidad_fk`)
+
+```sql
+-- Nuevo constraint — ARL no requiere empleado_id / empresa_id NOT NULL
+(tipo = 'ARL' AND afiliado_id IS NULL) OR
+(tipo = 'SALUD' AND afiliado_id IS NOT NULL AND empleado_id IS NULL AND empresa_id IS NULL)
+```

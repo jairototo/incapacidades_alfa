@@ -1460,7 +1460,56 @@ GET /catalogos/cie10/A00.0
 api_requests_total{method="GET",endpoint="/incapacidades"} 1234
 ```
 
-## 14. Documentación Interactiva
+## 14. Módulo de Pre-Incapacidades
+
+### 14.1 Listar Pre-Incapacidades
+
+**Endpoint**: `GET /pre-incapacidades`
+
+**Permisos**: `ADMIN`, `AUDITOR`
+
+**Query Params**:
+- `estado`: PENDIENTE, EN_PROCESO, PROCESADA, DEVUELTA, CON_ERROR
+- `tipo`: ARL, SALUD
+- `page`, `page_size`: paginación
+
+### 14.2 Obtener Pre-Incapacidad
+
+**Endpoint**: `GET /pre-incapacidades/{id}`
+
+**Permisos**: JWT requerido
+
+### 14.3 Gestionar Pre-Incapacidad
+
+**Endpoint**: `GET /pre-incapacidades/{id}/gestionar`
+
+**Permisos**: `ADMIN`, `AUDITOR`
+
+**Description**: Retorna detalle completo incluyendo `validation_inconsistencias` y estado del flujo unificado.
+
+### 14.4 Promover Pre-Incapacidad (manual)
+
+**Endpoint**: `POST /pre-incapacidades/{id}/promover`
+
+**Permisos**: `ADMIN`, `AUDITOR`
+
+**Description**: Re-ejecuta el job unificado manualmente (útil si se corrigieron datos de empleado/empresa).
+
+### 14.5 Obtener Incapacidad Vinculada
+
+**Endpoint**: `GET /pre-incapacidades/{id}/incapacidad`
+
+**Auth**: JWT requerido
+
+**Description**: Retorna la incapacidad completa vinculada a esta pre-incapacidad (creada por el job unificado).
+
+**Response**: Objeto `Incapacidad` completo con relaciones (empleado, empresa, documentos, historial)
+
+**404**: Si la pre-incapacidad no existe o no tiene incapacidad vinculada
+
+---
+
+## 15. Documentación Interactiva
 
 ### 14.1 Swagger UI
 
