@@ -210,6 +210,8 @@ class PreIncapacidadResponse(BaseModel):
     # Empresa
     empresa_nit: Optional[str] = None
     empresa_nombre: Optional[str] = None
+    # Vínculo a la incapacidad creada (set after unified job runs)
+    incapacidad_id: Optional[UUID] = None
     # Documentos
     documentos: List[PreDocumentoResponse] = []
     # Validation issues found during promotion
