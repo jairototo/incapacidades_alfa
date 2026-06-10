@@ -18,13 +18,28 @@ export function formatDate(dateString: string | Date): string {
 }
 
 /**
+ * Formatear fecha a formato corto DD/MMM (e.g., "01 jun")
+ */
+export function formatDateShort(dateStr: string): string {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: 'short',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+/**
  * Formatear fecha y hora a formato local DD/MM/YYYY HH:mm
  */
 export function formatDateTime(dateString: string | Date): string {
   if (!dateString) return '-';
-  
+
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-  
+
   return new Intl.DateTimeFormat('es-CO', {
     day: '2-digit',
     month: '2-digit',

@@ -5,23 +5,12 @@
 import { AlertTriangle } from 'lucide-react';
 import type { Incapacidad, EmpleadoFallback } from '@/types/incapacidad';
 import { cn } from '@/lib/utils';
+import { formatDateShort } from '@/utils/formatters';
 
 interface IncapacidadContextStripProps {
   incapacidad: Incapacidad;
   hasFraudAlert: boolean;
   empleadoFallback?: EmpleadoFallback | null;
-}
-
-function formatDateShort(dateStr: string): string {
-  if (!dateStr) return '—';
-  try {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-    });
-  } catch {
-    return dateStr;
-  }
 }
 
 export function IncapacidadContextStrip({
