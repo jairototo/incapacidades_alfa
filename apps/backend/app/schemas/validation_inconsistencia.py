@@ -52,3 +52,11 @@ class PromotionResult(BaseModel):
     validation_summary: ValidationSummary
     error_message: Optional[str] = None
     timestamp: datetime
+
+
+class ValidacionesResponse(BaseModel):
+    """Respuesta del endpoint GET /incapacidades/{id}/validaciones."""
+    issues: list[ValidationInconsistenciaRead]
+    has_errors: bool
+    has_fraud_alert: bool
+    total: int

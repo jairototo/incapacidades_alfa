@@ -314,17 +314,37 @@ class IncapacidadListResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EmpleadoFallback(BaseModel):
+    """Datos crudos del empleado desde pre_incapacidad cuando no está en BD."""
+    nombres: str
+    numero_documento: str
+
+    model_config = {"from_attributes": True}
+
+
+class EmpresaFallback(BaseModel):
+    """Datos crudos de la empresa desde pre_incapacidad cuando no está en BD."""
+    nit: str
+    nombre: str
+
+    model_config = {"from_attributes": True}
+
+
 class IncapacidadPendienteResponse(IncapacidadInDB):
     """
     Schema para incapacidad pendiente de auditoría con datos adicionales.
-    Incluye días desde radicación y días en estado actual.
-    
-    Nota: Las relaciones (empleado, empresa, afiliado) deben cargarse
-    mediante eager loading en el service layer.
+    Incluye días desde radicación, días en estado actual, y fallback de
+    empleado/empresa desde pre_incapacidad cuando no existen en BD.
     """
     dias_desde_radicacion: int = Field(..., description="Días desde que fue radicada")
     dias_en_estado_actual: int = Field(..., description="Días en el estado actual")
-    
+    empleado_fallback: Optional[EmpleadoFallback] = Field(
+        None, description="Datos crudos del empleado si no existe en BD"
+    )
+    empresa_fallback: Optional[EmpresaFallback] = Field(
+        None, description="Datos crudos de la empresa si no existe en BD"
+    )
+
     model_config = {"from_attributes": True}
 
 
