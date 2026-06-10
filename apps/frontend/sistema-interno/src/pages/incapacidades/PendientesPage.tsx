@@ -41,7 +41,8 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
     cell: ({ row }) => {
       const empleado = row.original.empleado;
       const afiliado = row.original.afiliado;
-      
+      const fallback = row.original.empleado_fallback;
+
       if (empleado) {
         return (
           <div>
@@ -52,7 +53,7 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
           </div>
         );
       }
-      
+
       if (afiliado) {
         return (
           <div>
@@ -63,22 +64,54 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
           </div>
         );
       }
-      
-      return '-';
+
+      if (fallback) {
+        return (
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="font-medium">{fallback.nombres}</p>
+              <span className="text-xs bg-slate-100 text-slate-500 border border-slate-200 rounded px-1 py-0.5 leading-none">
+                Sin ficha
+              </span>
+            </div>
+            <p className="text-sm text-slate-500">{fallback.numero_documento}</p>
+          </div>
+        );
+      }
+
+      return <span className="text-slate-400">—</span>;
     },
   },
   {
     accessorKey: 'empresa',
     header: 'Empresa',
     cell: ({ row }) => {
-      if (row.original.empresa) {
+      const empresa = row.original.empresa;
+      const fallback = row.original.empresa_fallback;
+
+      if (empresa) {
         return (
           <div>
-            <p className="font-medium">{row.original.empresa.razon_social}</p>
-            <p className="text-sm text-slate-500">NIT: {row.original.empresa.nit}</p>
+            <p className="font-medium">{empresa.razon_social}</p>
+            <p className="text-sm text-slate-500">NIT: {empresa.nit}</p>
           </div>
         );
       }
+
+      if (fallback) {
+        return (
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="font-medium">{fallback.nombre}</p>
+              <span className="text-xs bg-slate-100 text-slate-500 border border-slate-200 rounded px-1 py-0.5 leading-none">
+                Sin ficha
+              </span>
+            </div>
+            <p className="text-sm text-slate-500">NIT: {fallback.nit}</p>
+          </div>
+        );
+      }
+
       return <span className="text-slate-500">Afiliado</span>;
     },
   },
