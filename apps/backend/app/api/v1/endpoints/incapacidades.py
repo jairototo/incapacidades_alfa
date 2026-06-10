@@ -29,6 +29,8 @@ from app.schemas.empleado import EmpleadoResponse
 from app.schemas.empresa import EmpresaResponse
 from app.schemas.afiliado import AfiliadoResponse
 from app.schemas.siniestro import SiniestroInDB
+from app.schemas.validation_inconsistencia import ValidationInconsistenciaRead, ValidacionesResponse
+from app.db.repositories.validation_inconsistencia_repository import ValidationInconsistenciaRepository
 from app.services.incapacidad_service import incapacidad_service
 from app.services.historial_estado_service import historial_estado_service
 from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
@@ -1007,8 +1009,32 @@ async def get_datos_aprobados(
     
     # Obtener datos aprobados
     datos = await auditoria_datos_repository.get_by_incapacidad(db, incapacidad_id)
-    
+
     # Convertir a schema Pydantic si existe
     if datos:
         return AuditoriaDatosAprobadosResponse.model_validate(datos)
     return None
+
+
+@router.get(
+    "/{incapacidad_id}/validaciones",
+    response_model=ValidacionesResponse,
+    summary="Obtener validaciones de una incapacidad",
+    tags=["incapacidades-auditoria"],
+)
+async def get_validaciones_incapacidad(
+    incapacidad_id: UUID = Path(..., description="ID de la incapacidad"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(
+        PermissionChecker([Permissions.INCAPACIDAD_READ])
+    ),
+) -> ValidacionesResponse:
+    repo = ValidationInconsistenciaRepository(db)
+    issues = await repo.get_by_incapacidad(incapacidad_id)
+    issues_read = [ValidationInconsistenciaRead.model_validate(i) for i in issues]
+    return ValidacionesResponse(
+        issues=issues_read,
+        has_errors=any(i.severidad == "ERROR" for i in issues),
+        has_fraud_alert=any(i.categoria == "FRAUD_ALERT" for i in issues),
+        total=len(issues),
+    )

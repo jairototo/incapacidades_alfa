@@ -8,7 +8,7 @@ import pytest
 import pytest_asyncio
 import sqlalchemy as sa
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncConnection, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
 from app.main import app
@@ -37,12 +37,67 @@ async def db_engine():
         echo=False,
         poolclass=NullPool,
     )
-    
-    # Crear todas las tablas
+
     async with engine.begin() as conn:
+        # Crear tipos enum de forma idempotente usando bloques DO con EXCEPTION.
+        # Los modelos usan create_type=False, así que create_all NUNCA los crea automáticamente.
+        # Nota: CREATE TYPE IF NOT EXISTS no existe en PostgreSQL < 17; usamos DO+EXCEPTION.
+        await conn.execute(sa.text("""
+            DO $b$ BEGIN
+                CREATE TYPE tipoincapacidad AS ENUM ('ARL', 'SALUD');
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $b$;
+        """))
+        await conn.execute(sa.text("""
+            DO $b$ BEGIN
+                CREATE TYPE estadoincapacidad AS ENUM (
+                    'RADICADA', 'EN_AUDITORIA', 'OBSERVADA', 'APROBADA',
+                    'APROBADA_PARCIALMENTE', 'RECHAZADA', 'EN_PAGO',
+                    'EN_PAGO_PARCIAL', 'PAGADA', 'PAGADA_PARCIALMENTE', 'CANCELADA'
+                );
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $b$;
+        """))
+        await conn.execute(sa.text("""
+            DO $b$ BEGIN
+                CREATE TYPE prioridad AS ENUM ('BAJA', 'NORMAL', 'ALTA', 'URGENTE');
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $b$;
+        """))
+        await conn.execute(sa.text("""
+            DO $b$ BEGIN
+                CREATE TYPE tiposiniestro AS ENUM (
+                    'ACCIDENTE_TRABAJO', 'ENFERMEDAD_LABORAL', 'ACCIDENTE_TRAYECTO'
+                );
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $b$;
+        """))
+        await conn.execute(sa.text("""
+            DO $b$ BEGIN
+                CREATE TYPE gravedadsiniestro AS ENUM ('LEVE', 'MODERADO', 'GRAVE', 'MORTAL');
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $b$;
+        """))
+        await conn.execute(sa.text("""
+            DO $b$ BEGIN
+                CREATE TYPE estadosiniestro AS ENUM (
+                    'REPORTADO', 'EN_INVESTIGACION', 'CERRADO', 'ANULADO'
+                );
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $b$;
+        """))
+        await conn.execute(sa.text("""
+            DO $b$ BEGIN
+                CREATE TYPE syncsource AS ENUM ('API', 'CSV', 'EXCEL', 'MANUAL');
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $b$;
+        """))
+
+        # Crear todas las tablas (create_all es idempotente con checkfirst=True por defecto)
         await conn.run_sync(Base.metadata.create_all)
-        
+
         # Crear función y trigger para registro automático de historial
+        # DROP TRIGGER IF EXISTS evita DuplicateObjectError si ya existía de un test anterior
         await conn.execute(sa.text("""
             CREATE OR REPLACE FUNCTION registrar_radicacion_incapacidad()
             RETURNS TRIGGER AS $$
@@ -70,25 +125,29 @@ async def db_engine():
                     NOW(),
                     NOW()
                 );
-                
+
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql;
         """))
-        
+
+        await conn.execute(sa.text("""
+            DROP TRIGGER IF EXISTS trigger_registrar_radicacion_incapacidad ON incapacidad;
+        """))
+
         await conn.execute(sa.text("""
             CREATE TRIGGER trigger_registrar_radicacion_incapacidad
                 AFTER INSERT ON incapacidad
                 FOR EACH ROW
                 EXECUTE FUNCTION registrar_radicacion_incapacidad();
         """))
-    
+
     yield engine
-    
+
     # Limpiar después de los tests
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await engine.dispose()
 
 
@@ -100,7 +159,7 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
         class_=AsyncSession,
         expire_on_commit=False,
     )
-    
+
     async with async_session_maker() as session:
         yield session
         await session.rollback()
@@ -109,15 +168,15 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create test client with overridden database session."""
-    
+
     async def override_get_db():
         yield db_session
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
-    
+
     app.dependency_overrides.clear()
 
 
@@ -127,7 +186,7 @@ async def test_empresa(db_session: AsyncSession):
     """Create a test empresa."""
     from app.models.empresa import Empresa
     from app.utils.enums import EstadoEmpresa
-    
+
     empresa = Empresa(
         nit="900123456",
         razon_social="Empresa Test SAS",
@@ -137,11 +196,11 @@ async def test_empresa(db_session: AsyncSession):
         email_contacto="test@empresa.com",
         estado=EstadoEmpresa.ACTIVA,
     )
-    
+
     db_session.add(empresa)
     await db_session.commit()
     await db_session.refresh(empresa)
-    
+
     return empresa
 
 
@@ -152,7 +211,7 @@ async def test_empleado(db_session: AsyncSession, test_empresa):
     from app.utils.enums import EstadoEmpleado, TipoDocumento, Genero
     from datetime import date
     from decimal import Decimal
-    
+
     empleado = Empleado(
         empresa_id=test_empresa.id,
         numero_documento="1234567890",
@@ -168,11 +227,11 @@ async def test_empleado(db_session: AsyncSession, test_empresa):
         fecha_ingreso=date(2020, 1, 1),
         estado=EstadoEmpleado.ACTIVO,
     )
-    
+
     db_session.add(empleado)
     await db_session.commit()
     await db_session.refresh(empleado)
-    
+
     return empleado
 
 
@@ -182,7 +241,7 @@ async def test_afiliado(db_session: AsyncSession):
     from app.models.afiliado import Afiliado
     from app.utils.enums import EstadoAfiliado, TipoPoliza, TipoDocumento
     from datetime import date
-    
+
     afiliado = Afiliado(
         numero_poliza="POL-TEST-001",
         tipo_poliza="INDIVIDUAL",
@@ -198,11 +257,11 @@ async def test_afiliado(db_session: AsyncSession):
         fecha_fin_poliza=date(2024, 12, 31),
         estado=EstadoAfiliado.ACTIVO,
     )
-    
+
     db_session.add(afiliado)
     await db_session.commit()
     await db_session.refresh(afiliado)
-    
+
     return afiliado
 
 
@@ -213,7 +272,7 @@ async def test_incapacidad(db_session: AsyncSession, test_empleado, test_empresa
     from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
     from datetime import date, datetime
     from decimal import Decimal
-    
+
     incapacidad = Incapacidad(
         numero="INC-TEST-001",
         empleado_id=test_empleado.id,
@@ -230,11 +289,11 @@ async def test_incapacidad(db_session: AsyncSession, test_empleado, test_empresa
         fecha_radicacion=datetime.utcnow(),
         prioridad=Prioridad.NORMAL,
     )
-    
+
     db_session.add(incapacidad)
     await db_session.commit()
     await db_session.refresh(incapacidad)
-    
+
     return incapacidad
 
 
@@ -244,7 +303,7 @@ async def test_usuario(db_session: AsyncSession):
     from app.models.usuario import Usuario
     from app.utils.enums import RolUsuario, EstadoUsuario
     from app.core.security import get_password_hash
-    
+
     usuario = Usuario(
         username="testuser",
         email="testuser@example.com",
@@ -253,11 +312,11 @@ async def test_usuario(db_session: AsyncSession):
         rol=RolUsuario.ADMIN,
         estado=EstadoUsuario.ACTIVO,
     )
-    
+
     db_session.add(usuario)
     await db_session.commit()
     await db_session.refresh(usuario)
-    
+
     return usuario
 
 
@@ -267,7 +326,7 @@ async def test_user_auditor(db_session: AsyncSession):
     from app.models.usuario import Usuario
     from app.utils.enums import RolUsuario, EstadoUsuario
     from app.core.security import get_password_hash
-    
+
     usuario = Usuario(
         username="auditor",
         email="auditor@example.com",
@@ -276,11 +335,11 @@ async def test_user_auditor(db_session: AsyncSession):
         rol=RolUsuario.AUDITOR,
         estado=EstadoUsuario.ACTIVO,
     )
-    
+
     db_session.add(usuario)
     await db_session.commit()
     await db_session.refresh(usuario)
-    
+
     return usuario
 
 
@@ -289,7 +348,7 @@ async def test_documento(db_session: AsyncSession, test_incapacidad, test_usuari
     """Create a test documento."""
     from app.models.documento import Documento
     from app.utils.enums import TipoDocumentoAdjunto
-    
+
     documento = Documento(
         incapacidad_id=test_incapacidad.id,
         tipo_documento=TipoDocumentoAdjunto.INCAPACIDAD_MEDICA,
@@ -304,11 +363,11 @@ async def test_documento(db_session: AsyncSession, test_incapacidad, test_usuari
         uploaded_by_id=test_usuario.id,
         validado=False,
     )
-    
+
     db_session.add(documento)
     await db_session.commit()
     await db_session.refresh(documento)
-    
+
     return documento
 
 
@@ -316,7 +375,7 @@ async def test_documento(db_session: AsyncSession, test_incapacidad, test_usuari
 async def admin_token_headers(test_usuario) -> dict:
     """Create authentication headers with admin token."""
     from app.core.security import create_access_token
-    
+
     # Usar el ID del usuario (UUID) como sub en el token
     token = create_access_token(
         data={
