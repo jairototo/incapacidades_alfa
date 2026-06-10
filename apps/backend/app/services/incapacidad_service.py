@@ -385,7 +385,7 @@ class IncapacidadService:
             dias_desde_radicacion = (ahora_local - created_at).days
 
             # Calcular días en estado actual (usar updated_at como proxy)
-            updated_at_cmp = updated_at if updated_at.tzinfo is not None else updated_at
+            updated_at_cmp = updated_at.replace(tzinfo=None) if updated_at.tzinfo is not None else updated_at
             ahora_upd = ahora_local if updated_at_cmp.tzinfo is None else ahora
             dias_en_estado_actual = (ahora_upd - updated_at_cmp).days
             
