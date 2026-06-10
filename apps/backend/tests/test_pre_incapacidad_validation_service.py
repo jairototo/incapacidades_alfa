@@ -258,27 +258,27 @@ async def test_fraud_alert_no_issue_when_no_valor_dia():
 # ── Integration checks ─────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_integration_empresa_not_found_generates_fraud_alert():
-    """Test: empresa_nit presente pero empresa=None genera FRAUD_ALERT ERROR."""
+async def test_integration_empresa_not_found_generates_integration_check():
+    """Test: empresa_nit presente pero empresa=None genera INTEGRATION_CHECK WARNING."""
     pre_inc = _make_pre_inc(empresa_nit="900000001")
 
     service = PreIncapacidadValidationService(pre_incapacidad=pre_inc, empleado=None, empresa=None)
     issues = await service.validate_integration()
 
     assert any(i.codigo == "EMPRESA_NOT_FOUND" for i in issues)
-    assert any(i.severidad == "ERROR" and i.categoria == "FRAUD_ALERT" for i in issues)
+    assert any(i.severidad == "WARNING" and i.categoria == "INTEGRATION_CHECK" for i in issues)
 
 
 @pytest.mark.asyncio
-async def test_integration_empleado_not_found_generates_fraud_alert():
-    """Test: tipo=ARL con empleado=None genera FRAUD_ALERT ERROR."""
+async def test_integration_empleado_not_found_generates_integration_check():
+    """Test: tipo=ARL con empleado=None genera INTEGRATION_CHECK WARNING."""
     pre_inc = _make_pre_inc(tipo="ARL")
 
     service = PreIncapacidadValidationService(pre_incapacidad=pre_inc, empleado=None, empresa=None)
     issues = await service.validate_integration()
 
     assert any(i.codigo == "EMPLEADO_NOT_FOUND" for i in issues)
-    assert any(i.severidad == "ERROR" and i.categoria == "FRAUD_ALERT" for i in issues)
+    assert any(i.severidad == "WARNING" and i.categoria == "INTEGRATION_CHECK" for i in issues)
 
 
 @pytest.mark.asyncio
@@ -362,9 +362,10 @@ async def test_validate_all_returns_issues_from_all_categories():
     all_issues = await service.validate_all()
 
     categorias = {i.categoria for i in all_issues}
-    # Deben aparecer al menos FRAUD_ALERT (empresa/empleado faltantes) y BUSINESS_RULE (retroactiva)
-    assert "FRAUD_ALERT" in categorias
-    assert "BUSINESS_RULE" in categorias
+    # valor_dia alto → FRAUD_ALERT; retroactiva → BUSINESS_RULE; empresa/empleado no encontrados → INTEGRATION_CHECK
+    assert "FRAUD_ALERT" in categorias       # UNUSUALLY_HIGH_DAILY_VALUE
+    assert "BUSINESS_RULE" in categorias     # RETROACTIVE_BEYOND_LIMIT
+    assert "INTEGRATION_CHECK" in categorias # EMPRESA_NOT_FOUND, EMPLEADO_NOT_FOUND
 
 
 @pytest.mark.asyncio

@@ -123,7 +123,7 @@ class PreIncapacidadService:
             PreDocumento creado
         """
         # Validar que la pre-incapacidad existe
-        await self.get_by_id(pre_incapacidad_id)
+        pre_inc = await self.get_by_id(pre_incapacidad_id)
 
         # Validar tipo de documento
         if tipo_documento not in TIPOS_DOCUMENTO_VALIDOS:
@@ -193,4 +193,33 @@ class PreIncapacidadService:
             f"PreDocumento registrado: {pre_doc.id} "
             f"[{tipo_documento}] estado={estado_subida}"
         )
+
+        # If this pre-incapacidad was already promoted, link the new document to the
+        # existing incapacidad too — avoids losing documents added after promotion.
+        if estado_subida == "OK" and pre_inc.incapacidad_id:
+            from app.models.documento import Documento
+            from app.utils.enums import TipoDocumentoArchivo
+            _TIPO_MAP = {
+                "INCAPACIDAD_MEDICA": TipoDocumentoArchivo.INCAPACIDAD_MEDICA,
+                "HISTORIA_CLINICA": TipoDocumentoArchivo.HISTORIA_CLINICA,
+            }
+            doc = Documento(
+                incapacidad_id=pre_inc.incapacidad_id,
+                tipo_documento=_TIPO_MAP.get(tipo_documento, TipoDocumentoArchivo.OTROS),
+                nombre_archivo=pre_doc.nombre_original,
+                nombre_original=pre_doc.nombre_original,
+                ruta_storage=pre_doc.ruta_storage,
+                bucket=pre_doc.bucket,
+                mime_type=pre_doc.mime_type,
+                tamanio_bytes=pre_doc.tamanio_bytes,
+                uploaded_by_id=None,
+                validado=False,
+            )
+            self.db.add(doc)
+            await self.db.flush()
+            logger.info(
+                f"Documento también vinculado a incapacidad {pre_inc.incapacidad_id} "
+                f"(pre-incapacidad {pre_incapacidad_id} ya promovida)"
+            )
+
         return pre_doc

@@ -102,6 +102,12 @@ class PromotePreIncapacidadService:
             logger.info(f"Created incapacidad {incapacidad_id} from pre-incapacidad {pre_incapacidad_id}")
             await self.db.commit()
 
+            # 5b. Copy documents from pre_incapacidad → incapacidad
+            copied = await self._copy_documents(pre_inc.id, incapacidad_id, usuario_id)
+            if copied:
+                await self.db.commit()
+                logger.info(f"Copied {copied} documents to incapacidad {incapacidad_id}")
+
             # 6. Link pre_incapacidad → incapacidad
             pre_inc.incapacidad_id = incapacidad_id
             self.db.add(pre_inc)
@@ -249,3 +255,49 @@ class PromotePreIncapacidadService:
             logger.warning(f"Audit rule check failed for {pre_inc.id}: {e}")
 
         return issues
+
+    async def _copy_documents(
+        self,
+        pre_incapacidad_id: UUID,
+        incapacidad_id: UUID,
+        usuario_id: Optional[UUID],
+    ) -> int:
+        """Copy successful PreDocumento records into Documento for the new incapacidad."""
+        from sqlalchemy import select
+        from app.models.pre_documento import PreDocumento
+        from app.models.documento import Documento
+        from app.utils.enums import TipoDocumentoArchivo
+
+        _TIPO_MAP = {
+            "INCAPACIDAD_MEDICA": TipoDocumentoArchivo.INCAPACIDAD_MEDICA,
+            "HISTORIA_CLINICA": TipoDocumentoArchivo.HISTORIA_CLINICA,
+        }
+
+        result = await self.db.execute(
+            select(PreDocumento).where(
+                PreDocumento.pre_incapacidad_id == pre_incapacidad_id,
+                PreDocumento.estado_subida == "OK",
+            )
+        )
+        pre_docs = result.scalars().all()
+
+        for pre_doc in pre_docs:
+            tipo = _TIPO_MAP.get(pre_doc.tipo_documento, TipoDocumentoArchivo.OTROS)
+            doc = Documento(
+                incapacidad_id=incapacidad_id,
+                tipo_documento=tipo,
+                nombre_archivo=pre_doc.nombre_original,
+                nombre_original=pre_doc.nombre_original,
+                ruta_storage=pre_doc.ruta_storage,
+                bucket=pre_doc.bucket,
+                mime_type=pre_doc.mime_type,
+                tamanio_bytes=pre_doc.tamanio_bytes,
+                uploaded_by_id=usuario_id,
+                validado=False,
+            )
+            self.db.add(doc)
+
+        if pre_docs:
+            await self.db.flush()
+
+        return len(pre_docs)

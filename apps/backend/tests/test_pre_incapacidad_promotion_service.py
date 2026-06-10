@@ -10,8 +10,12 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
 from app.db.repositories.validation_inconsistencia_repository import ValidationInconsistenciaRepository
 from app.models.pre_incapacidad import PreIncapacidad
+from app.models.pre_documento import PreDocumento
+from app.models.documento import Documento
 from app.models.empresa import Empresa
 from app.models.empleado import Empleado
 from app.services.pre_incapacidad_promotion_service import PromotePreIncapacidadService
@@ -50,7 +54,7 @@ async def empleado_activo(db_session: AsyncSession, empresa_activa: Empresa) -> 
 
 @pytest.fixture
 async def pre_inc_sin_empresa(db_session: AsyncSession) -> PreIncapacidad:
-    """Pre-incapacidad con NIT de empresa inexistente → debe generar FRAUD_ALERT."""
+    """Pre-incapacidad con NIT de empresa inexistente → debe generar INTEGRATION_CHECK WARNING."""
     pre_inc = PreIncapacidad(
         estado="PENDIENTE",
         solicitante_correo="user@example.com",
@@ -113,26 +117,25 @@ async def test_promote_not_found_returns_error(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_promote_empresa_not_found_marks_rechazada(
+async def test_promote_empresa_not_found_still_creates_incapacidad(
     db_session: AsyncSession, pre_inc_sin_empresa: PreIncapacidad
 ):
-    """Pre-incapacidad con empresa inexistente debe quedar RECHAZADA con FRAUD_ALERT persistido."""
+    """Pre-incapacidad con empresa inexistente debe quedar PROCESADA con INTEGRATION_CHECK persistido."""
     service = PromotePreIncapacidadService(db_session)
     result = await service.promote_pre_incapacidad(pre_inc_sin_empresa.id)
 
-    assert result.success is False
-    assert result.validation_summary.errors > 0
+    assert result.success is True
 
-    # Verificar estado en BD
+    # Verificar estado en BD — ahora PROCESADA, no RECHAZADA
     await db_session.refresh(pre_inc_sin_empresa)
-    assert pre_inc_sin_empresa.estado == "RECHAZADA"
+    assert pre_inc_sin_empresa.estado == "PROCESADA"
 
-    # Verificar que los issues fueron persistidos
+    # Verificar que los issues fueron persistidos como INTEGRATION_CHECK WARNING
     val_repo = ValidationInconsistenciaRepository(db_session)
     issues = await val_repo.get_by_pre_incapacidad(pre_inc_sin_empresa.id)
     assert len(issues) > 0
     assert any(i.codigo == "EMPRESA_NOT_FOUND" for i in issues)
-    assert any(i.categoria == "FRAUD_ALERT" for i in issues)
+    assert any(i.categoria == "INTEGRATION_CHECK" for i in issues)
 
 
 @pytest.mark.asyncio
@@ -174,19 +177,141 @@ async def test_promote_returns_summary_with_correct_counts(
 
     summary = result.validation_summary
     assert summary.total_issues == summary.errors + summary.warnings + summary.infos
-    assert summary.errors >= 1  # al menos EMPRESA_NOT_FOUND y EMPLEADO_NOT_FOUND
+    # EMPRESA_NOT_FOUND y EMPLEADO_NOT_FOUND son ahora WARNING (no ERROR)
+    assert summary.warnings >= 1  # al menos EMPRESA_NOT_FOUND
+    assert summary.errors == 0
 
 
 @pytest.mark.asyncio
-async def test_promote_idempotent_second_call_returns_error(
+async def test_promote_first_call_succeeds_and_marks_procesada(
     db_session: AsyncSession, pre_inc_sin_empresa: PreIncapacidad
 ):
-    """Segunda llamada a promote con misma ID no debe crashear."""
+    """Primera llamada a promote con empresa inexistente crea incapacidad y marca PROCESADA."""
     service = PromotePreIncapacidadService(db_session)
-    # Primera llamada — marca RECHAZADA
-    result1 = await service.promote_pre_incapacidad(pre_inc_sin_empresa.id)
-    assert result1.success is False
+    result = await service.promote_pre_incapacidad(pre_inc_sin_empresa.id)
+    assert result.success is True
+    await db_session.refresh(pre_inc_sin_empresa)
+    assert pre_inc_sin_empresa.estado == "PROCESADA"
+    assert pre_inc_sin_empresa.incapacidad_id is not None
 
-    # Segunda llamada — ya está RECHAZADA pero no debe crashear
-    result2 = await service.promote_pre_incapacidad(pre_inc_sin_empresa.id)
-    assert result2 is not None  # retorna algo, no crash
+
+@pytest.fixture
+async def pre_inc_con_documentos(
+    db_session: AsyncSession, empresa_activa: Empresa, empleado_activo: Empleado
+) -> PreIncapacidad:
+    """Pre-incapacidad válida con dos documentos adjuntos (uno OK, uno ERROR)."""
+    pre_inc = PreIncapacidad(
+        estado="PENDIENTE",
+        solicitante_correo="docs@example.com",
+        solicitante_nombres="Ana",
+        empleado_tipo_documento="CC",
+        empleado_numero_documento=empleado_activo.numero_documento,
+        empleado_nombres=empleado_activo.nombres,
+        tipo="ARL",
+        tipo_enfermedad="ACCIDENTE_TRABAJO",
+        fecha_inicio=date.today(),
+        fecha_fin=date.today() + timedelta(days=3),
+        dias_totales=4,
+        diagnostico_cie10="S52.0",
+        nombre_medico="Dr. Ruiz",
+        registro_medico="REG-003",
+        empresa_nit=empresa_activa.nit,
+        empresa_nombre=empresa_activa.razon_social,
+    )
+    db_session.add(pre_inc)
+    await db_session.flush()
+
+    doc_ok = PreDocumento(
+        pre_incapacidad_id=pre_inc.id,
+        tipo_documento="INCAPACIDAD_MEDICA",
+        nombre_original="incapacidad.pdf",
+        ruta_storage="pre-incapacidades/incapacidad.pdf",
+        bucket="docs",
+        mime_type="application/pdf",
+        tamanio_bytes=102400,
+        estado_subida="OK",
+    )
+    doc_adicional = PreDocumento(
+        pre_incapacidad_id=pre_inc.id,
+        tipo_documento="SOPORTE_ADICIONAL",
+        nombre_original="soporte.jpg",
+        ruta_storage="pre-incapacidades/soporte.jpg",
+        bucket="docs",
+        mime_type="image/jpeg",
+        tamanio_bytes=51200,
+        estado_subida="OK",
+    )
+    doc_error = PreDocumento(
+        pre_incapacidad_id=pre_inc.id,
+        tipo_documento="HISTORIA_CLINICA",
+        nombre_original="historia_fallida.pdf",
+        ruta_storage="pre-incapacidades/historia_fallida.pdf",
+        bucket="docs",
+        mime_type="application/pdf",
+        tamanio_bytes=20480,
+        estado_subida="ERROR",
+    )
+    db_session.add_all([doc_ok, doc_adicional, doc_error])
+    await db_session.commit()
+    await db_session.refresh(pre_inc)
+    return pre_inc
+
+
+@pytest.mark.asyncio
+async def test_promote_copies_ok_documents_to_incapacidad(
+    db_session: AsyncSession, pre_inc_con_documentos: PreIncapacidad
+):
+    """Documentos con estado_subida=OK deben copiarse al incapacidad creado."""
+    service = PromotePreIncapacidadService(db_session)
+    result = await service.promote_pre_incapacidad(pre_inc_con_documentos.id)
+
+    assert result.success is True
+    assert result.incapacidad_id is not None
+
+    docs = (
+        await db_session.execute(
+            select(Documento).where(Documento.incapacidad_id == result.incapacidad_id)
+        )
+    ).scalars().all()
+
+    assert len(docs) == 2  # doc_ok + doc_adicional (doc_error excluded)
+    nombres = {d.nombre_original for d in docs}
+    assert "incapacidad.pdf" in nombres
+    assert "soporte.jpg" in nombres
+    assert "historia_fallida.pdf" not in nombres
+
+
+@pytest.mark.asyncio
+async def test_promote_maps_soporte_adicional_to_otros(
+    db_session: AsyncSession, pre_inc_con_documentos: PreIncapacidad
+):
+    """SOPORTE_ADICIONAL en PreDocumento debe mapearse a OTROS en Documento."""
+    service = PromotePreIncapacidadService(db_session)
+    result = await service.promote_pre_incapacidad(pre_inc_con_documentos.id)
+
+    docs = (
+        await db_session.execute(
+            select(Documento).where(Documento.incapacidad_id == result.incapacidad_id)
+        )
+    ).scalars().all()
+
+    tipos = {d.tipo_documento for d in docs}
+    assert "INCAPACIDAD_MEDICA" in tipos
+    assert "OTROS" in tipos
+
+
+@pytest.mark.asyncio
+async def test_promote_no_documents_does_not_fail(
+    db_session: AsyncSession, pre_inc_valida: PreIncapacidad
+):
+    """La promoción sin documentos adjuntos debe completarse sin error."""
+    service = PromotePreIncapacidadService(db_session)
+    result = await service.promote_pre_incapacidad(pre_inc_valida.id)
+
+    assert result.success is True
+    docs = (
+        await db_session.execute(
+            select(Documento).where(Documento.incapacidad_id == result.incapacidad_id)
+        )
+    ).scalars().all()
+    assert len(docs) == 0

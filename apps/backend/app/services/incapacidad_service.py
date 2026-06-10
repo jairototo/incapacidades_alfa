@@ -371,23 +371,18 @@ class IncapacidadService:
         ahora = datetime.now(timezone.utc)
         resultados = []
 
+        ahora_naive = ahora.replace(tzinfo=None)
+
         for incap in incapacidades:
-            # Normalise timestamps: make ahora naive if created_at is naive (test DB),
-            # or make created_at aware if it comes back naive from asyncpg.
+            # Normalize all timestamps to naive UTC before arithmetic.
+            # asyncpg returns tz-aware for DateTime(timezone=True); test DB may return naive.
             created_at = incap.created_at
             updated_at = incap.updated_at
-            if created_at.tzinfo is None:
-                ahora_local = ahora.replace(tzinfo=None)
-            else:
-                ahora_local = ahora
+            created_at_naive = created_at.replace(tzinfo=None) if created_at.tzinfo is not None else created_at
+            updated_at_naive = updated_at.replace(tzinfo=None) if updated_at.tzinfo is not None else updated_at
 
-            # Calcular días desde radicación
-            dias_desde_radicacion = (ahora_local - created_at).days
-
-            # Calcular días en estado actual (usar updated_at como proxy)
-            updated_at_cmp = updated_at.replace(tzinfo=None) if updated_at.tzinfo is not None else updated_at
-            ahora_upd = ahora_local if updated_at_cmp.tzinfo is None else ahora
-            dias_en_estado_actual = (ahora_upd - updated_at_cmp).days
+            dias_desde_radicacion = (ahora_naive - created_at_naive).days
+            dias_en_estado_actual = (ahora_naive - updated_at_naive).days
             
             # Aplicar filtro de antigüedad si existe
             if dias_antiguedad_min is not None and dias_desde_radicacion < dias_antiguedad_min:
