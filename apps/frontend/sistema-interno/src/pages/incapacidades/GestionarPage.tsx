@@ -14,6 +14,8 @@ import { DocumentosViewer } from '@/components/incapacidades/DocumentosViewer';
 import { HistorialTimeline } from '@/components/incapacidades/HistorialTimeline';
 import { GestionActions } from '@/components/incapacidades/GestionActions';
 import { AuditoriaFormulario } from '@/components/incapacidades/AuditoriaFormulario';
+import { IncapacidadContextStrip } from '@/components/incapacidades/IncapacidadContextStrip';
+import { ValidacionesPanel } from '@/components/incapacidades/ValidacionesPanel';
 
 import { incapacidadService } from '@/services/incapacidadService';
 import { cn } from '@/lib/utils';
@@ -68,6 +70,14 @@ export function GestionarPage() {
     queryFn: () => incapacidadService.getDatosAprobados(id!),
     enabled: !!id,
   });
+
+  const { data: validaciones, isLoading: validacionesLoading } = useQuery({
+    queryKey: ['incapacidad', id, 'validaciones'],
+    queryFn: () => incapacidadService.getValidaciones(id!),
+    enabled: !!id,
+  });
+
+  const hasFraudAlert = validaciones?.has_fraud_alert ?? false;
 
   // Mutation: Cambiar estado (deprecado - usar AuditoriaFormulario)
   const cambiarEstadoMutation = useMutation({
@@ -219,7 +229,7 @@ export function GestionarPage() {
               </TabsTrigger>
               <TabsTrigger value="detalle" className="space-x-2">
                 <FileText className="h-4 w-4" />
-                <span>Detalle Completo</span>
+                <span>Validaciones</span>
               </TabsTrigger>
               <TabsTrigger value="historial" className="space-x-2">
                 <History className="h-4 w-4" />
@@ -229,6 +239,12 @@ export function GestionarPage() {
 
             {/* Tab: Auditoría (NUEVO) */}
             <TabsContent value="auditoria" className="space-y-6">
+              {incapacidad && (
+                <IncapacidadContextStrip
+                  incapacidad={incapacidad}
+                  hasFraudAlert={hasFraudAlert}
+                />
+              )}
               {canManage ? (
                 <>
                   {/* Datos aprobados previos (si existen) */}
@@ -295,30 +311,12 @@ export function GestionarPage() {
               )}
             </TabsContent>
 
-            {/* Tab: Datos Generales */}
-            <TabsContent value="detalle" className="space-y-6">
-              <IncapacidadDetalle incapacidad={incapacidad} />
-              
-              {/* Legacy actions (deprecadas - usar tab Auditoría) */}
-              {canManage && (
-                <Card className="p-6 bg-blue-50 border-blue-400">
-                  <div className="flex items-center gap-2 mb-4">
-                    <AlertCircle className="h-5 w-5 text-blue-600" />
-                    <h3 className="text-lg font-semibold text-blue-900">Acciones de Gestión</h3>
-                  </div>
-                  <p className="text-sm text-blue-700 mb-4">
-                    Para realizar la auditoría con soporte de aprobación parcial, utilice la pestaña{' '}
-                    <strong>"Auditoría"</strong>.
-                  </p>
-                  <Button
-                    variant="default"
-                    onClick={() => setActiveTab('auditoria')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Ir a Auditoría
-                  </Button>
-                </Card>
-              )}
+            {/* Tab: Validaciones */}
+            <TabsContent value="detalle" className="space-y-4">
+              <ValidacionesPanel
+                issues={validaciones?.issues ?? []}
+                isLoading={validacionesLoading}
+              />
             </TabsContent>
 
             {/* Tab: Historial */}
