@@ -197,12 +197,57 @@ export interface PresignedUrlResponse {
 }
 
 /**
+ * Fallback para empleado cuando no se encuentra relación
+ */
+export interface EmpleadoFallback {
+  nombres: string;
+  numero_documento: string;
+}
+
+/**
+ * Fallback para empresa cuando no se encuentra relación
+ */
+export interface EmpresaFallback {
+  nit: string;
+  nombre: string;
+}
+
+/**
  * Incapacidad Pendiente (para módulo de pendientes)
- * Extiende Incapacidad con campos calculados de antigüedad
+ * Extiende Incapacidad con campos calculados de antigüedad y fallbacks
  */
 export interface IncapacidadPendiente extends Incapacidad {
   dias_desde_radicacion: number;
   dias_en_estado_actual: number;
+  empleado_fallback?: EmpleadoFallback | null;
+  empresa_fallback?: EmpresaFallback | null;
+}
+
+/**
+ * Validación individual (problema detectado)
+ */
+export interface ValidationIssue {
+  id: string;
+  pre_incapacidad_id: string;
+  incapacidad_id: string | null;
+  categoria: 'FIELD_VALIDATION' | 'BUSINESS_RULE' | 'FRAUD_ALERT' | 'INTEGRATION_CHECK';
+  severidad: 'ERROR' | 'WARNING' | 'INFO';
+  codigo: string;
+  descripcion: string;
+  campo_afectado?: string | null;
+  valor_encontrado?: string | null;
+  valor_esperado?: string | null;
+  fecha_deteccion: string;
+}
+
+/**
+ * Response para GET /api/v1/incapacidades/{id}/validaciones
+ */
+export interface ValidacionesResponse {
+  issues: ValidationIssue[];
+  has_errors: boolean;
+  has_fraud_alert: boolean;
+  total: number;
 }
 
 /**

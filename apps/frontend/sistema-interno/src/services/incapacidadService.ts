@@ -8,6 +8,7 @@ import type {
   Documento,
   AuditoriaDatosAprobados,
   IncapacidadAuditarRequest,
+  ValidacionesResponse,
 } from '@/types/incapacidad';
 
 /**
@@ -231,30 +232,42 @@ export const incapacidadService = {
     switch (nuevoEstado) {
       case 'EN_AUDITORIA':
         return this.radicar(id);
-      
+
       case 'APROBADA':
         return this.aprobar(id);
-      
+
       case 'RECHAZADA':
         if (!observacion) {
           throw new Error('Se requiere motivo para rechazar la incapacidad');
         }
         return this.rechazar(id, observacion);
-      
+
       case 'OBSERVADA':
         if (!observacion) {
           throw new Error('Se requiere observación');
         }
         return this.auditar(id, { accion: 'SOLICITAR_INFORMACION', observaciones: observacion });
-      
+
       case 'EN_PAGO':
         return this.enviarPago(id);
-      
+
       case 'PAGADA':
         return this.marcarPagada(id);
-      
+
       default:
         throw new Error(`Estado no válido: ${nuevoEstado}`);
     }
+  },
+
+  /**
+   * Obtener validaciones de una incapacidad
+   * GET /api/v1/incapacidades/{id}/validaciones
+   * Returns: ValidacionesResponse con lista de issues, flags de error/fraude, y total
+   */
+  async getValidaciones(id: string): Promise<ValidacionesResponse> {
+    const { data } = await api.get<ValidacionesResponse>(
+      `/incapacidades/${id}/validaciones`
+    );
+    return data;
   },
 };
