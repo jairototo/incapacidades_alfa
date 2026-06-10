@@ -211,3 +211,45 @@ async def test_pendientes_includes_empleado_fallback(
     assert target["empresa_fallback"] is not None
     assert target["empresa_fallback"]["nit"] == "999888777"
     assert target["empresa_fallback"]["nombre"] == "Empresa Fallback SAS"
+
+
+@pytest.mark.asyncio
+async def test_pendientes_empleado_fallback_null_when_no_pre_inc(
+    client: AsyncClient, db_session: AsyncSession, admin_token_headers: dict
+):
+    """Cuando empleado_id es NULL y no hay pre_incapacidad, empleado_fallback debe ser None."""
+    inc = Incapacidad(
+        numero=f"INC-NFB-{uuid4().hex[:8]}",
+        tipo=TipoIncapacidad.ARL,
+        estado=EstadoIncapacidad.RADICADA,
+        prioridad=Prioridad.NORMAL,
+        fecha_inicio=date.today(),
+        fecha_fin=date.today() + timedelta(days=5),
+        dias_totales=6,
+        fecha_radicacion=datetime.utcnow(),
+        empleado_id=None,
+        empresa_id=None,
+    )
+    db_session.add(inc)
+    await db_session.commit()
+
+    response = await client.get("/api/v1/incapacidades/pendientes", headers=admin_token_headers)
+    assert response.status_code == 200
+    items = response.json()
+    target = next((i for i in items if i["numero"] == inc.numero), None)
+    assert target is not None
+    assert target["empleado_fallback"] is None
+    assert target["empresa_fallback"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_validaciones_returns_404_for_unknown_id(
+    client: AsyncClient, db_session: AsyncSession, admin_token_headers: dict
+):
+    """El endpoint retorna 404 para un incapacidad_id que no existe."""
+    unknown_id = uuid4()
+    response = await client.get(
+        f"/api/v1/incapacidades/{unknown_id}/validaciones",
+        headers=admin_token_headers,
+    )
+    assert response.status_code == 404

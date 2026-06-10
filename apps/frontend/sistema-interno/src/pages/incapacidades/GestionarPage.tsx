@@ -9,7 +9,6 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
-import { IncapacidadDetalle } from '@/components/incapacidades/IncapacidadDetalle';
 import { DocumentosViewer } from '@/components/incapacidades/DocumentosViewer';
 import { HistorialTimeline } from '@/components/incapacidades/HistorialTimeline';
 import { GestionActions } from '@/components/incapacidades/GestionActions';
@@ -18,6 +17,7 @@ import { IncapacidadContextStrip } from '@/components/incapacidades/IncapacidadC
 import { ValidacionesPanel } from '@/components/incapacidades/ValidacionesPanel';
 
 import { incapacidadService } from '@/services/incapacidadService';
+import { preIncapacidadService } from '@/services/preIncapacidadService';
 import { cn } from '@/lib/utils';
 
 /**
@@ -78,6 +78,17 @@ export function GestionarPage() {
   });
 
   const hasFraudAlert = validaciones?.has_fraud_alert ?? false;
+
+  // Query: Pre-incapacidad para fallback de empleado (solo cuando empleado no está en BD)
+  const needsEmpleadoFallback = !!incapacidad && !incapacidad.empleado && !!incapacidad.pre_incapacidad_id;
+  const { data: preIncapacidadData } = useQuery({
+    queryKey: ['pre-incapacidad', incapacidad?.pre_incapacidad_id],
+    queryFn: () => preIncapacidadService.getById(incapacidad!.pre_incapacidad_id),
+    enabled: needsEmpleadoFallback,
+  });
+  const empleadoFallback = needsEmpleadoFallback && preIncapacidadData
+    ? { nombres: preIncapacidadData.empleado_nombres, numero_documento: preIncapacidadData.empleado_numero_documento }
+    : null;
 
   // Mutation: Cambiar estado (deprecado - usar AuditoriaFormulario)
   const cambiarEstadoMutation = useMutation({
@@ -243,6 +254,7 @@ export function GestionarPage() {
                 <IncapacidadContextStrip
                   incapacidad={incapacidad}
                   hasFraudAlert={hasFraudAlert}
+                  empleadoFallback={empleadoFallback}
                 />
               )}
               {canManage ? (
