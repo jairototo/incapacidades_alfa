@@ -3,14 +3,16 @@ API endpoints para gestión de Incapacidades.
 """
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, Query, Path, status, Body, HTTPException
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.models.pre_incapacidad import PreIncapacidad
 from app.schemas.incapacidad import (
     IncapacidadCreate,
     IncapacidadUpdate,
@@ -21,6 +23,8 @@ from app.schemas.incapacidad import (
     IncapacidadDetalleResponse,
     IncapacidadStatsResponse,
     IncapacidadStatsExtendedResponse,
+    EmpleadoFallback,
+    EmpresaFallback,
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
@@ -362,18 +366,24 @@ async def listar_incapacidades_pendientes(
     )
     
     # Convertir objetos SQLAlchemy a schemas Pydantic
-    result = []
+    result: list[dict] = []
+    ids_sin_empleado: list[UUID] = []
+
     for item in incapacidades:
         # item es un dict con 'incapacidad' y campos calculados
         incap = item['incapacidad']
-        
+
         # Convertir a dict base
         incap_dict = IncapacidadInDB.model_validate(incap).model_dump()
-        
+
         # Agregar campos calculados
         incap_dict['dias_desde_radicacion'] = item['dias_desde_radicacion']
         incap_dict['dias_en_estado_actual'] = item['dias_en_estado_actual']
-        
+
+        # Inicializar fallback fields
+        incap_dict['empleado_fallback'] = None
+        incap_dict['empresa_fallback'] = None
+
         # Convertir objetos relacionados a schemas
         if incap.empleado:
             incap_dict['empleado'] = EmpleadoResponse.model_validate(incap.empleado).model_dump()
@@ -381,9 +391,43 @@ async def listar_incapacidades_pendientes(
             incap_dict['empresa'] = EmpresaResponse.model_validate(incap.empresa).model_dump()
         if incap.afiliado:
             incap_dict['afiliado'] = AfiliadoResponse.model_validate(incap.afiliado).model_dump()
-            
+
+        if not incap.empleado_id:
+            ids_sin_empleado.append(incap.id)
+
         result.append(incap_dict)
-    
+
+    # Batch query — one SELECT for all incapacidades without empleado
+    if ids_sin_empleado:
+        pre_rows = (
+            await db.execute(
+                sa_select(
+                    PreIncapacidad.incapacidad_id,
+                    PreIncapacidad.empleado_nombres,
+                    PreIncapacidad.empleado_numero_documento,
+                    PreIncapacidad.empresa_nit,
+                    PreIncapacidad.empresa_nombre,
+                ).where(PreIncapacidad.incapacidad_id.in_(ids_sin_empleado))
+            )
+        ).all()
+
+        fallback_map: dict[str, Any] = {str(row.incapacidad_id): row for row in pre_rows}
+
+        for item_dict in result:
+            inc_id = str(item_dict['id'])
+            if inc_id in fallback_map:
+                row = fallback_map[inc_id]
+                if row.empleado_nombres:
+                    item_dict['empleado_fallback'] = EmpleadoFallback(
+                        nombres=row.empleado_nombres,
+                        numero_documento=row.empleado_numero_documento or '',
+                    ).model_dump()
+                if row.empresa_nit:
+                    item_dict['empresa_fallback'] = EmpresaFallback(
+                        nit=row.empresa_nit,
+                        nombre=row.empresa_nombre or row.empresa_nit,
+                    ).model_dump()
+
     return result
 
 

@@ -155,3 +155,59 @@ async def test_get_validaciones_includes_pre_incapacidad_issues(
     data = response.json()
     assert data["total"] == 1
     assert data["issues"][0]["codigo"] == "MISSING_FIELD"
+
+
+@pytest.mark.asyncio
+async def test_pendientes_includes_empleado_fallback(
+    client: AsyncClient, db_session: AsyncSession, admin_token_headers: dict
+):
+    """Cuando empleado_id es NULL, el response incluye empleado_fallback desde pre_incapacidad."""
+    from datetime import datetime
+    inc = Incapacidad(
+        numero=f"INC-FB-{uuid4().hex[:8]}",
+        tipo=TipoIncapacidad.ARL,
+        estado=EstadoIncapacidad.RADICADA,
+        prioridad=Prioridad.NORMAL,
+        fecha_inicio=date.today(),
+        fecha_fin=date.today() + timedelta(days=5),
+        dias_totales=6,
+        fecha_radicacion=datetime.utcnow(),
+        empleado_id=None,
+        empresa_id=None,
+    )
+    db_session.add(inc)
+    await db_session.flush()
+
+    pre = PreIncapacidad(
+        estado="PROCESADA",
+        solicitante_correo="fb@test.com",
+        solicitante_nombres="FB",
+        empleado_tipo_documento="CC",
+        empleado_numero_documento="99887766",
+        empleado_nombres="Carlos Fallback",
+        tipo="ARL",
+        tipo_enfermedad="ACCIDENTE_TRABAJO",
+        fecha_inicio=date.today(),
+        fecha_fin=date.today() + timedelta(days=5),
+        dias_totales=6,
+        diagnostico_cie10="S50.0",
+        nombre_medico="Dr. FB",
+        registro_medico="REG-FB",
+        empresa_nit="999888777",
+        empresa_nombre="Empresa Fallback SAS",
+        incapacidad_id=inc.id,
+    )
+    db_session.add(pre)
+    await db_session.commit()
+
+    response = await client.get("/api/v1/incapacidades/pendientes", headers=admin_token_headers)
+    assert response.status_code == 200
+    items = response.json()
+    target = next((i for i in items if i["numero"] == inc.numero), None)
+    assert target is not None
+    assert target["empleado_fallback"] is not None
+    assert target["empleado_fallback"]["nombres"] == "Carlos Fallback"
+    assert target["empleado_fallback"]["numero_documento"] == "99887766"
+    assert target["empresa_fallback"] is not None
+    assert target["empresa_fallback"]["nit"] == "999888777"
+    assert target["empresa_fallback"]["nombre"] == "Empresa Fallback SAS"
