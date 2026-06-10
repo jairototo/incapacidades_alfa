@@ -131,7 +131,6 @@ export function DocumentosViewer({ documentos, viewUrlPrefix = 'documentos', dow
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Documentos Adjuntos</h3>
 
         <Tabs value={selectedDocId || ''} onValueChange={setSelectedDocId} className="w-full">
           {/* Horizontal Tab List */}
