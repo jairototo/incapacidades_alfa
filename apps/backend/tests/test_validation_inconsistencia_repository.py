@@ -1,9 +1,9 @@
 """
-Tests para ValidationInconsistenciaRepository.get_by_incapacidad.
-Verifica que retorna issues tanto por incapacidad_id directo como
-via pre_incapacidad.incapacidad_id.
+Tests para ValidationInconsistenciaRepository.
+Cubre: create, get_by_pre_incapacidad, count_by_severidad, has_errors,
+delete_by_pre_incapacidad, y get_by_incapacidad.
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -13,6 +13,7 @@ from app.db.repositories.validation_inconsistencia_repository import ValidationI
 from app.models.pre_incapacidad import PreIncapacidad
 from app.models.incapacidad import Incapacidad
 from app.models.validation_inconsistencia import ValidationInconsistencia
+from app.schemas.validation_inconsistencia import ValidationInconsistenciaCreate
 from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
 
 
@@ -25,7 +26,7 @@ async def _make_incapacidad(db: AsyncSession) -> Incapacidad:
         fecha_inicio=date.today(),
         fecha_fin=date.today() + timedelta(days=5),
         dias_totales=6,
-        fecha_radicacion=__import__('datetime').datetime.utcnow(),
+        fecha_radicacion=datetime.utcnow(),
     )
     db.add(inc)
     await db.flush()
@@ -54,6 +55,215 @@ async def _make_pre_inc(db: AsyncSession, incapacidad_id=None) -> PreIncapacidad
     await db.flush()
     return pre
 
+
+# ---------------------------------------------------------------------------
+# create
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_create_stores_inconsistencia(db_session: AsyncSession):
+    """create() persiste una ValidationInconsistencia y la retorna con id."""
+    pre = await _make_pre_inc(db_session)
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    schema = ValidationInconsistenciaCreate(
+        pre_incapacidad_id=pre.id,
+        categoria="BUSINESS_RULE",
+        severidad="ERROR",
+        codigo="TEST_CREATE",
+        descripcion="Prueba de creación",
+    )
+    issue = await repo.create(schema)
+    await db_session.commit()
+
+    assert issue.id is not None
+    assert issue.codigo == "TEST_CREATE"
+    assert issue.severidad == "ERROR"
+    assert issue.pre_incapacidad_id == pre.id
+
+
+# ---------------------------------------------------------------------------
+# get_by_pre_incapacidad
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_get_by_pre_incapacidad_returns_its_issues(db_session: AsyncSession):
+    """get_by_pre_incapacidad retorna solo los issues de esa pre-incapacidad."""
+    pre_a = await _make_pre_inc(db_session)
+    pre_b = await _make_pre_inc(db_session)
+
+    issue_a = ValidationInconsistencia(
+        pre_incapacidad_id=pre_a.id,
+        categoria="BUSINESS_RULE",
+        severidad="WARNING",
+        codigo="CODE_A",
+        descripcion="A",
+    )
+    issue_b = ValidationInconsistencia(
+        pre_incapacidad_id=pre_b.id,
+        categoria="BUSINESS_RULE",
+        severidad="ERROR",
+        codigo="CODE_B",
+        descripcion="B",
+    )
+    db_session.add_all([issue_a, issue_b])
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    results = await repo.get_by_pre_incapacidad(pre_a.id)
+    assert len(results) == 1
+    assert results[0].codigo == "CODE_A"
+
+
+@pytest.mark.asyncio
+async def test_get_by_pre_incapacidad_empty(db_session: AsyncSession):
+    """get_by_pre_incapacidad retorna lista vacía cuando no hay issues."""
+    pre = await _make_pre_inc(db_session)
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    results = await repo.get_by_pre_incapacidad(pre.id)
+    assert results == []
+
+
+# ---------------------------------------------------------------------------
+# count_by_severidad
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_count_by_severidad(db_session: AsyncSession):
+    """count_by_severidad devuelve conteos correctos por nivel."""
+    pre = await _make_pre_inc(db_session)
+    db_session.add_all([
+        ValidationInconsistencia(
+            pre_incapacidad_id=pre.id,
+            categoria="BUSINESS_RULE",
+            severidad="ERROR",
+            codigo="E1",
+            descripcion="error 1",
+        ),
+        ValidationInconsistencia(
+            pre_incapacidad_id=pre.id,
+            categoria="BUSINESS_RULE",
+            severidad="ERROR",
+            codigo="E2",
+            descripcion="error 2",
+        ),
+        ValidationInconsistencia(
+            pre_incapacidad_id=pre.id,
+            categoria="INTEGRATION_CHECK",
+            severidad="WARNING",
+            codigo="W1",
+            descripcion="warning 1",
+        ),
+    ])
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    counts = await repo.count_by_severidad(pre.id)
+    assert counts["ERROR"] == 2
+    assert counts["WARNING"] == 1
+    assert counts["total"] == 3
+
+
+# ---------------------------------------------------------------------------
+# has_errors
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_has_errors_true_when_errors_exist(db_session: AsyncSession):
+    """has_errors retorna True cuando hay al menos un issue de severidad ERROR."""
+    pre = await _make_pre_inc(db_session)
+    db_session.add(ValidationInconsistencia(
+        pre_incapacidad_id=pre.id,
+        categoria="BUSINESS_RULE",
+        severidad="ERROR",
+        codigo="ERR_X",
+        descripcion="error x",
+    ))
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    assert await repo.has_errors(pre.id) is True
+
+
+@pytest.mark.asyncio
+async def test_has_errors_false_when_only_warnings(db_session: AsyncSession):
+    """has_errors retorna False cuando solo hay WARNINGs."""
+    pre = await _make_pre_inc(db_session)
+    db_session.add(ValidationInconsistencia(
+        pre_incapacidad_id=pre.id,
+        categoria="INTEGRATION_CHECK",
+        severidad="WARNING",
+        codigo="WARN_X",
+        descripcion="warning x",
+    ))
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    assert await repo.has_errors(pre.id) is False
+
+
+@pytest.mark.asyncio
+async def test_has_errors_false_when_no_issues(db_session: AsyncSession):
+    """has_errors retorna False cuando no hay issues."""
+    pre = await _make_pre_inc(db_session)
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    assert await repo.has_errors(pre.id) is False
+
+
+# ---------------------------------------------------------------------------
+# delete_by_pre_incapacidad
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_delete_by_pre_incapacidad_removes_all(db_session: AsyncSession):
+    """delete_by_pre_incapacidad elimina todos los issues de la pre-incapacidad."""
+    pre = await _make_pre_inc(db_session)
+    db_session.add_all([
+        ValidationInconsistencia(
+            pre_incapacidad_id=pre.id,
+            categoria="BUSINESS_RULE",
+            severidad="ERROR",
+            codigo="D1",
+            descripcion="del 1",
+        ),
+        ValidationInconsistencia(
+            pre_incapacidad_id=pre.id,
+            categoria="BUSINESS_RULE",
+            severidad="WARNING",
+            codigo="D2",
+            descripcion="del 2",
+        ),
+    ])
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    deleted = await repo.delete_by_pre_incapacidad(pre.id)
+    await db_session.commit()
+
+    assert deleted == 2
+    remaining = await repo.get_by_pre_incapacidad(pre.id)
+    assert remaining == []
+
+
+@pytest.mark.asyncio
+async def test_delete_by_pre_incapacidad_returns_zero_when_none(db_session: AsyncSession):
+    """delete_by_pre_incapacidad retorna 0 si no hay issues."""
+    pre = await _make_pre_inc(db_session)
+    await db_session.commit()
+
+    repo = ValidationInconsistenciaRepository(db_session)
+    deleted = await repo.delete_by_pre_incapacidad(pre.id)
+    assert deleted == 0
+
+
+# ---------------------------------------------------------------------------
+# get_by_incapacidad
+# ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
 async def test_get_by_incapacidad_direct_link(db_session: AsyncSession):

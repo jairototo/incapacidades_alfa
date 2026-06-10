@@ -6,6 +6,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, delete, or_
 
+from app.models.pre_incapacidad import PreIncapacidad
 from app.models.validation_inconsistencia import ValidationInconsistencia
 from app.schemas.validation_inconsistencia import ValidationInconsistenciaCreate
 
@@ -81,8 +82,6 @@ class ValidationInconsistenciaRepository:
         """Retorna todos los issues de una incapacidad:
         - issues con incapacidad_id directo, O
         - issues cuya pre_incapacidad apunta a esta incapacidad."""
-        from app.models.pre_incapacidad import PreIncapacidad
-
         subq = select(PreIncapacidad.id).where(
             PreIncapacidad.incapacidad_id == incapacidad_id
         )
