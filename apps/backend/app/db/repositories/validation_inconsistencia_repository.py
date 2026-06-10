@@ -2,7 +2,6 @@
 Repository para almacenar y consultar inconsistencias de validación.
 """
 from uuid import UUID
-from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, delete, or_
 

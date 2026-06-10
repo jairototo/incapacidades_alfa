@@ -1073,6 +1073,7 @@ async def get_validaciones_incapacidad(
         PermissionChecker([Permissions.INCAPACIDAD_READ])
     ),
 ) -> ValidacionesResponse:
+    await incapacidad_service.get_incapacidad(db, incapacidad_id, with_relations=False)
     repo = ValidationInconsistenciaRepository(db)
     issues = await repo.get_by_incapacidad(incapacidad_id)
     issues_read = [ValidationInconsistenciaRead.model_validate(i) for i in issues]
