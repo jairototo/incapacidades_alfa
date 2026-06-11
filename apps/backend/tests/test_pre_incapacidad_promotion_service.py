@@ -10,12 +10,13 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.db.repositories.validation_inconsistencia_repository import ValidationInconsistenciaRepository
 from app.models.pre_incapacidad import PreIncapacidad
 from app.models.pre_documento import PreDocumento
 from app.models.documento import Documento
+from app.models.incapacidad import Incapacidad
 from app.models.empresa import Empresa
 from app.models.empleado import Empleado
 from app.services.pre_incapacidad_promotion_service import PromotePreIncapacidadService
@@ -193,6 +194,85 @@ async def test_promote_first_call_succeeds_and_marks_procesada(
     await db_session.refresh(pre_inc_sin_empresa)
     assert pre_inc_sin_empresa.estado == "PROCESADA"
     assert pre_inc_sin_empresa.incapacidad_id is not None
+
+
+@pytest.mark.asyncio
+async def test_promote_second_call_is_noop(
+    db_session: AsyncSession, pre_inc_sin_empresa: PreIncapacidad
+):
+    """Segunda llamada a promote no crea una segunda Incapacidad (idempotency guard)."""
+    service = PromotePreIncapacidadService(db_session)
+    result1 = await service.promote_pre_incapacidad(pre_inc_sin_empresa.id)
+    assert result1.success is True
+
+    # Count total incapacidad rows before the second call
+    count_before = (
+        await db_session.execute(
+            select(func.count()).select_from(Incapacidad).where(
+                Incapacidad.id == result1.incapacidad_id
+            )
+        )
+    ).scalar_one()
+    assert count_before == 1
+
+    result2 = await service.promote_pre_incapacidad(pre_inc_sin_empresa.id)
+    assert result2.success is True
+    assert result2.incapacidad_id == result1.incapacidad_id
+
+    # Still exactly one Incapacidad row after second call
+    count_after = (
+        await db_session.execute(
+            select(func.count()).select_from(Incapacidad).where(
+                Incapacidad.id == result1.incapacidad_id
+            )
+        )
+    ).scalar_one()
+    assert count_after == 1
+
+    # Estado remains PROCESADA
+    await db_session.refresh(pre_inc_sin_empresa)
+    assert pre_inc_sin_empresa.estado == "PROCESADA"
+
+
+@pytest.mark.asyncio
+async def test_promote_skips_when_incapacidad_id_set(
+    db_session: AsyncSession, pre_inc_sin_empresa: PreIncapacidad
+):
+    """Guard actúa cuando incapacidad_id ya está asignado aunque estado no sea PROCESADA.
+
+    Simula crash parcial: incapacidad_id fue enlazado pero estado no se actualizó a PROCESADA.
+    Una segunda llamada no debe crear una nueva Incapacidad.
+    """
+    service = PromotePreIncapacidadService(db_session)
+
+    # First promotion sets both incapacidad_id and estado=PROCESADA
+    result1 = await service.promote_pre_incapacidad(pre_inc_sin_empresa.id)
+    assert result1.success is True
+    first_incapacidad_id = result1.incapacidad_id
+
+    # Simulate partial crash: reset estado to PENDIENTE, leave incapacidad_id set
+    await db_session.refresh(pre_inc_sin_empresa)
+    pre_inc_sin_empresa.estado = "PENDIENTE"
+    db_session.add(pre_inc_sin_empresa)
+    await db_session.commit()
+    await db_session.refresh(pre_inc_sin_empresa)
+    assert pre_inc_sin_empresa.incapacidad_id == first_incapacidad_id
+    assert pre_inc_sin_empresa.estado == "PENDIENTE"
+
+    # Second call should hit the guard (incapacidad_id is not None) and not create a new row
+    result2 = await service.promote_pre_incapacidad(pre_inc_sin_empresa.id)
+    assert result2.success is True
+    assert result2.incapacidad_id == first_incapacidad_id
+
+    # Confirm no second Incapacidad was created
+    all_inc_count = (
+        await db_session.execute(
+            select(func.count()).select_from(Incapacidad).where(
+                Incapacidad.id == first_incapacidad_id
+            )
+        )
+    ).scalar_one()
+    assert all_inc_count == 1
 
 
 @pytest.fixture

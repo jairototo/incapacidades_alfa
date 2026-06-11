@@ -67,6 +67,27 @@ class PromotePreIncapacidadService:
                     timestamp=datetime.utcnow(),
                 )
 
+            # Idempotency guard: never promote twice
+            if pre_inc.estado == "PROCESADA" or pre_inc.incapacidad_id is not None:
+                logger.info(
+                    f"Pre-incapacidad {pre_incapacidad_id} already promoted "
+                    f"(estado={pre_inc.estado}, incapacidad_id={pre_inc.incapacidad_id}); skipping"
+                )
+                counts = await self.validation_repo.count_by_severidad(pre_incapacidad_id)
+                return PromotionResult(
+                    success=True,
+                    pre_incapacidad_id=pre_incapacidad_id,
+                    incapacidad_id=pre_inc.incapacidad_id,
+                    validation_summary=ValidationSummary(
+                        total_issues=counts["total"],
+                        errors=counts["ERROR"],
+                        warnings=counts["WARNING"],
+                        infos=counts["INFO"],
+                        issues=[],
+                    ),
+                    timestamp=datetime.utcnow(),
+                )
+
             # 2. Clear existing validation issues for idempotent re-runs
             if clear_existing_issues:
                 deleted = await self.validation_repo.delete_by_pre_incapacidad(pre_incapacidad_id)
