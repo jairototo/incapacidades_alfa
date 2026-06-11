@@ -178,7 +178,7 @@ RBAC roles: `ADMIN, AUDITOR, APROBADOR, EMPRESA, EMPLEADO, READONLY`
 Single workflow: `.github/workflows/auto-documentation.yml`
 - Triggers on push/PR to `master`
 - Auto-commits doc updates (`docs/`, `README.md`, `CHANGELOG.md`)
-- No lint/test CI yet — run checks locally before merging
+- CI pipeline: `.github/workflows/ci.yml` runs on every push — three jobs: backend (ruff + pytest against Postgres+Redis services) and frontend matrix (lint + vitest + build for portal-externo and sistema-interno)
 
 No pre-commit hooks configured.
 

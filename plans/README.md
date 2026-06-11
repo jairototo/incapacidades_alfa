@@ -17,7 +17,7 @@ can be promoted to a plan on request.
 | 001 | Enforce real authentication on documentos and storage endpoints | P1 | M | — | DONE — commit `417cba64`, branch `bugfix/enforce-documentos-auth` |
 | 002 | Add idempotency guard to pre-incapacidad promotion | P1 | S | — | DONE — commit `052cb65b`, branch `bugfix/promotion-idempotency-guard` |
 | 003 | Make pre-incapacidad promotion atomic (single commit) | P2 | M | 002 | DONE — commit `e2f0491a`, branch `bugfix/promotion-single-transaction` |
-| 004 | Restore a minimal CI pipeline | P1 | M | — | TODO |
+| 004 | Restore a minimal CI pipeline | P1 | M | — | BLOCKED: awaiting push — workflow cannot be fully verified until pushed to GitHub |
 | 005 | Patch known-vulnerable npm dependencies in both frontends | P2 | S | — | TODO |
 | 006 | Parameterize default credentials and harden production config | P2 | S | — | TODO |
 | 007 | Add flush-only variants to BaseRepository (Plan 003 prerequisite) | P2 | S | — | DONE — commit `3d8880f7`, branch `bugfix/base-repository-flush-variants` |
