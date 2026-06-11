@@ -1,9 +1,7 @@
 """
 Endpoints para servir archivos del storage filesystem.
 """
-import os
 from pathlib import Path
-from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Path as PathParam, Depends
 from fastapi.responses import FileResponse
@@ -19,7 +17,8 @@ router = APIRouter()
 
 @router.get("/files/{filepath:path}")
 async def serve_file(
-    filepath: str = PathParam(..., description="Ruta relativa del archivo")
+    filepath: str = PathParam(..., description="Ruta relativa del archivo"),
+    current_user: Usuario = Depends(get_current_user)
 ):
     """
     Sirve archivos del filesystem local.

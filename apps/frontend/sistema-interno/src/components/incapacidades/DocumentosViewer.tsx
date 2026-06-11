@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { Documento } from '@/types/incapacidad';
 import { incapacidadService } from '@/services/incapacidadService';
 import { formatDate } from '@/utils/formatters';
+import api from '@/lib/api';
 import {
   FileText,
   Download,
@@ -50,6 +51,9 @@ export function DocumentosViewer({ documentos, viewUrlPrefix = 'documentos', dow
   const [loadingPreviewIds, setLoadingPreviewIds] = useState<Set<string>>(new Set());
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
 
+  // Track object URLs so we can revoke them on unmount
+  const objectUrlsRef = useRef<Map<string, string>>(new Map());
+
   // Auto-select first document on mount
   useEffect(() => {
     if (documentos.length > 0 && !selectedDocId) {
@@ -57,7 +61,15 @@ export function DocumentosViewer({ documentos, viewUrlPrefix = 'documentos', dow
     }
   }, [documentos, selectedDocId]);
 
-  // Load preview URLs for all documents
+  // Revoke all object URLs when component unmounts to free memory
+  useEffect(() => {
+    const objectUrls = objectUrlsRef.current;
+    return () => {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  // Load preview URLs for all documents via authenticated fetch
   useEffect(() => {
     const loadPreviews = async () => {
       for (const documento of documentos) {
@@ -66,9 +78,12 @@ export function DocumentosViewer({ documentos, viewUrlPrefix = 'documentos', dow
           setLoadingPreviewIds(prev => new Set(prev).add(documento.id));
 
           try {
-            const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
-            const viewUrl = `${baseURL}/${viewUrlPrefix}/${documento.id}/view`;
-            setPreviewUrls(prev => new Map(prev).set(documento.id, viewUrl));
+            const res = await api.get(`/${viewUrlPrefix}/${documento.id}/view`, {
+              responseType: 'blob',
+            });
+            const objectUrl = URL.createObjectURL(res.data as Blob);
+            objectUrlsRef.current.set(documento.id, objectUrl);
+            setPreviewUrls(prev => new Map(prev).set(documento.id, objectUrl));
           } catch (error) {
             console.error(`Error loading preview for ${documento.id}:`, error);
           } finally {
@@ -83,7 +98,7 @@ export function DocumentosViewer({ documentos, viewUrlPrefix = 'documentos', dow
     };
 
     loadPreviews();
-  }, [documentos, previewUrls]);
+  }, [documentos, previewUrls, viewUrlPrefix]);
 
   const getFileIcon = (fileName: string | undefined) => {
     if (!fileName) {
@@ -108,7 +123,25 @@ export function DocumentosViewer({ documentos, viewUrlPrefix = 'documentos', dow
       setDownloadingDocId(documento.id);
       const resolveFn = downloadFn ?? incapacidadService.getDownloadUrl.bind(incapacidadService);
       const url = await resolveFn(documento.id);
-      window.open(url, '_blank');
+
+      // If the resolved URL is a relative /api/v1/storage/files/... path (filesystem
+      // backend), we must fetch it via the authenticated axios instance and serve the
+      // blob through a temporary object URL — a direct window.open would not carry
+      // the Authorization header and would get a 401.
+      if (url.startsWith('/api/') || url.startsWith('/storage/')) {
+        const res = await api.get(url, { responseType: 'blob' });
+        const objectUrl = URL.createObjectURL(res.data as Blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = documento.nombre_original || 'documento';
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(objectUrl);
+      } else {
+        // MinIO presigned URL — already carries auth via query params; open directly
+        window.open(url, '_blank');
+      }
     } catch (error) {
       console.error('Error downloading document:', error);
       alert('Could not download document');

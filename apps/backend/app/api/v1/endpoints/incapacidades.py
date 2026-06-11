@@ -320,7 +320,8 @@ async def descargar_documento_publico(
     response_model=List[IncapacidadPendienteResponse],
     summary="Listar incapacidades pendientes de auditoría",
     description="Obtiene incapacidades en estados RADICADA, EN_AUDITORIA, OBSERVADA ordenadas por prioridad y antigüedad",
-    tags=["incapacidades-auditoria"]
+    tags=["incapacidades-auditoria"],
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_READ]))],
 )
 async def listar_incapacidades_pendientes(
     db: AsyncSession = Depends(get_db),

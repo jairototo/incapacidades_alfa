@@ -6,7 +6,7 @@ from uuid import UUID
 import logging
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -17,40 +17,12 @@ from app.schemas.documento import (
     DocumentoUploadResponse
 )
 from app.services.documento_service import DocumentoService
+from app.core.security import get_current_user, PermissionChecker, Permissions
 
 logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
-
-
-# Dummy function for get_current_user until auth is implemented
-async def get_current_user(db: AsyncSession = Depends(get_db)) -> Usuario:
-    """Placeholder para get_current_user."""
-    from sqlalchemy import select
-    result = await db.execute(select(Usuario).limit(1))
-    return result.scalar_one()
-
-
-# Dummy permission checker
-class Permissions:
-    """Permisos del sistema."""
-    DOCUMENTO_CREATE = "documento_create"
-    DOCUMENTO_READ = "documento_read"
-    DOCUMENTO_UPDATE = "documento_update"
-    DOCUMENTO_DELETE = "documento_delete"
-
-
-class PermissionChecker:
-    """Verificador de permisos (placeholder)."""
-    
-    def __init__(self, required_permissions: list[str]):
-        """Inicializa el checker."""
-        self.required_permissions = required_permissions
-    
-    async def __call__(self, current_user: Usuario = Depends(get_current_user)) -> bool:
-        """Verifica permisos (siempre retorna True por ahora)."""
-        return True
 
 
 @router.post(
