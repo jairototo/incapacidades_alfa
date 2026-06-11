@@ -395,3 +395,40 @@ async def test_promote_no_documents_does_not_fail(
         )
     ).scalars().all()
     assert len(docs) == 0
+
+
+@pytest.mark.asyncio
+async def test_promote_failure_leaves_no_partial_state(
+    db_session: AsyncSession, pre_inc_valida: PreIncapacidad
+):
+    """Si radicar_incapacidad falla (error no-infra), la promoción es atómica:
+    no debe quedar ninguna Incapacidad en BD, estado debe ser ERROR, e incapacidad_id debe ser None.
+    """
+    from unittest.mock import patch, AsyncMock
+
+    # Count Incapacidad rows before promotion
+    count_before = (
+        await db_session.execute(select(func.count()).select_from(Incapacidad))
+    ).scalar_one()
+
+    with patch(
+        "app.services.pre_incapacidad_promotion_service.incapacidad_service.radicar_incapacidad",
+        new=AsyncMock(side_effect=ValueError("boom")),
+    ):
+        service = PromotePreIncapacidadService(db_session)
+        result = await service.promote_pre_incapacidad(pre_inc_valida.id)
+
+    assert result.success is False
+
+    # Atomicity assertion: no new Incapacidad row should exist (rollback removed it)
+    count_after = (
+        await db_session.execute(select(func.count()).select_from(Incapacidad))
+    ).scalar_one()
+    assert count_after == count_before, (
+        f"Expected {count_before} Incapacidad rows but found {count_after} (partial state leaked)"
+    )
+
+    # pre_incapacidad should be in ERROR state with no incapacidad_id linked
+    await db_session.refresh(pre_inc_valida)
+    assert pre_inc_valida.estado == "ERROR"
+    assert pre_inc_valida.incapacidad_id is None

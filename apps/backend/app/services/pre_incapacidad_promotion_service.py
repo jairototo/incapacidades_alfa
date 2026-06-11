@@ -91,7 +91,7 @@ class PromotePreIncapacidadService:
             # 2. Clear existing validation issues for idempotent re-runs
             if clear_existing_issues:
                 deleted = await self.validation_repo.delete_by_pre_incapacidad(pre_incapacidad_id)
-                await self.db.commit()
+                await self.db.flush()
                 await self.db.refresh(pre_inc)
                 if deleted:
                     logger.info(f"Cleared {deleted} existing issues for {pre_incapacidad_id}")
@@ -112,27 +112,26 @@ class PromotePreIncapacidadService:
 
             for issue_schema in issues:
                 await self.validation_repo.create(issue_schema)
-            await self.db.commit()
             logger.debug(f"Persisted {len(issues)} validation issues for {pre_incapacidad_id}")
 
             # 5. Create Incapacidad unconditionally
             inc = await incapacidad_service.create_from_pre_incapacidad(
-                self.db, pre_inc, empleado=empleado, empresa=empresa, usuario_id=usuario_id
+                self.db, pre_inc, empleado=empleado, empresa=empresa, usuario_id=usuario_id,
+                flush_only=True,
             )
             incapacidad_id = inc.id
             logger.info(f"Created incapacidad {incapacidad_id} from pre-incapacidad {pre_incapacidad_id}")
-            await self.db.commit()
+            await self.db.flush()
 
             # 5b. Copy documents from pre_incapacidad → incapacidad
             copied = await self._copy_documents(pre_inc.id, incapacidad_id, usuario_id)
             if copied:
-                await self.db.commit()
                 logger.info(f"Copied {copied} documents to incapacidad {incapacidad_id}")
 
             # 6. Link pre_incapacidad → incapacidad
             pre_inc.incapacidad_id = incapacidad_id
             self.db.add(pre_inc)
-            await self.db.commit()
+            await self.db.flush()
             await self.db.refresh(pre_inc)
 
             # 7. Run additional audit rules when empleado is found
@@ -141,15 +140,13 @@ class PromotePreIncapacidadService:
                 for issue in audit_issues:
                     await self.validation_repo.create(issue)
                 if audit_issues:
-                    await self.db.commit()
                     logger.info(f"Added {len(audit_issues)} audit rule issues for {pre_incapacidad_id}")
 
             # 8. Transition to EN_AUDITORIA
-            await incapacidad_service.radicar_incapacidad(self.db, incapacidad_id, usuario_id)
-            await self.db.commit()
+            await incapacidad_service.radicar_incapacidad(self.db, incapacidad_id, usuario_id, flush_only=True)
             logger.info(f"Incapacidad {incapacidad_id} transitioned to EN_AUDITORIA")
 
-            # 9. Mark pre-incapacidad as PROCESADA
+            # 9. Mark pre-incapacidad as PROCESADA — single commit for the whole happy path
             await self.pre_inc_repo.update_estado(self.db, pre_incapacidad_id, "PROCESADA")
             await self.db.commit()
 
@@ -183,11 +180,14 @@ class PromotePreIncapacidadService:
                 _PgError = None
             is_infra = isinstance(e, SQLAlchemyError) or (_PgError and isinstance(e, _PgError))
             if is_infra:
+                await self.db.rollback()
                 raise
 
             logger.error(f"Error in unified promotion for {pre_incapacidad_id}: {e}")
+            await self.db.rollback()
             try:
                 await self.pre_inc_repo.update_error(self.db, pre_incapacidad_id, str(e))
+                await self.pre_inc_repo.update_estado(self.db, pre_incapacidad_id, "ERROR")
                 await self.db.commit()
             except Exception:
                 pass
