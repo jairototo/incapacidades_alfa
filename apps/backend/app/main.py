@@ -1,5 +1,5 @@
 """
-Punto de entrada principal de la aplicación FastAPI.
+Punto de entrada principal de la aplicacion FastAPI.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,13 +16,14 @@ from app.middleware.logging_middleware import LoggingMiddleware
 setup_logging()
 
 # Create FastAPI app
+_is_production = settings.ENVIRONMENT == "production"
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="API para gestión de incapacidades en aseguradoras",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    description="API para gestion de incapacidades en aseguradoras",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json" if not _is_production else None,
+    docs_url="/docs" if not _is_production else None,
+    redoc_url="/redoc" if not _is_production else None,
 )
 
 # Add middlewares
@@ -35,8 +36,8 @@ if settings.BACKEND_CORS_ORIGINS:
         CORSMiddleware,
         allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
 # Add exception handlers

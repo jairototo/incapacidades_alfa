@@ -5,15 +5,15 @@ services:
     image: postgres:15-alpine
     container_name: incapacidades-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: incapacidades
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-incapacidades}
     ports:
       - "5442:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -38,8 +38,8 @@ services:
     container_name: incapacidades-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
       - "9010:9000"
       - "9011:9001"
@@ -58,8 +58,8 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: incapacidades-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     ports:
       - "5682:5672"
       - "15682:15672"
@@ -93,12 +93,12 @@ services:
         condition: service_healthy
       # minio removido de depends_on (es opcional)
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/incapacidades
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-incapacidades}
       REDIS_URL: redis://redis:6379/0
       STORAGE_BACKEND: filesystem  # Usar filesystem por defecto
       FILESYSTEM_BASE_PATH: /app/storage
       STORAGE_ENDPOINT: minio:9000  # Para cuando se use MinIO
-      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-guest}:${RABBITMQ_DEFAULT_PASS:-guest}@rabbitmq:5672//
       CELERY_RESULT_BACKEND: redis://redis:6379/1
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -118,11 +118,11 @@ services:
       - redis
       - rabbitmq
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/incapacidades
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-incapacidades}
       REDIS_URL: redis://redis:6379/0
       STORAGE_BACKEND: filesystem
       FILESYSTEM_BASE_PATH: /app/storage
-      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-guest}:${RABBITMQ_DEFAULT_PASS:-guest}@rabbitmq:5672//
       CELERY_RESULT_BACKEND: redis://redis:6379/1
     command: celery -A app.tasks.celery_app worker --loglevel=info
 
@@ -141,9 +141,9 @@ services:
       - redis
       - rabbitmq
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5442/incapacidades
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5442/${POSTGRES_DB:-incapacidades}
       REDIS_URL: redis://redis:6389/0
-      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-guest}:${RABBITMQ_DEFAULT_PASS:-guest}@rabbitmq:5672//
       CELERY_RESULT_BACKEND: redis://redis:6389/1
     command: celery -A app.tasks.celery_app beat --loglevel=info
 
@@ -161,7 +161,7 @@ services:
       - redis
       - rabbitmq
     environment:
-      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-guest}:${RABBITMQ_DEFAULT_PASS:-guest}@rabbitmq:5672//
       CELERY_RESULT_BACKEND: redis://redis:6389/1
     command: celery -A app.tasks.celery_app flower --port=5555
 

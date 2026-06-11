@@ -19,7 +19,7 @@ can be promoted to a plan on request.
 | 003 | Make pre-incapacidad promotion atomic (single commit) | P2 | M | 002 | DONE — commit `e2f0491a`, branch `bugfix/promotion-single-transaction` |
 | 004 | Restore a minimal CI pipeline | P1 | M | — | BLOCKED: awaiting push — workflow cannot be fully verified until pushed to GitHub |
 | 005 | Patch known-vulnerable npm dependencies in both frontends | P2 | S | — | DONE — commit `be9d6a21`, branch `bugfix/npm-audit-frontends` |
-| 006 | Parameterize default credentials and harden production config | P2 | S | — | TODO |
+| 006 | Parameterize default credentials and harden production config | P2 | S | — | DONE — commit `e6cecdb9`, branch `feature/prod-config-hardening` |
 | 007 | Add flush-only variants to BaseRepository (Plan 003 prerequisite) | P2 | S | — | DONE — commit `3d8880f7`, branch `bugfix/base-repository-flush-variants` |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
