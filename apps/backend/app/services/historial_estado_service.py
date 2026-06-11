@@ -33,7 +33,8 @@ class HistorialEstadoService:
         estado_nuevo: str,
         observacion: Optional[str] = None,
         cambiado_por_id: Optional[UUID] = None,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        flush_only: bool = False
     ) -> HistorialEstado:
         """
         Crear un registro de historial de cambio de estado.
@@ -61,6 +62,8 @@ class HistorialEstadoService:
             metadata=metadata
         )
         
+        if flush_only:
+            return await self.repository.create_flushed(db, historial_data.model_dump())
         return await self.repository.create(db, obj_in=historial_data.model_dump())
 
     async def get_entity_history(

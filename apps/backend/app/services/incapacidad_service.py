@@ -173,6 +173,7 @@ class IncapacidadService:
         empleado: Optional[Any] = None,
         empresa: Optional[Any] = None,
         usuario_id: Optional[UUID] = None,
+        flush_only: bool = False,
     ) -> Incapacidad:
         """
         Create an Incapacidad directly from a PreIncapacidad — bypasses strict entity validation.
@@ -204,7 +205,10 @@ class IncapacidadService:
         if usuario_id:
             incapacidad_dict['radicado_por_id'] = usuario_id
 
-        incapacidad = await self.repository.create(db, incapacidad_dict)
+        if flush_only:
+            incapacidad = await self.repository.create_flushed(db, incapacidad_dict)
+        else:
+            incapacidad = await self.repository.create(db, incapacidad_dict)
         return await self.repository.get_by_id_with_relations(db, incapacidad.id)
 
     async def get_incapacidad(
@@ -450,7 +454,8 @@ class IncapacidadService:
         self,
         db: AsyncSession,
         incapacidad_id: UUID,
-        usuario_id: Optional[UUID] = None
+        usuario_id: Optional[UUID] = None,
+        flush_only: bool = False,
     ) -> Incapacidad:
         """
         Radica una incapacidad (pasa a estado EN_AUDITORIA).
@@ -480,7 +485,10 @@ class IncapacidadService:
         
         # Actualizar incapacidad
         estado_anterior = incapacidad.estado
-        incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
+        if flush_only:
+            incapacidad_actualizada = await self.repository.update_flushed(db, id=incapacidad_id, obj_in=update_data)
+        else:
+            incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
         
         # Registrar en historial
         await historial_estado_service.create_historial_entry(
@@ -490,7 +498,8 @@ class IncapacidadService:
             estado_anterior=estado_anterior.value if estado_anterior else None,
             estado_nuevo=EstadoIncapacidad.EN_AUDITORIA.value,
             observacion="Incapacidad radicada para auditoría",
-            cambiado_por_id=usuario_id
+            cambiado_por_id=usuario_id,
+            flush_only=flush_only,
         )
         
         return incapacidad_actualizada

@@ -47,7 +47,15 @@ class BaseRepository(Generic[ModelType]):
         await db.commit()
         await db.refresh(db_obj)
         return db_obj
-    
+
+    async def create_flushed(self, db: AsyncSession, obj_in: Dict[str, Any]) -> ModelType:
+        """Like create() but flushes instead of committing — for caller-managed transactions."""
+        db_obj = self.model(**obj_in)
+        db.add(db_obj)
+        await db.flush()
+        await db.refresh(db_obj)
+        return db_obj
+
     async def get_by_id(self, db: AsyncSession, id: UUID) -> Optional[ModelType]:
         """
         Obtener registro por ID.
@@ -170,7 +178,29 @@ class BaseRepository(Generic[ModelType]):
             await db.refresh(updated_obj)
         
         return updated_obj
-    
+
+    async def update_flushed(
+        self,
+        db: AsyncSession,
+        id: UUID,
+        obj_in: Dict[str, Any],
+    ) -> Optional[ModelType]:
+        """Like update() but does not commit — for caller-managed transactions."""
+        update_data = {k: v for k, v in obj_in.items() if v is not None}
+        if not update_data:
+            return await self.get_by_id(db, id)
+        stmt = (
+            update(self.model)
+            .where(self.model.id == id)
+            .values(**update_data)
+            .returning(self.model)
+        )
+        result = await db.execute(stmt)
+        updated_obj = result.scalar_one_or_none()
+        if updated_obj:
+            await db.refresh(updated_obj)
+        return updated_obj
+
     async def delete(self, db: AsyncSession, id: UUID) -> bool:
         """
         Eliminar un registro.
