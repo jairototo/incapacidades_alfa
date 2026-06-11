@@ -214,6 +214,8 @@ Ejecutar desde la raíz del repositorio (`/opt/apps/incapacidades_vs`).
 # Guardar el ID de la pre-incapacidad radicada en el paso 1.1
 PRE_ID="0956e6e5-9b1b-4a1f-be68-0fc4f090f8e6"
 PRE_ID="aa03dcd3-0663-4ed1-ab0f-80d9c8f88eef"
+PRE_ID="fe8307a3-da63-4baf-8478-6f01b9c4cfa8"
+PRE_ID="f89b2786-3922-40d3-a1af-69dcddd93733"
 ```
 
 ### 2.1 Subir incapacidad médica (PDF)
