@@ -384,3 +384,33 @@ async def admin_token_headers(test_usuario) -> dict:
         }
     )
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def empresa_user_token(db_session: AsyncSession, test_empresa) -> str:
+    """Create a raw access token for an EMPRESA-role user linked to test_empresa."""
+    from app.models.usuario import Usuario
+    from app.utils.enums import RolUsuario, EstadoUsuario
+    from app.core.security import get_password_hash, create_access_token
+
+    usuario = Usuario(
+        username="empresa_user",
+        email="empresa_user@example.com",
+        password_hash=get_password_hash("Empresa123!"),
+        nombre_completo="Usuario Empresa Test",
+        rol=RolUsuario.EMPRESA,
+        estado=EstadoUsuario.ACTIVO,
+        empresa_id=test_empresa.id,
+    )
+
+    db_session.add(usuario)
+    await db_session.commit()
+    await db_session.refresh(usuario)
+
+    token = create_access_token(
+        data={
+            "sub": str(usuario.id),
+            "token_version": usuario.token_version,
+        }
+    )
+    return token

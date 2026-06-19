@@ -27,6 +27,17 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8, description="Nueva contraseña")
 
 
+class EmpresaResumen(BaseModel):
+    """Resumen de la empresa asociada al usuario autenticado."""
+    id: UUID
+    nit: str
+    razon_social: str
+    email_contacto: Optional[str] = None
+    estado: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserProfileResponse(BaseModel):
     """Schema para respuesta de perfil de usuario."""
     id: UUID
@@ -35,9 +46,11 @@ class UserProfileResponse(BaseModel):
     nombre_completo: str
     rol: str
     estado: str
+    empresa_id: Optional[UUID] = None
+    empresa: Optional[EmpresaResumen] = None
     ultimo_acceso: Optional[datetime] = None
     created_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
