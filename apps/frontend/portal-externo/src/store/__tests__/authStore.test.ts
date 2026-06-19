@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useAuthStore } from '@/store/authStore';
+import { renderHook } from '@testing-library/react';
+import { useAuthStore, useIsEmpresaHabilitada } from '@/store/authStore';
 import type { LoginResponse } from '@/types/auth';
 
 const baseUser = {
@@ -23,5 +24,25 @@ describe('authStore', () => {
     useAuthStore.getState().logout();
     expect(useAuthStore.getState().user).toBeNull();
     expect(localStorage.getItem('access_token')).toBeNull();
+  });
+
+  it('updateAccessToken updates store state and localStorage', () => {
+    const resp = { access_token: 'a', refresh_token: 'r', token_type: 'bearer', expires_in: 900, user: baseUser } as LoginResponse;
+    useAuthStore.getState().login(resp, baseUser);
+    useAuthStore.getState().updateAccessToken('new-token');
+    expect(useAuthStore.getState().accessToken).toBe('new-token');
+    expect(localStorage.getItem('access_token')).toBe('new-token');
+  });
+
+  it('useIsEmpresaHabilitada is true for EMPRESA with empresa_id', () => {
+    useAuthStore.setState({ isAuthenticated: true, user: { ...baseUser } as any });
+    const { result } = renderHook(() => useIsEmpresaHabilitada());
+    expect(result.current).toBe(true);
+  });
+
+  it('useIsEmpresaHabilitada is false when empresa_id is missing', () => {
+    useAuthStore.setState({ isAuthenticated: true, user: { ...baseUser, empresa_id: null } as any });
+    const { result } = renderHook(() => useIsEmpresaHabilitada());
+    expect(result.current).toBe(false);
   });
 });

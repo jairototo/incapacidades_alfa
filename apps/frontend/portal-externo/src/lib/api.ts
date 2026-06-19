@@ -1,5 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { RefreshTokenResponse } from '@/types/auth';
+import { useAuthStore } from '@/store/authStore';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8010/api/v1',
@@ -56,6 +57,7 @@ api.interceptors.response.use(
         { refresh_token: refreshToken },
       );
       localStorage.setItem('access_token', data.access_token);
+      useAuthStore.getState().updateAccessToken(data.access_token);
       flushQueue(data.access_token);
       original.headers.Authorization = `Bearer ${data.access_token}`;
       return api(original);

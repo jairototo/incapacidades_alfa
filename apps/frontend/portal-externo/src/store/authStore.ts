@@ -7,6 +7,7 @@ interface AuthState {
   refreshToken: string | null;
   user: User | null;
   isAuthenticated: boolean;
+  /** tokens: raw AuthTokens (access_token, refresh_token, …); user: extracted from LoginResponse.user */
   login: (tokens: AuthTokens, user: User) => void;
   logout: () => void;
   updateAccessToken: (token: string) => void;
@@ -36,7 +37,15 @@ export const useAuthStore = create<AuthState>()(
         set({ accessToken: token });
       },
     }),
-    { name: 'portal-auth-storage' },
+    {
+      name: 'portal-auth-storage',
+      partialize: (state) => ({
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
+    },
   ),
 );
 
