@@ -28,9 +28,10 @@ export function Home() {
             {/* Logo a la izquierda */}
             <div className="flex-shrink-0">
               <img 
-                src="/logoimagine.jpeg" 
-                // alt="Logo Seguros Alfa" 
-                alt="Logo Imagine SAS"
+                src="/LOGO_SEGUROS_ALFA.png" 
+                // src="/logoimagine.jpeg" 
+                alt="Logo Seguros Alfa" 
+                // alt="Logo Imagine SAS"
                 className="h-16 w-auto"
               />
             </div>

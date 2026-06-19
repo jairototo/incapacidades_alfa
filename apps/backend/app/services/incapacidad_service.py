@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 import uuid
 from app.core.logging import logger
+from app.tasks.incapacidad_tasks import send_incapacidad_radicada_email_task
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -172,6 +173,7 @@ class IncapacidadService:
         pre_inc: Any,
         empleado: Optional[Any] = None,
         empresa: Optional[Any] = None,
+        solicitante: Optional[Any] = None,
         usuario_id: Optional[UUID] = None,
         flush_only: bool = False,
     ) -> Incapacidad:
@@ -200,6 +202,7 @@ class IncapacidadService:
             'fecha_radicacion': datetime.utcnow(),
             'empleado_id': empleado.id if empleado else None,
             'empresa_id': empresa.id if empresa else None,
+            'solicitante_id': solicitante.id if solicitante else None,
         }
 
         if usuario_id:
@@ -501,6 +504,49 @@ class IncapacidadService:
             cambiado_por_id=usuario_id,
             flush_only=flush_only,
         )
+        
+        try:
+            # Preparar datos para el email
+            from datetime import datetime
+            
+            # Determinar beneficiario (empleado o afiliado)
+            beneficiario_nombre = "N/A"
+            beneficiario_documento = "N/A"
+            tipo_documento_str = "N/A"
+            
+            if incapacidad.empleado:
+                beneficiario_nombre = f"{incapacidad.empleado.nombres} {incapacidad.empleado.apellidos}"
+                beneficiario_documento = incapacidad.empleado.numero_documento
+                tipo_documento_str = incapacidad.empleado.tipo_documento.value if hasattr(incapacidad.empleado.tipo_documento, 'value') else str(incapacidad.empleado.tipo_documento)
+            elif incapacidad.afiliado:
+                beneficiario_nombre = f"{incapacidad.afiliado.nombres} {incapacidad.afiliado.apellidos}"
+                beneficiario_documento = incapacidad.afiliado.numero_documento
+                tipo_documento_str = incapacidad.afiliado.tipo_documento.value if hasattr(incapacidad.afiliado.tipo_documento, 'value') else str(incapacidad.afiliado.tipo_documento)
+            
+            incapacidad_data = {
+                "tipo": incapacidad.tipo.value if hasattr(incapacidad.tipo, 'value') else str(incapacidad.tipo),
+                "beneficiario_nombre": beneficiario_nombre,
+                "tipo_documento": tipo_documento_str,
+                "numero_documento": beneficiario_documento,
+                "fecha_inicio": incapacidad.fecha_inicio.isoformat() if incapacidad.fecha_inicio else None,
+                "fecha_fin": incapacidad.fecha_fin.isoformat() if incapacidad.fecha_fin else None,
+                "dias_totales": incapacidad.dias_totales,
+                "diagnostico_cie10": incapacidad.diagnostico_cie10,
+                "ips_nombre": incapacidad.ips_nombre if hasattr(incapacidad, 'ips_nombre') else "N/A",
+                "medico_nombre": incapacidad.medico_nombre if hasattr(incapacidad, 'medico_nombre') else "N/A",
+                "eps_nombre": incapacidad.eps if hasattr(incapacidad, 'eps') else "N/A"
+            }
+            
+            send_incapacidad_radicada_email_task.delay(
+                correo_solicitante=incapacidad.solicitante.correo,
+                solicitante_nombre=incapacidad.solicitante.nombres + " " + incapacidad.solicitante.apellidos,
+                numero_radicacion=incapacidad.numero,
+                incapacidad_data=incapacidad_data
+            )
+            logger.info(f"Tarea de email programada para {incapacidad_id}")
+        except Exception as email_error:
+            logger.error(f"Error al programar email: {email_error}")
+            # No fallar la radicación si falla el email
         
         return incapacidad_actualizada
 

@@ -26,7 +26,7 @@
               │     │ información  │ 100%        │ Parcial     │
               │     ▼              ▼             ▼             ▼
               │  ┌──────────┐  ┌─────────┐  ┌──────────────┐  ┌──────────┐
-              │  │OBSERVADA │  │APROBADA │  │APROBADA_PARC.│  │RECHAZADA │
+              │  │PENDIENTE │  │APR LIQU │  │APROBADA_PARC.│  │GLOSADA   │
               │  └────┬─────┘  └────┬────┘  └──────┬───────┘  └──────────┘
               │       │             │               │                │
               │       │ Responder   │ Generar       │ Generar        │
@@ -97,6 +97,10 @@
 
 **Notificaciones**:
 - Email al auditor asignado
+
+**NOTA PARA ARPIS**:
+
+Recibo por XXXX (Onbase o Imaginex) Incapacidad de la IPS XXXXXX Con fecha de expedición del XX/XX/XXXX por XX días, con fecha de inicio del XX/XX/XXXX al XX/XX/XXXX por el Diagnostico: XXXXXX , firmada por (especialista/ Nombre del médico) XXXXXXX. se autoriza pago de incapacidad por xx días
 
 ### 2.3 OBSERVADA
 

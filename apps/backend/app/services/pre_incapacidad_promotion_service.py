@@ -14,6 +14,8 @@ from app.db.repositories.pre_incapacidad_repository import PreIncapacidadReposit
 from app.db.repositories.validation_inconsistencia_repository import ValidationInconsistenciaRepository
 from app.db.repositories.empleado_repository import empleado_repository
 from app.db.repositories.empresa_repository import empresa_repository
+from app.db.repositories.solicitante_repository import solicitante_repository
+from app.models.solicitante import Solicitante
 from app.services.pre_incapacidad_validation_service import PreIncapacidadValidationService
 from app.schemas.validation_inconsistencia import (
     ValidationSummary,
@@ -105,6 +107,20 @@ class PromotePreIncapacidadService:
                 empleado = await empleado_repository.get_by_documento(
                     self.db, pre_inc.empleado_numero_documento, empresa.id
                 )
+            # 3b. Get or create Solicitante by correo
+            solicitante = await solicitante_repository.get_by_correo(self.db, pre_inc.solicitante_correo)
+            if not solicitante:
+                solicitante = Solicitante(
+                    correo=pre_inc.solicitante_correo.lower().strip(),
+                    nombres=pre_inc.solicitante_nombres,
+                    apellidos=pre_inc.solicitante_apellidos or "",
+                    telefono=pre_inc.solicitante_telefono,
+                )
+                self.db.add(solicitante)
+                await self.db.flush()
+                logger.debug(f"Created new Solicitante for correo={pre_inc.solicitante_correo}")
+            else:
+                logger.debug(f"Found existing Solicitante id={solicitante.id} for correo={pre_inc.solicitante_correo}")
 
             # 4. Run all validations (EMPLEADO/EMPRESA_NOT_FOUND are now WARNING)
             validation_service = PreIncapacidadValidationService(pre_inc, empleado, empresa)
@@ -116,7 +132,8 @@ class PromotePreIncapacidadService:
 
             # 5. Create Incapacidad unconditionally
             inc = await incapacidad_service.create_from_pre_incapacidad(
-                self.db, pre_inc, empleado=empleado, empresa=empresa, usuario_id=usuario_id,
+                self.db, pre_inc, empleado=empleado, empresa=empresa,
+                solicitante=solicitante, usuario_id=usuario_id,
                 flush_only=True,
             )
             incapacidad_id = inc.id

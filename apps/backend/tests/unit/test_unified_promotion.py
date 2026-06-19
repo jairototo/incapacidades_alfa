@@ -26,6 +26,10 @@ def make_pre_inc(estado="PENDIENTE", empresa_nit="900123456", tipo="ARL"):
     m.valor_dia = Decimal("60000")
     m.observaciones = None
     m.incapacidad_id = None
+    m.solicitante_correo = "solicitante@test.com"
+    m.solicitante_nombres = "Juan"
+    m.solicitante_apellidos = "Pérez"
+    m.solicitante_telefono = "3001234567"
     return m
 
 
@@ -50,14 +54,20 @@ async def test_unified_always_creates_incapacidad_even_without_empleado():
         return_value={"total": 1, "ERROR": 0, "WARNING": 1, "INFO": 0}
     )
 
+    mock_solicitante = MagicMock()
+    mock_solicitante.id = uuid4()
+
     with (
         patch("app.services.pre_incapacidad_promotion_service.empresa_repository") as mock_empresa_repo,
         patch("app.services.pre_incapacidad_promotion_service.empleado_repository") as mock_empleado_repo,
+        patch("app.services.pre_incapacidad_promotion_service.solicitante_repository") as mock_sol_repo,
         patch("app.services.pre_incapacidad_promotion_service.incapacidad_service") as mock_inc_service,
         patch("app.services.pre_incapacidad_promotion_service.PreIncapacidadValidationService") as mock_val,
+        patch.object(service, "_copy_documents", new=AsyncMock(return_value=0)),
     ):
         mock_empresa_repo.get_by_nit = AsyncMock(return_value=None)
         mock_empleado_repo.get_by_documento = AsyncMock(return_value=None)
+        mock_sol_repo.get_by_correo = AsyncMock(return_value=mock_solicitante)
         mock_inc_service.create_from_pre_incapacidad = AsyncMock(return_value=mock_incapacidad)
         mock_inc_service.radicar_incapacidad = AsyncMock(return_value=mock_incapacidad)
         mock_val_instance = MagicMock()
@@ -94,14 +104,20 @@ async def test_unified_links_incapacidad_id_on_pre_inc():
         return_value={"total": 0, "ERROR": 0, "WARNING": 0, "INFO": 0}
     )
 
+    mock_solicitante = MagicMock()
+    mock_solicitante.id = uuid4()
+
     with (
         patch("app.services.pre_incapacidad_promotion_service.empresa_repository") as mock_empresa_repo,
         patch("app.services.pre_incapacidad_promotion_service.empleado_repository") as mock_empleado_repo,
+        patch("app.services.pre_incapacidad_promotion_service.solicitante_repository") as mock_sol_repo,
         patch("app.services.pre_incapacidad_promotion_service.incapacidad_service") as mock_inc_service,
         patch("app.services.pre_incapacidad_promotion_service.PreIncapacidadValidationService") as mock_val,
+        patch.object(service, "_copy_documents", new=AsyncMock(return_value=0)),
     ):
         mock_empresa_repo.get_by_nit = AsyncMock(return_value=None)
         mock_empleado_repo.get_by_documento = AsyncMock(return_value=None)
+        mock_sol_repo.get_by_correo = AsyncMock(return_value=mock_solicitante)
         mock_inc_service.create_from_pre_incapacidad = AsyncMock(return_value=mock_incapacidad)
         mock_inc_service.radicar_incapacidad = AsyncMock(return_value=mock_incapacidad)
         mock_val_instance = MagicMock()
@@ -137,15 +153,21 @@ async def test_unified_runs_audit_rules_when_empleado_found():
         return_value={"total": 0, "ERROR": 0, "WARNING": 0, "INFO": 0}
     )
 
+    mock_solicitante = MagicMock()
+    mock_solicitante.id = uuid4()
+
     with (
         patch("app.services.pre_incapacidad_promotion_service.empresa_repository") as mock_empresa_repo,
         patch("app.services.pre_incapacidad_promotion_service.empleado_repository") as mock_empleado_repo,
+        patch("app.services.pre_incapacidad_promotion_service.solicitante_repository") as mock_sol_repo,
         patch("app.services.pre_incapacidad_promotion_service.incapacidad_service") as mock_inc_service,
         patch("app.services.pre_incapacidad_promotion_service.PreIncapacidadValidationService") as mock_val,
+        patch.object(service, "_copy_documents", new=AsyncMock(return_value=0)),
         patch.object(service, "_run_audit_business_rules", new=AsyncMock(return_value=[])) as mock_audit,
     ):
         mock_empresa_repo.get_by_nit = AsyncMock(return_value=mock_empresa)
         mock_empleado_repo.get_by_documento = AsyncMock(return_value=mock_empleado)
+        mock_sol_repo.get_by_correo = AsyncMock(return_value=mock_solicitante)
         mock_inc_service.create_from_pre_incapacidad = AsyncMock(return_value=mock_incapacidad)
         mock_inc_service.radicar_incapacidad = AsyncMock(return_value=mock_incapacidad)
         mock_val_instance = MagicMock()

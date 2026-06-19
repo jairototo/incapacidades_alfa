@@ -24,8 +24,10 @@ export function LoginPage() {
           <div className="flex justify-center items-center mb-6">
             {/* Logo Alfa - Aseguradora */}
             <img 
-              src="/logoimagine.jpeg" 
+              src="/LOGO_SEGUROS_ALFA.png" 
+              // src="/logoimagine.jpeg" 
               alt="Logo Seguros Alfa" 
+              // alt="Logo Imagine SAS"
               className="h-24 w-auto"
             />
           </div>

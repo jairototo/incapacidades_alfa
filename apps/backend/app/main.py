@@ -29,7 +29,10 @@ app = FastAPI(
 # Add middlewares
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(LoggingMiddleware)
-
+print("docs_url:", app.docs_url)
+print("redoc_url:", app.redoc_url)
+print("openapi_url:", app.openapi_url)
+print("is_production:", _is_production)
 # CORS
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
