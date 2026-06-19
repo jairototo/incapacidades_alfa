@@ -13,5 +13,6 @@ async def test_me_includes_empresa(client: AsyncClient, empresa_user_token: str)
     body = resp.json()
     assert body["rol"] == "EMPRESA"
     assert body["empresa_id"] is not None
-    assert body["empresa"]["nit"]
-    assert body["empresa"]["razon_social"]
+    assert body["empresa"]["nit"] == "900123456"
+    assert body["empresa"]["razon_social"] == "Empresa Test SAS"
+    assert body["empresa"]["estado"] == "ACTIVA"
