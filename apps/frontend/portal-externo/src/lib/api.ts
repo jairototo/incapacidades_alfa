@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import type { RefreshTokenResponse } from '@/types/auth';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8010/api/v1',
@@ -50,7 +51,7 @@ api.interceptors.response.use(
 
     isRefreshing = true;
     try {
-      const { data } = await axios.post(
+      const { data } = await axios.post<RefreshTokenResponse>(
         `${api.defaults.baseURL}/auth/refresh`,
         { refresh_token: refreshToken },
       );
