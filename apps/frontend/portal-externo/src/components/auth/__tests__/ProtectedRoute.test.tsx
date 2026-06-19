@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/store/authStore';
@@ -34,5 +34,21 @@ describe('ProtectedRoute', () => {
     useAuthStore.setState({ isAuthenticated: true, user: { id: '1', username: 'e', email: 'e', nombre_completo: 'E', rol: 'EMPRESA', estado: 'ACTIVO', empresa_id: 'emp-1', created_at: 'x' } as any });
     renderAt();
     expect(screen.getByText('SECRETO')).toBeInTheDocument();
+  });
+
+  it('logout button clears auth and redirects to /login', () => {
+    useAuthStore.setState({ isAuthenticated: true, user: { id: '1', username: 'a', email: 'a', nombre_completo: 'A', rol: 'AUDITOR', estado: 'ACTIVO', empresa_id: null, created_at: 'x' } as any });
+
+    const original = window.location;
+    Object.defineProperty(window, 'location', { writable: true, value: { href: '' } });
+
+    renderAt();
+    fireEvent.click(screen.getByRole('button', { name: /volver al inicio de sesión/i }));
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(window.location.href).toBe('/login');
+
+    // restore
+    Object.defineProperty(window, 'location', { writable: true, value: original });
   });
 });
