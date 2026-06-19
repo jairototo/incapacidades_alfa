@@ -24,7 +24,8 @@ export function LoginPage() {
         setServerError('No tiene acceso a este portal. Contacte a Servicio al Cliente.');
         return;
       }
-      loginStore(resp, resp.user);
+      const { user, ...tokens } = resp;
+      loginStore(tokens, user);
       navigate('/', { replace: true });
     } catch {
       setServerError('Usuario o contraseña inválidos.');
@@ -42,15 +43,25 @@ export function LoginPage() {
         )}
         <div className="space-y-2">
           <Label htmlFor="username">Usuario</Label>
-          <Input id="username" {...register('username')} />
-          {errors.username && <p className="text-sm text-[#D92D20]">{errors.username.message}</p>}
+          <Input id="username" autoFocus autoComplete="username"
+            aria-invalid={!!errors.username}
+            aria-describedby={errors.username ? 'username-error' : undefined}
+            {...register('username')} />
+          {errors.username && (
+            <p id="username-error" className="text-sm text-[#D92D20]" aria-live="polite">{errors.username.message}</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Contraseña</Label>
-          <Input id="password" type="password" {...register('password')} />
-          {errors.password && <p className="text-sm text-[#D92D20]">{errors.password.message}</p>}
+          <Input id="password" type="password" autoComplete="current-password"
+            aria-invalid={!!errors.password}
+            aria-describedby={errors.password ? 'password-error' : undefined}
+            {...register('password')} />
+          {errors.password && (
+            <p id="password-error" className="text-sm text-[#D92D20]" aria-live="polite">{errors.password.message}</p>
+          )}
         </div>
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <Button type="submit" variant="primary" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Ingresando…' : 'Ingresar'}
         </Button>
       </form>

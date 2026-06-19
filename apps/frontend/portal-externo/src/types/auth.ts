@@ -11,7 +11,7 @@ export interface User {
   username: string;
   email: string;
   nombre_completo: string;
-  rol: string;
+  rol: 'ADMIN' | 'AUDITOR' | 'APROBADOR' | 'EMPRESA' | 'EMPLEADO' | 'READONLY';
   estado: string;
   empresa_id?: string | null;
   empresa?: EmpresaResumen | null;
