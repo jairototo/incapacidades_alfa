@@ -9,7 +9,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID, uuid4
-from sqlalchemy import String, Date, Numeric, Text, Integer, ForeignKey, CheckConstraint
+from sqlalchemy import Boolean, String, Date, Numeric, Text, Integer, ForeignKey, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, ENUM as PGEnum
 
@@ -62,7 +62,11 @@ class Incapacidad(BaseModel):
         nullable=False
     )
     subtipo: Mapped[Optional[str]] = mapped_column(String(50))
-    
+    prorroga: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false",
+        comment="Indica si la incapacidad es una prórroga/renovación",
+    )
+
     # Fechas
     fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_fin: Mapped[date] = mapped_column(Date, nullable=False)
