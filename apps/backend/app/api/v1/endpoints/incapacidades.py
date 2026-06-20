@@ -576,6 +576,65 @@ async def list_incapacidades(
 
 
 @router.get(
+    "/mi-empresa",
+    response_model=List[IncapacidadInDB],
+    summary="Listar incapacidades de mi empresa",
+    description="Lista las incapacidades ARL de la empresa autenticada. "
+                "El empresa_id se toma del token — el cliente no puede elegir otra empresa.",
+    tags=["incapacidades-empresa"]
+)
+async def list_mi_empresa(
+    estado: Optional[EstadoIncapacidad] = Query(None, description="Filtrar por estado"),
+    numero: Optional[str] = Query(None, description="Filtrar por número de incapacidad"),
+    empleado_documento: Optional[str] = Query(None, description="Filtrar por documento de empleado"),
+    fecha_inicio_desde: Optional[date] = Query(None, description="Fecha inicio mínima"),
+    fecha_inicio_hasta: Optional[date] = Query(None, description="Fecha inicio máxima"),
+    skip: int = Query(0, ge=0, description="Número de registros a saltar"),
+    limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_empresa),
+):
+    """
+    Lista incapacidades ARL de la empresa del usuario autenticado.
+
+    - empresa_id se fuerza desde el token (nunca desde el cliente).
+    - tipo fijo: ARL (el portal externo gestiona sólo ARL).
+    - Sólo accesible para el rol EMPRESA.
+    - Filtra: estado, número, documento empleado, rango fechas.
+    """
+    if current_user.empresa_id is None:
+        raise HTTPException(status_code=403, detail="Usuario EMPRESA sin empresa_id asignado")
+
+    incapacidades = await incapacidad_service.list_incapacidades(
+        db,
+        tipo=TipoIncapacidad.ARL,
+        estado=estado,
+        numero=numero,
+        empleado_documento=empleado_documento,
+        empresa_id=current_user.empresa_id,
+        fecha_inicio_desde=fecha_inicio_desde,
+        fecha_inicio_hasta=fecha_inicio_hasta,
+        skip=skip,
+        limit=limit,
+    )
+
+    result = []
+    for incap in incapacidades:
+        incap_dict = IncapacidadInDB.model_validate(incap).model_dump()
+
+        if incap.empleado:
+            incap_dict['empleado'] = EmpleadoResponse.model_validate(incap.empleado).model_dump()
+        if incap.empresa:
+            incap_dict['empresa'] = EmpresaResponse.model_validate(incap.empresa).model_dump()
+        if incap.afiliado:
+            incap_dict['afiliado'] = AfiliadoResponse.model_validate(incap.afiliado).model_dump()
+
+        result.append(incap_dict)
+
+    return result
+
+
+@router.get(
     "/stats",
     response_model=IncapacidadStatsResponse,
     summary="Estadísticas del dashboard",
