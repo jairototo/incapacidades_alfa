@@ -27,9 +27,12 @@ const wrap = () => render(
 );
 
 describe('RadicacionMasivaPage', () => {
-  it('renders the template download and no submit button before rows', () => {
+  it('renders the template download, the 3-step intro, and no submit button before rows', () => {
     wrap();
     expect(screen.getByRole('button', { name: /descargar plantilla/i })).toBeInTheDocument();
+    // explanatory 3-step intro is shown before any upload
+    expect(screen.getByText(/¿cómo funciona/i)).toBeInTheDocument();
+    expect(screen.getByText(/diligencie la información/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /radicar incapacidades/i })).not.toBeInTheDocument();
   });
 
@@ -39,6 +42,8 @@ describe('RadicacionMasivaPage', () => {
     fireEvent.change(screen.getByLabelText(/subir excel/i), { target: { files: [excel] } });
     // after validation, the row + submit button appear
     const submit = await screen.findByRole('button', { name: /radicar incapacidades/i });
+    // the intro is de-emphasized (hidden) once the user has uploaded a file
+    expect(screen.queryByText(/¿cómo funciona/i)).not.toBeInTheDocument();
     fireEvent.click(submit);
     expect(await screen.findByRole('alert')).toHaveTextContent(/impiden radicar/i);
   });

@@ -5,10 +5,17 @@ import { SeleccionEmpleadosModal } from './SeleccionEmpleadosModal';
 import { TablaValidacion, type DocMap } from './TablaValidacion';
 import { ZipUpload } from './ZipUpload';
 import { Button } from '@/components/ui/Button';
+import { Download, PencilLine, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   descargarPlantilla, validarExcel, mapearZip, radicarMasiva, type ValidacionFila,
 } from '@/services/bulkRadicacionService';
+
+const PASOS = [
+  { icon: Download, title: 'Descargue la plantilla', desc: 'Con o sin empleados pre-diligenciados desde su empresa.' },
+  { icon: PencilLine, title: 'Diligencie la información', desc: 'Complete los datos de la incapacidad de cada empleado.' },
+  { icon: Upload, title: 'Suba y radique', desc: 'Cargue el archivo y los soportes para radicar las incapacidades.' },
+];
 
 export function RadicacionMasivaPage() {
   const navigate = useNavigate();
@@ -144,7 +151,35 @@ export function RadicacionMasivaPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Radicación Masiva</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Radicación Masiva</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Radique varias incapacidades ARL a la vez mediante una plantilla de Excel.
+        </p>
+      </div>
+
+      {filas.length === 0 && (
+        <section className="rounded-xl border border-border bg-white p-6 shadow-[0_8px_30px_rgba(0,73,83,0.06)]">
+          <h2 className="text-lg font-semibold text-foreground">¿Cómo funciona?</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Complete la radicación masiva en tres pasos.</p>
+          <ol className="mt-5 grid gap-5 sm:grid-cols-3">
+            {PASOS.map((p, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <p.icon className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {i + 1}. {p.title}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{p.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       <div className="flex flex-wrap gap-3">
         <Button onClick={() => setModalOpen(true)}>Descargar plantilla</Button>
         <label className="inline-flex items-center px-4 py-2 rounded-md border border-input cursor-pointer text-sm">
