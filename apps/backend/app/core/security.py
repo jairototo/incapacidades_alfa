@@ -224,6 +224,15 @@ async def get_current_user(
     return user
 
 
+async def require_empresa(current_user: "Usuario" = Depends(get_current_user)) -> "Usuario":
+    """Permite solo usuarios EMPRESA vinculados a una empresa."""
+    from app.core.exceptions import ForbiddenException
+    from app.utils.enums import RolUsuario
+    if current_user.rol != RolUsuario.EMPRESA or current_user.empresa_id is None:
+        raise ForbiddenException("Acceso exclusivo para usuarios de empresa vinculados a una compañía")
+    return current_user
+
+
 class PermissionChecker:
     """Verificador de permisos basado en roles."""
     

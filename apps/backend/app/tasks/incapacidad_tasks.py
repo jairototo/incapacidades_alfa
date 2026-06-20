@@ -47,6 +47,11 @@ def get_sync_session():
     return _SyncSessionLocal()
 
 
+def enqueue_auditoria_incapacidad(incapacidad_id) -> None:
+    """TEMP no-op (Phase 4 replaces with the real Celery enqueue)."""
+    return None
+
+
 @celery_app.task(
     name="radicar_incapacidad_automatica",
     bind=True,

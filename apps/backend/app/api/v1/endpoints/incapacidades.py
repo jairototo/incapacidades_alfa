@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from uuid import UUID
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, Query, Path, status, Body, HTTPException
+from fastapi import APIRouter, Depends, Query, Path, status, Body, HTTPException, Form, File, UploadFile
 from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,12 +34,13 @@ from app.schemas.empresa import EmpresaResponse
 from app.schemas.afiliado import AfiliadoResponse
 from app.schemas.siniestro import SiniestroInDB
 from app.schemas.validation_inconsistencia import ValidationInconsistenciaRead, ValidacionesResponse
+from app.schemas.radicacion import RadicacionResponse
 from app.db.repositories.validation_inconsistencia_repository import ValidationInconsistenciaRepository
 from app.services.incapacidad_service import incapacidad_service
 from app.services.historial_estado_service import historial_estado_service
 from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
 from app.core.exceptions import BadRequestException
-from app.core.security import get_current_user, PermissionChecker, Permissions
+from app.core.security import get_current_user, PermissionChecker, Permissions, require_empresa
 from app.models.usuario import Usuario
 from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
 from app.core.logging import logger 
@@ -694,6 +695,100 @@ async def get_extended_stats(
             "top_limit": top_limit,
         } if any([empresa_id, tipo, fecha_desde, fecha_hasta]) else None,
     )
+
+
+@router.post(
+    "/radicar",
+    response_model=RadicacionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Radicar incapacidad individual (EMPRESA)",
+    tags=["incapacidades-empresa"],
+)
+async def radicar_individual(
+    empleado_id: UUID = Form(...),
+    tipo_enfermedad: str = Form(...),
+    fecha_inicio: date = Form(...),
+    fecha_fin: date = Form(...),
+    dias_totales: int = Form(...),
+    diagnostico_cie10: str = Form(...),
+    nombre_medico: str = Form(...),
+    registro_medico: str = Form(...),
+    descripcion_diagnostico: Optional[str] = Form(None),
+    ips: Optional[str] = Form(None),
+    valor_dia: Optional[float] = Form(None),
+    prorroga: bool = Form(False),
+    observaciones: Optional[str] = Form(None),
+    incapacidad_medica: List[UploadFile] = File(...),
+    historia_clinica: Optional[List[UploadFile]] = File(None),
+    soportes_adicionales: Optional[List[UploadFile]] = File(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_empresa),
+):
+    """Radica una incapacidad individual para usuarios EMPRESA."""
+    import io as _io
+    from app.services.radicacion_pipeline_service import RadicacionPipelineService
+    from app.schemas.radicacion import RadicacionRowInput
+    from app.tasks.incapacidad_tasks import enqueue_auditoria_incapacidad
+    from app.services.documento_service import DocumentoService
+    from app.utils.enums import TipoDocumentoAdjunto
+
+    if current_user.empresa is None:
+        raise HTTPException(status_code=403, detail="Usuario no vinculado a una empresa")
+
+    row = RadicacionRowInput(
+        empleado_id=empleado_id,
+        tipo_enfermedad=tipo_enfermedad,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        dias_totales=dias_totales,
+        diagnostico_cie10=diagnostico_cie10,
+        descripcion_diagnostico=descripcion_diagnostico,
+        nombre_medico=nombre_medico,
+        registro_medico=registro_medico,
+        ips=ips,
+        valor_dia=valor_dia,
+        prorroga=prorroga,
+        observaciones=observaciones,
+    )
+
+    pipeline = RadicacionPipelineService(db, enqueue_auditoria=enqueue_auditoria_incapacidad)
+    result = await pipeline.radicar([row], empresa=current_user.empresa, radicado_por_id=current_user.id)
+
+    item = result.items[0]
+    if item.success and item.incapacidad_id:
+        doc_svc = DocumentoService(db)
+        grupos = {
+            TipoDocumentoAdjunto.INCAPACIDAD_MEDICA.value: incapacidad_medica or [],
+            TipoDocumentoAdjunto.HISTORIA_CLINICA.value: historia_clinica or [],
+            TipoDocumentoAdjunto.OTROS.value: soportes_adicionales or [],
+        }
+        for tipo, archivos in grupos.items():
+            for f in archivos:
+                content = await f.read()
+                await doc_svc.upload_documento(
+                    incapacidad_id=item.incapacidad_id,
+                    file_data=_io.BytesIO(content),
+                    filename=f.filename,
+                    content_type=f.content_type or "application/octet-stream",
+                    tipo_documento=tipo,
+                    uploaded_by_id=current_user.id,
+                )
+        await db.commit()
+
+        if current_user.empresa.email_contacto:
+            from app.tasks.email_tasks import send_email_task
+            cuerpo = "Se radicaron las siguientes incapacidades:<br>" + f"- {item.numero}"
+            try:
+                send_email_task.delay(
+                    to=current_user.empresa.email_contacto,
+                    subject="Confirmación de radicación de incapacidades",
+                    html_body=cuerpo,
+                )
+            except Exception as exc:
+                # El correo no debe bloquear una radicación exitosa (broker caído, etc.)
+                logger.error(f"No se pudo encolar el correo de resumen de radicación: {exc}")
+
+    return result
 
 
 @router.get(
