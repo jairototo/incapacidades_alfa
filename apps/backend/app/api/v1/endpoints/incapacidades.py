@@ -48,6 +48,13 @@ from app.models.usuario import Usuario
 from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
 from app.core.logging import logger
 from app.services.bulk_radicacion_service import generar_plantilla, parsear_y_validar, mapear_zip
+from app.schemas.radicacion import RadicacionRowInput
+from app.services.radicacion_pipeline_service import RadicacionPipelineService
+from app.services.integracion.integracion_service import IntegracionService
+from app.services.incapacidad_validation_rules import validate_row
+from app.services.documento_service import DocumentoService
+from app.tasks.incapacidad_tasks import enqueue_auditoria_incapacidad
+from app.utils.enums import TipoDocumentoAdjunto
 
 router = APIRouter()
 
@@ -734,11 +741,6 @@ async def radicar_individual(
 ):
     """Radica una incapacidad individual para usuarios EMPRESA."""
     import io as _io
-    from app.services.radicacion_pipeline_service import RadicacionPipelineService
-    from app.schemas.radicacion import RadicacionRowInput
-    from app.tasks.incapacidad_tasks import enqueue_auditoria_incapacidad
-    from app.services.documento_service import DocumentoService
-    from app.utils.enums import TipoDocumentoAdjunto
 
     if current_user.empresa is None:
         raise HTTPException(status_code=403, detail="Usuario no vinculado a una empresa")
@@ -759,7 +761,6 @@ async def radicar_individual(
         observaciones=observaciones,
     )
 
-    from app.services.integracion.integracion_service import IntegracionService
     integracion = IntegracionService(db)
     pipeline = RadicacionPipelineService(db, enqueue_auditoria=enqueue_auditoria_incapacidad, integracion=integracion.procesar)
     result = await pipeline.radicar([row], empresa=current_user.empresa, radicado_por_id=current_user.id)
@@ -899,14 +900,6 @@ async def radicar_masiva(
     """
     import io as _io
     import json as _json
-    from datetime import date as _date
-    from app.schemas.radicacion import RadicacionRowInput
-    from app.services.radicacion_pipeline_service import RadicacionPipelineService
-    from app.services.integracion.integracion_service import IntegracionService
-    from app.services.incapacidad_validation_rules import validate_row
-    from app.services.documento_service import DocumentoService
-    from app.tasks.incapacidad_tasks import enqueue_auditoria_incapacidad
-    from app.utils.enums import TipoDocumentoAdjunto
 
     # --- Parse the JSON payload -----------------------------------------------
     try:
@@ -931,8 +924,8 @@ async def radicar_masiva(
 
         # Parse dates (may raise on bad input)
         try:
-            fi = _date.fromisoformat(r["fecha_inicio"])
-            ff = _date.fromisoformat(r["fecha_fin"])
+            fi = date.fromisoformat(r["fecha_inicio"])
+            ff = date.fromisoformat(r["fecha_fin"])
         except (KeyError, ValueError, TypeError):
             invalidas.append({
                 "empleado_id": empleado_id_raw,
@@ -1008,26 +1001,34 @@ async def radicar_masiva(
         for i in result.items
         if i.success and i.incapacidad_id
     }
+    doc_failures: list[dict] = []
     doc_svc = DocumentoService(db)
     for f in documentos:
         try:
             empleado_id_str, rest = f.filename.split("__", 1)
             tipo_token = rest.rsplit(".", 1)[0]
         except (ValueError, AttributeError):
+            doc_failures.append({"filename": f.filename, "motivo": "nombre_invalido"})
             continue
         item = by_empleado.get(empleado_id_str)
         if not item:
+            doc_failures.append({"filename": f.filename, "motivo": "empleado_no_radicado"})
             continue
         content = await f.read()
-        await doc_svc.upload_documento(
-            incapacidad_id=item.incapacidad_id,
-            file_data=_io.BytesIO(content),
-            filename=f.filename,
-            content_type=f.content_type or "application/octet-stream",
-            tipo_documento=TIPO_MAP.get(tipo_token, TipoDocumentoAdjunto.OTROS.value),
-            uploaded_by_id=current_user.id,
-        )
+        try:
+            await doc_svc.upload_documento(
+                incapacidad_id=item.incapacidad_id,
+                file_data=_io.BytesIO(content),
+                filename=f.filename,
+                content_type=f.content_type or "application/octet-stream",
+                tipo_documento=TIPO_MAP.get(tipo_token, TipoDocumentoAdjunto.OTROS.value),
+                uploaded_by_id=current_user.id,
+            )
+        except Exception as exc:
+            logger.error(f"Error subiendo documento {f.filename!r}: {exc}")
+            doc_failures.append({"filename": f.filename, "motivo": str(exc)})
     await db.commit()
+    result.documentos_ignorados = doc_failures
 
     # --- Fault-isolated summary email -----------------------------------------
     if result.total_radicadas and current_user.empresa.email_contacto:

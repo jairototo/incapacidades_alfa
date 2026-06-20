@@ -33,5 +33,6 @@ class RadicacionResultItem(BaseModel):
 class RadicacionResponse(BaseModel):
     items: list[RadicacionResultItem]
     total_radicadas: int
+    documentos_ignorados: list[dict] = []   # docs that couldn't be stored/matched
 
     model_config = ConfigDict(from_attributes=True)
