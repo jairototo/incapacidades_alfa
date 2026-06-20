@@ -20,6 +20,7 @@ from app.models.auditoria_datos_aprobados import AuditoriaDatosAprobados
 from app.models.pre_incapacidad import PreIncapacidad
 from app.models.pre_documento import PreDocumento
 from app.models.validation_inconsistencia import ValidationInconsistencia
+from app.models.communication_log import CommunicationLog
 
 __all__ = [
     "Base",
@@ -41,4 +42,5 @@ __all__ = [
     "PreIncapacidad",
     "PreDocumento",
     "ValidationInconsistencia",
+    "CommunicationLog",
 ]

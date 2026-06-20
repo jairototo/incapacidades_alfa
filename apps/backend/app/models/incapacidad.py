@@ -104,6 +104,10 @@ class Incapacidad(BaseModel):
     )
     observaciones: Mapped[Optional[str]] = mapped_column(Text)
     motivo_rechazo: Mapped[Optional[str]] = mapped_column(Text)
+    numero_radicacion_servialfa: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True,
+        comment="Número de radicación definitivo retornado por ServiAlfa (llega vía integración)",
+    )
     
     # Referencias a usuarios
     radicado_por_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("usuario.id"))
@@ -143,6 +147,10 @@ class Incapacidad(BaseModel):
         "ValidationInconsistencia",
         back_populates="incapacidad",
         cascade="all, delete-orphan"
+    )
+
+    communication_logs: Mapped[list["CommunicationLog"]] = relationship(
+        "CommunicationLog", back_populates="incapacidad", cascade="all, delete-orphan",
     )
 
     radicado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[radicado_por_id])
