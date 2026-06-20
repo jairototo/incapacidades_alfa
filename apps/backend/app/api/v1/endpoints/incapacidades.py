@@ -47,7 +47,7 @@ from app.core.security import get_current_user, PermissionChecker, Permissions, 
 from app.models.usuario import Usuario
 from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
 from app.core.logging import logger
-from app.services.bulk_radicacion_service import generar_plantilla, parsear_y_validar
+from app.services.bulk_radicacion_service import generar_plantilla, parsear_y_validar, mapear_zip
 
 router = APIRouter()
 
@@ -849,6 +849,31 @@ async def validar_masivo(
         "total": len(filas),
         "validas": sum(1 for f in filas if f["valida"]),
     }
+
+
+@router.post(
+    "/radicar-masiva/zip",
+    summary="Mapear ZIP de documentos (EMPRESA)",
+    tags=["incapacidades-empresa"],
+)
+async def mapear_zip_masivo(
+    archivo: UploadFile = File(...),
+    documentos_esperados: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_empresa),
+):
+    """Parsea un ZIP y mapea cada archivo al (numero_documento, tipo) correcto.
+
+    Los bytes del archivo se mantienen en el cliente; este endpoint solo valida el mapeo.
+    Convención de nombre: ``{numero_documento}_{TIPO}.{ext}``
+    """
+    content = await archivo.read()
+    esperados = {d.strip() for d in documentos_esperados.split(",") if d.strip()}
+    try:
+        asignaciones = mapear_zip(content, esperados)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"asignaciones": asignaciones}
 
 
 @router.get(

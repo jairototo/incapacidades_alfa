@@ -1,6 +1,8 @@
 """Servicio de radicación masiva: plantilla Excel, parseo+validación, mapeo ZIP."""
 import datetime as dt
 import io
+import re
+import zipfile
 from uuid import UUID
 
 from openpyxl import Workbook, load_workbook
@@ -175,3 +177,55 @@ async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: byte
         })
 
     return resultados
+
+
+# ---------------------------------------------------------------------------
+# ZIP filename mapping — pure function, no DB access
+# ---------------------------------------------------------------------------
+
+TIPOS_VALIDOS = {"INCAPACIDAD", "HISTORIA_CLINICA", "SOPORTE", "SOPORTE_ADICIONAL"}
+_NAME_RE = re.compile(r"^(?P<doc>[A-Za-z0-9]+)_(?P<tipo>[A-Z_]+)\.(?P<ext>[A-Za-z0-9]+)$")
+MAX_ZIP_BYTES = 20 * 1024 * 1024
+
+
+def mapear_zip(file_bytes: bytes, documentos_esperados: set[str]) -> list[dict]:
+    """Parsea un ZIP y mapea cada archivo a un (numero_documento, tipo) según convención de nombre.
+
+    Convención: ``{numero_documento}_{TIPO}.{ext}``  (e.g. ``1023555444_INCAPACIDAD.pdf``)
+
+    - Archivos que no cumplen la convención → ``match=False``
+    - Archivos con tipo no reconocido o documento fuera de ``documentos_esperados`` → ``match=False``
+    - ZIP > 20 MB → ``ValueError``
+    - ZIP corrupto → ``ValueError``
+    - No realiza operaciones de BD (puro, testeable sin fixtures).
+    """
+    if len(file_bytes) > MAX_ZIP_BYTES:
+        raise ValueError("El ZIP excede el tamaño máximo de 20 MB")
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(file_bytes))
+    except zipfile.BadZipFile:
+        raise ValueError("El archivo no es un ZIP válido")
+    asignaciones: list[dict] = []
+    with zf:
+        for name in zf.namelist():
+            if name.endswith("/"):
+                continue  # skip directory entries
+            base = name.split("/")[-1]
+            m = _NAME_RE.match(base)
+            if not m:
+                asignaciones.append({
+                    "archivo": base,
+                    "match": False,
+                    "motivo": "Nombre no cumple convención",
+                })
+                continue
+            doc, tipo = m.group("doc"), m.group("tipo")
+            ok = tipo in TIPOS_VALIDOS and doc in documentos_esperados
+            asignaciones.append({
+                "archivo": base,
+                "numero_documento": doc,
+                "tipo": tipo,
+                "match": ok,
+                "motivo": None if ok else "Documento o tipo no reconocido",
+            })
+    return asignaciones
