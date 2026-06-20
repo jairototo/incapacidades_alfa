@@ -58,4 +58,25 @@ describe('LoginPage', () => {
     await waitFor(() => expect(mockLogin).toHaveBeenCalledOnce());
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
+
+  it('renders the split-screen branding elements', () => {
+    renderPage();
+    // logo, brand heading, copyright footer
+    expect(screen.getByAltText(/seguros alfa/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /bienvenido/i })).toBeInTheDocument();
+    expect(screen.getByText(/© 2026 Seguros Alfa/i)).toBeInTheDocument();
+  });
+
+  it('renders the "Recordarme" checkbox as present but disabled', () => {
+    renderPage();
+    const remember = screen.getByRole('checkbox', { name: /recordarme/i });
+    expect(remember).toBeInTheDocument();
+    expect(remember).toBeDisabled();
+  });
+
+  it('shows a contact message when clicking "¿Olvidó su contraseña?"', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /olvidó su contraseña/i }));
+    expect(screen.getByText(/contacte a servicio al cliente/i)).toBeInTheDocument();
+  });
 });
