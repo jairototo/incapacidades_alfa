@@ -29,3 +29,38 @@ async def test_validation_reports_errors_and_skips_empty(client: AsyncClient, em
     assert rows[1]["valida"] is False
     codigos = {e["codigo"] for e in rows[1]["errores"]}
     assert "INVALID_DATE_RANGE" in codigos and "EMPTY_DIAGNOSTICO_CIE10" in codigos
+
+
+@pytest.mark.asyncio
+async def test_malformed_dias_totales_is_row_error(client: AsyncClient, empresa_user_token, test_empleado):
+    doc = test_empleado.numero_documento
+    bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-01", "2026-06-05", "cinco", "S00.0", "", "Dr X", "RM-1", "", "", "NO", ""]
+    buf = _xlsx([bad])
+    resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
+        files={"archivo": ("d.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        headers={"Authorization": f"Bearer {empresa_user_token}"})
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()["filas"]
+    assert len(rows) == 1 and rows[0]["valida"] is False
+    assert any(e["codigo"] == "INVALID_CELL_VALUE" for e in rows[0]["errores"])
+
+
+@pytest.mark.asyncio
+async def test_bad_date_format_is_row_error(client: AsyncClient, empresa_user_token, test_empleado):
+    doc = test_empleado.numero_documento
+    bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "06/01/2026", "2026-06-05", 5, "S00.0", "", "Dr X", "RM-1", "", "", "NO", ""]
+    buf = _xlsx([bad])
+    resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
+        files={"archivo": ("d.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        headers={"Authorization": f"Bearer {empresa_user_token}"})
+    assert resp.status_code == 200, resp.text
+    assert any(e["codigo"] == "INVALID_CELL_VALUE" for e in resp.json()["filas"][0]["errores"])
+
+
+@pytest.mark.asyncio
+async def test_non_xlsx_upload_returns_400(client: AsyncClient, empresa_user_token):
+    import io as _io
+    resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
+        files={"archivo": ("fake.xlsx", _io.BytesIO(b"%PDF-1.4 not an excel"), "application/pdf")},
+        headers={"Authorization": f"Bearer {empresa_user_token}"})
+    assert resp.status_code == 400, resp.text

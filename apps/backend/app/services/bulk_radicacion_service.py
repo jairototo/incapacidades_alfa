@@ -7,6 +7,7 @@ from openpyxl import Workbook, load_workbook
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import BadRequestException
 from app.models.empleado import Empleado
 from app.services.incapacidad_validation_rules import validate_row
 
@@ -56,7 +57,7 @@ async def generar_plantilla(db: AsyncSession, empresa_id: UUID, empleado_ids: li
     return buf.getvalue()
 
 
-def _parse_date(v):
+def _parse_date(v) -> "dt.date | None":
     """Convierte un valor de celda Excel a date, o None si está vacío."""
     if v in (None, ""):
         return None
@@ -64,23 +65,45 @@ def _parse_date(v):
         return v.date()
     if isinstance(v, dt.date):
         return v
-    return dt.date.fromisoformat(str(v).strip()[:10])
+    s = str(v).strip()
+    try:
+        return dt.date.fromisoformat(s[:10])
+    except (ValueError, TypeError):
+        raise ValueError(f"Fecha inválida: {s!r}. Use formato YYYY-MM-DD.")
+
+
+def _parse_int(v):
+    """Convierte un valor de celda Excel a int, o None si está vacío."""
+    if v in (None, ""):
+        return None
+    try:
+        return int(float(str(v)))   # handles "5", "5.0", 5, 5.0
+    except (ValueError, TypeError):
+        raise ValueError(f"Valor no numérico: {v!r}")
 
 
 def _is_empty(values) -> bool:
-    """Retorna True si todos los valores de la fila son None o cadena vacía."""
-    return all(v in (None, "") for v in values)
+    """Retorna True si todos los valores de la fila son None, cadena vacía o solo espacios."""
+    return all(v is None or (isinstance(v, str) and not v.strip()) or v == "" for v in values)
 
 
 async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: bytes) -> list[dict]:
     """Parsea el Excel, valida cada fila y retorna resultados por fila.
 
-    - Filas completamente vacías son omitidas.
+    - Filas completamente vacías (o solo espacios) son omitidas.
     - Cada empleado se resuelve por numero_documento DENTRO de la empresa autenticada.
     - Se retornan TODOS los errores por fila (no solo el primero).
+    - Celdas con valores inválidos generan un error de fila (no un 500).
+    - Archivos corruptos o no-Excel generan un 400.
     """
-    wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
+    try:
+        wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
+    except Exception:
+        raise BadRequestException("El archivo no es un Excel válido (.xlsx).")
+
     ws = wb.active
+    if ws is None:
+        raise BadRequestException("El archivo Excel no contiene hojas activas.")
 
     # Cargar empleados de la empresa en un dict por numero_documento
     empleados = (
@@ -98,23 +121,35 @@ async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: byte
 
         data = dict(zip(TEMPLATE_HEADERS, cells))
         empleado = by_doc.get(str(data.get("numero_documento") or "").strip())
+        raw_datos = {k: (str(v) if v is not None else None) for k, v in data.items()}
 
-        parsed = {
-            "tipo": "ARL",
-            "empleado_numero_documento": str(data.get("numero_documento") or "").strip(),
-            "tipo_enfermedad": data.get("tipo_enfermedad"),
-            "fecha_inicio": _parse_date(data.get("fecha_inicio")),
-            "fecha_fin": _parse_date(data.get("fecha_fin")),
-            "dias_totales": int(data["dias_totales"]) if data.get("dias_totales") not in (None, "") else None,
-            "diagnostico_cie10": data.get("diagnostico_cie10"),
-            "descripcion_diagnostico": data.get("descripcion_diagnostico"),
-            "nombre_medico": data.get("nombre_medico"),
-            "registro_medico": data.get("registro_medico"),
-            "ips": data.get("ips"),
-            "valor_dia": data.get("valor_dia"),
-            "prorroga": str(data.get("prorroga") or "").strip().upper() in ("SI", "SÍ", "TRUE", "1", "YES"),
-            "observaciones": data.get("observaciones"),
-        }
+        try:
+            parsed = {
+                "tipo": "ARL",
+                "empleado_numero_documento": str(data.get("numero_documento") or "").strip(),
+                "tipo_enfermedad": data.get("tipo_enfermedad"),
+                "fecha_inicio": _parse_date(data.get("fecha_inicio")),
+                "fecha_fin": _parse_date(data.get("fecha_fin")),
+                "dias_totales": _parse_int(data.get("dias_totales")),
+                "diagnostico_cie10": data.get("diagnostico_cie10"),
+                "descripcion_diagnostico": data.get("descripcion_diagnostico"),
+                "nombre_medico": data.get("nombre_medico"),
+                "registro_medico": data.get("registro_medico"),
+                "ips": data.get("ips"),
+                "valor_dia": data.get("valor_dia"),
+                "prorroga": str(data.get("prorroga") or "").strip().upper() in ("SI", "SÍ", "TRUE", "1", "YES"),
+                "observaciones": data.get("observaciones"),
+            }
+        except ValueError as exc:
+            resultados.append({
+                "fila": idx,
+                "empleado_id": str(empleado.id) if empleado else None,
+                "datos": raw_datos,
+                "errores": [{"codigo": "INVALID_CELL_VALUE", "categoria": "PARSE_ERROR",
+                             "severidad": "ERROR", "descripcion": str(exc), "campo_afectado": None}],
+                "valida": False,
+            })
+            continue
 
         errores = validate_row(parsed)
 
