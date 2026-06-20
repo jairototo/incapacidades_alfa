@@ -1,14 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home } from '@/pages/Home';
-import { ConsultarIncapacidad } from '@/pages/ConsultarIncapacidad';
-import { RadicarIncapacidadWizard } from '@/components/wizard/RadicarIncapacidadWizard';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { LoginPage } from '@/pages/LoginPage';
+import { Dashboard } from '@/pages/Dashboard';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
-// Configuración de React Query
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutos
+      staleTime: 5 * 60 * 1000,
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -20,9 +19,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/consultar" element={<ConsultarIncapacidad />} />
-          <Route path="/radicar" element={<RadicarIncapacidadWizard />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Dashboard />} />
+            {/* Phase 2 adds /radicar/individual, Phase 3 /radicar/masiva, Phase 5 /consulta */}
+          </Route>
+          {/* Retire old public routes */}
+          <Route path="/radicar" element={<Navigate to="/login" replace />} />
+          <Route path="/consultar" element={<Navigate to="/consulta" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
@@ -30,5 +35,3 @@ function App() {
 }
 
 export default App;
-
-
