@@ -5,6 +5,7 @@ import { Dashboard } from '@/pages/Dashboard';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RadicacionIndividualPage } from '@/components/radicacion/RadicacionIndividualPage';
 import { RadicacionMasivaPage } from '@/components/radicacion/masiva/RadicacionMasivaPage';
+import { ConsultaEmpresa } from '@/pages/ConsultaEmpresa';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +27,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/radicar/individual" element={<RadicacionIndividualPage />} />
             <Route path="/radicar/masiva" element={<RadicacionMasivaPage />} />
-            {/* Phase 5 adds /consulta */}
+            <Route path="/consulta" element={<ConsultaEmpresa />} />
           </Route>
           {/* Retire old public routes */}
           <Route path="/radicar" element={<Navigate to="/login" replace />} />
