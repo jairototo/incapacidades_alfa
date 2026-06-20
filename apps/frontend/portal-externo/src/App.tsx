@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from '@/pages/LoginPage';
 import { Dashboard } from '@/pages/Dashboard';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { RadicacionIndividualPage } from '@/components/radicacion/RadicacionIndividualPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,7 +23,8 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Dashboard />} />
-            {/* Phase 2 adds /radicar/individual, Phase 3 /radicar/masiva, Phase 5 /consulta */}
+            <Route path="/radicar/individual" element={<RadicacionIndividualPage />} />
+            {/* Phase 3 adds /radicar/masiva, Phase 5 /consulta */}
           </Route>
           {/* Retire old public routes */}
           <Route path="/radicar" element={<Navigate to="/login" replace />} />
