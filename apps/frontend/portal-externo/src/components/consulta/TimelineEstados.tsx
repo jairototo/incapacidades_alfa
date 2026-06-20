@@ -23,6 +23,7 @@ import {
   DollarSign,
   Ban,
   FileText,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -206,8 +207,9 @@ export function TimelineEstados({ historial, className }: TimelineEstadosProps) 
 
         {/* Footer informativo */}
         <div className="mt-6 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500">
-            ℹ️ Los estados se muestran en orden cronológico descendente (más reciente primero)
+          <p className="flex items-center gap-1.5 text-xs text-gray-500">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            <span>Los estados se muestran en orden cronológico descendente (más reciente primero)</span>
           </p>
         </div>
       </CardContent>

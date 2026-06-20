@@ -17,7 +17,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { ConsultaIncapacidadResponse, EstadoIncapacidad, TipoIncapacidad } from '@/types/consulta';
-import { FileText, User, Building2, Calendar, DollarSign, Stethoscope, ClipboardCheck } from 'lucide-react';
+import { FileText, User, Building2, Calendar, DollarSign, Stethoscope, ClipboardCheck, Info } from 'lucide-react';
 
 export interface DetalleIncapacidadProps {
   /**
@@ -277,8 +277,9 @@ export function DetalleIncapacidad({ incapacidad, className = '' }: DetalleIncap
 
         {/* Footer con información de ayuda */}
         <div className="pt-4 border-t bg-blue-50 rounded-lg p-4">
-          <p className="text-sm text-blue-900 font-medium mb-2">
-            ℹ️ ¿Necesitas más información?
+          <p className="flex items-center gap-1.5 text-sm text-blue-900 font-medium mb-2">
+            <Info className="h-4 w-4 shrink-0" />
+            <span>¿Necesitas más información?</span>
           </p>
           <p className="text-sm text-blue-700">
             Consulta el historial de estados y documentos disponibles en las secciones siguientes.

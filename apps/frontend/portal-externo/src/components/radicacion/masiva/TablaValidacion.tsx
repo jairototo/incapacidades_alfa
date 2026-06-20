@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle, Check } from 'lucide-react';
 import type { ValidacionFila } from '@/services/bulkRadicacionService';
 import { FileUpload } from '@/components/ui/FileUpload';
 
@@ -43,9 +43,12 @@ export function TablaValidacion({ filas, documentos, onAddDoc, onDelete, blockin
                   </ul>
                 )}
                 {warnings.length > 0 && (
-                  <ul className="mt-2 list-disc pl-5 text-sm text-[#8a6d00]">
+                  <ul className="mt-2 space-y-1 text-sm text-[#8a6d00]">
                     {warnings.map((e, i) => (
-                      <li key={i}>⚠ {e.descripcion}</li>
+                      <li key={i} className="flex items-start gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span>{e.descripcion}</span>
+                      </li>
                     ))}
                   </ul>
                 )}
@@ -63,9 +66,11 @@ export function TablaValidacion({ filas, documentos, onAddDoc, onDelete, blockin
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 {SLOTS.map((tipo) => (
                   <div key={tipo}>
-                    <p className="text-xs font-medium text-foreground mb-1">
+                    <p className="flex items-center gap-1 text-xs font-medium text-foreground mb-1">
                       {tipo}
-                      {documentos[f.empleado_id!]?.[tipo] ? ' ✓' : ''}
+                      {documentos[f.empleado_id!]?.[tipo] && (
+                        <Check className="h-3.5 w-3.5 text-primary" aria-label="cargado" />
+                      )}
                     </p>
                     <FileUpload
                       multiple={false}

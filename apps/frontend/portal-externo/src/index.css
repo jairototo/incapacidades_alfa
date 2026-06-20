@@ -100,3 +100,8 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* Iconos lucide-react: trazo delgado, outline sin relleno (Brand Book Seguros Alfa). */
+.lucide {
+  stroke-width: 1.75;
+}

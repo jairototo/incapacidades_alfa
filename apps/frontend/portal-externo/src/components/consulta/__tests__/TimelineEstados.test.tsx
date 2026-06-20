@@ -328,11 +328,11 @@ describe('TimelineEstados', () => {
       expect(screen.getByText(/más reciente primero/)).toBeInTheDocument();
     });
 
-    it('debe mostrar emoji de información en el footer', () => {
-      render(<TimelineEstados historial={historialCompleto} />);
+    it('debe mostrar el ícono de información (outline) en el footer', () => {
+      const { container } = render(<TimelineEstados historial={historialCompleto} />);
 
-      const footerText = screen.getByText(/orden cronológico descendente/);
-      expect(footerText.textContent).toContain('ℹ️');
+      expect(screen.getByText(/orden cronológico descendente/)).toBeInTheDocument();
+      expect(container.querySelector('.lucide-info')).toBeTruthy();
     });
   });
 
