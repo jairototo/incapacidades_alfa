@@ -3,11 +3,14 @@ API endpoints para gestión de Incapacidades.
 """
 from __future__ import annotations
 
+import io
 from typing import Any, List, Optional
 from uuid import UUID
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, Query, Path, status, Body, HTTPException, Form, File, UploadFile
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel as _BM
 from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,9 +46,14 @@ from app.core.exceptions import BadRequestException
 from app.core.security import get_current_user, PermissionChecker, Permissions, require_empresa
 from app.models.usuario import Usuario
 from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
-from app.core.logging import logger 
+from app.core.logging import logger
+from app.services.bulk_radicacion_service import generar_plantilla
 
 router = APIRouter()
+
+
+class PlantillaRequest(_BM):
+    empleado_ids: List[UUID] = []
 
 
 # ========== HELPER FUNCTIONS ==========
@@ -791,6 +799,30 @@ async def radicar_individual(
                 logger.error(f"No se pudo encolar el correo de resumen de radicación: {exc}")
 
     return result
+
+
+@router.post(
+    "/radicar-masiva/plantilla",
+    summary="Descargar plantilla Excel (EMPRESA)",
+    tags=["incapacidades-empresa"],
+)
+async def descargar_plantilla(
+    payload: PlantillaRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_empresa),
+):
+    """Genera y descarga una plantilla Excel para radicación masiva.
+
+    - Sin `empleado_ids`: devuelve solo la fila de cabecera.
+    - Con `empleado_ids`: pre-rellena filas con datos de los empleados
+      que pertenecen a la empresa del usuario autenticado.
+    """
+    content = await generar_plantilla(db, current_user.empresa_id, payload.empleado_ids)
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=plantilla_incapacidades.xlsx"},
+    )
 
 
 @router.get(
