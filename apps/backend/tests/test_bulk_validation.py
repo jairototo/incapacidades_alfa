@@ -15,9 +15,9 @@ def _xlsx(rows):
 @pytest.mark.asyncio
 async def test_validation_reports_errors_and_skips_empty(client: AsyncClient, empresa_user_token, test_empleado):
     doc = test_empleado.numero_documento
-    good = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-01", "2026-06-05", 5, "S00.0", "", "Dr X", "RM-1", "", "", "NO", ""]
-    bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-10", "2026-06-05", 5, "", "", "Dr X", "RM-1", "", "", "NO", ""]
-    empty = ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+    good = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-01", "2026-06-05", 5, "S00.0", "", "Dr X", "RM-1", "", "NO", ""]
+    bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-10", "2026-06-05", 5, "", "", "Dr X", "RM-1", "", "NO", ""]
+    empty = ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
     buf = _xlsx([good, bad, empty])
     resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
         files={"archivo": ("data.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
@@ -34,7 +34,7 @@ async def test_validation_reports_errors_and_skips_empty(client: AsyncClient, em
 @pytest.mark.asyncio
 async def test_malformed_dias_totales_is_row_error(client: AsyncClient, empresa_user_token, test_empleado):
     doc = test_empleado.numero_documento
-    bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-01", "2026-06-05", "cinco", "S00.0", "", "Dr X", "RM-1", "", "", "NO", ""]
+    bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-01", "2026-06-05", "cinco", "S00.0", "", "Dr X", "RM-1", "", "NO", ""]
     buf = _xlsx([bad])
     resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
         files={"archivo": ("d.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
@@ -48,7 +48,7 @@ async def test_malformed_dias_totales_is_row_error(client: AsyncClient, empresa_
 @pytest.mark.asyncio
 async def test_bad_date_format_is_row_error(client: AsyncClient, empresa_user_token, test_empleado):
     doc = test_empleado.numero_documento
-    bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "06/01/2026", "2026-06-05", 5, "S00.0", "", "Dr X", "RM-1", "", "", "NO", ""]
+    bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "06/01/2026", "2026-06-05", 5, "S00.0", "", "Dr X", "RM-1", "", "NO", ""]
     buf = _xlsx([bad])
     resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
         files={"archivo": ("d.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
@@ -71,7 +71,7 @@ async def test_warning_only_row_is_valid(client: AsyncClient, empresa_user_token
     doc = test_empleado.numero_documento
     # fecha_inicio 2026-01-01 is >30 days before today (~2026-06-20) => RETROACTIVE_BEYOND_LIMIT (WARNING),
     # dias_totales=10 matches 2026-01-01..2026-01-10 so no mismatch; all required fields present => no ERROR.
-    row = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-01-01", "2026-01-10", 10, "S00.0", "", "Dr X", "RM-1", "", "", "NO", ""]
+    row = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-01-01", "2026-01-10", 10, "S00.0", "", "Dr X", "RM-1", "", "NO", ""]
     buf = _xlsx([row])
     resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
         files={"archivo": ("d.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},

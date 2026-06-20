@@ -7,7 +7,7 @@ from httpx import AsyncClient
 EXPECTED_HEADERS = [
     "numero_documento", "tipo_documento", "empleado_nombres", "empleado_apellidos",
     "tipo_enfermedad", "fecha_inicio", "fecha_fin", "dias_totales", "diagnostico_cie10",
-    "descripcion_diagnostico", "nombre_medico", "registro_medico", "ips", "valor_dia",
+    "descripcion_diagnostico", "nombre_medico", "registro_medico", "ips",
     "prorroga", "observaciones",
 ]
 

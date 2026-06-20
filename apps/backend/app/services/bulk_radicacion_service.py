@@ -16,7 +16,7 @@ from app.services.incapacidad_validation_rules import validate_row
 TEMPLATE_HEADERS = [
     "numero_documento", "tipo_documento", "empleado_nombres", "empleado_apellidos",
     "tipo_enfermedad", "fecha_inicio", "fecha_fin", "dias_totales", "diagnostico_cie10",
-    "descripcion_diagnostico", "nombre_medico", "registro_medico", "ips", "valor_dia",
+    "descripcion_diagnostico", "nombre_medico", "registro_medico", "ips",
     "prorroga", "observaciones",
 ]
 
@@ -50,7 +50,6 @@ async def generar_plantilla(db: AsyncSession, empresa_id: UUID, empleado_ids: li
                 "",   # nombre_medico
                 "",   # registro_medico
                 "",   # ips
-                "",   # valor_dia
                 "NO", # prorroga
                 "",   # observaciones
             ])
@@ -138,7 +137,6 @@ async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: byte
                 "nombre_medico": data.get("nombre_medico"),
                 "registro_medico": data.get("registro_medico"),
                 "ips": data.get("ips"),
-                "valor_dia": data.get("valor_dia"),
                 "prorroga": str(data.get("prorroga") or "").strip().upper() in ("SI", "SÍ", "TRUE", "1", "YES"),
                 "observaciones": data.get("observaciones"),
             }
