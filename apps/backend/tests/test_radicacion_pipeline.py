@@ -1,4 +1,5 @@
 import datetime as dt
+import re
 import pytest
 from app.services.radicacion_pipeline_service import RadicacionPipelineService
 from app.schemas.radicacion import RadicacionRowInput
@@ -30,6 +31,7 @@ async def test_pipeline_creates_incapacidad_radicada(db_session):
     assert resp.total_radicadas == 1
     item = resp.items[0]
     assert item.success and item.numero
+    assert re.match(r"^ARL-\d{8}-\d{4}$", item.numero)
     assert len(enqueued) == 1
     from app.models.incapacidad import Incapacidad
     from sqlalchemy import select
@@ -54,3 +56,18 @@ async def test_pipeline_rejects_employee_of_other_company(db_session):
     resp = await svc.radicar([row], empresa=other, radicado_por_id=None)
     assert resp.items[0].success is False
     assert "empresa" in (resp.items[0].error or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_numbers_increment_within_batch(db_session):
+    empresa, empleado = await _seed(db_session)
+    svc = RadicacionPipelineService(db_session, enqueue_auditoria=lambda iid: None)
+    def _row():
+        return RadicacionRowInput(
+            empleado_id=empleado.id, tipo_enfermedad="ACCIDENTE_TRABAJO",
+            fecha_inicio=dt.date(2026, 6, 1), fecha_fin=dt.date(2026, 6, 5), dias_totales=5,
+            diagnostico_cie10="S00.0", nombre_medico="Dr X", registro_medico="RM-1")
+    resp = await svc.radicar([_row(), _row()], empresa=empresa, radicado_por_id=None)
+    assert resp.total_radicadas == 2
+    numeros = sorted(i.numero for i in resp.items)
+    assert numeros[0].endswith("-0001") and numeros[1].endswith("-0002")

@@ -9,7 +9,8 @@ from datetime import date, datetime
 from typing import Callable, Optional, Protocol
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
@@ -44,10 +45,26 @@ class RadicacionPipelineService:
         prefix = "ARL" if tipo == "ARL" else "SAL"
         fecha_str = date.today().strftime("%Y%m%d")
         like = f"{prefix}-{fecha_str}-%"
-        count = (
-            await self.db.execute(select(Incapacidad).where(Incapacidad.numero.like(like)))
-        ).scalars().all()
-        return f"{prefix}-{fecha_str}-{len(count) + 1:04d}"
+        result = await self.db.execute(
+            select(func.count()).select_from(Incapacidad).where(Incapacidad.numero.like(like))
+        )
+        count = result.scalar_one()
+        return f"{prefix}-{fecha_str}-{count + 1:04d}"
+
+    async def _crear_incapacidad(self, fields: dict) -> Incapacidad:
+        """Crea la Incapacidad con reintento ante colisión de numero (race en _generar_numero)."""
+        for attempt in range(3):
+            numero = await self._generar_numero("ARL")
+            inc = Incapacidad(numero=numero, **fields)
+            try:
+                async with self.db.begin_nested():  # SAVEPOINT
+                    self.db.add(inc)
+                    await self.db.flush()
+                return inc
+            except IntegrityError:
+                if attempt == 2:
+                    raise
+        raise RuntimeError("unreachable")  # pragma: no cover
 
     async def radicar(
         self,
@@ -59,6 +76,8 @@ class RadicacionPipelineService:
         items: list[RadicacionResultItem] = []
         created: list[Incapacidad] = []
 
+        # NOTE: errores de BD durante la creación de una fila propagan y abortan el lote.
+        # El aislamiento por-fila (savepoint + reporte de error por fila) se aborda en Phase 3 (masiva).
         for row in rows:
             empleado = (
                 await self.db.execute(select(Empleado).where(Empleado.id == row.empleado_id))
@@ -70,9 +89,8 @@ class RadicacionPipelineService:
                 items.append(RadicacionResultItem(empleado_id=row.empleado_id, success=False, error="El empleado no pertenece a su empresa"))
                 continue
 
-            numero = await self._generar_numero("ARL")
-            inc = Incapacidad(
-                numero=numero,
+            fields = dict(
+                # Portal es ARL-only por diseño (decisión D4); SALUD fuera de alcance.
                 tipo=TipoIncapacidad.ARL,
                 empleado_id=empleado.id,
                 empresa_id=empresa.id,
@@ -93,9 +111,12 @@ class RadicacionPipelineService:
                 fecha_radicacion=datetime.utcnow(),
                 radicado_por_id=radicado_por_id,
             )
-            self.db.add(inc)
-            await self.db.flush()
+            inc = await self._crear_incapacidad(fields)
 
+            # NOTE: integracion corre dentro de la transacción (pre-commit) porque en Phase 3.6
+            # escribe numero_radicacion_servialfa + communication_log que deben persistir con la
+            # Incapacidad. La LLAMADA externa real (HTTP) deberá moverse post-commit en Phase 3.6
+            # para evitar registros fantasma si un flush posterior hace rollback.
             await self.integracion(self.db, inc)
 
             created.append(inc)
