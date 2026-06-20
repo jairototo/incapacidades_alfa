@@ -1,8 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RadicacionMasivaPage } from '@/components/radicacion/masiva/RadicacionMasivaPage';
+
+const toastMock = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: toastMock }) }));
 
 vi.mock('@/services/empresaEmpleadoService', () => ({ useEmpleadosDeMiEmpresa: () => ({ data: [], isLoading: false }) }));
 vi.mock('@/services/bulkRadicacionService', () => ({
@@ -38,5 +41,22 @@ describe('RadicacionMasivaPage', () => {
     const submit = await screen.findByRole('button', { name: /radicar incapacidades/i });
     fireEvent.click(submit);
     expect(await screen.findByRole('alert')).toHaveTextContent(/impiden radicar/i);
+  });
+
+  it('shows an error toast when Excel validation fails', async () => {
+    const { validarExcel } = await import('@/services/bulkRadicacionService');
+    (validarExcel as ReturnType<typeof vi.fn>).mockRejectedValueOnce({
+      response: { data: { detail: 'Archivo inválido' } },
+    });
+    wrap();
+    fireEvent.change(screen.getByLabelText(/subir excel/i), {
+      target: { files: [new File([new Uint8Array(10)], 'x.xlsx')] },
+    });
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: expect.stringMatching(/no se pudo validar/i) }),
+      ),
+    );
+    expect(screen.queryByRole('button', { name: /radicar incapacidades/i })).not.toBeInTheDocument();
   });
 });

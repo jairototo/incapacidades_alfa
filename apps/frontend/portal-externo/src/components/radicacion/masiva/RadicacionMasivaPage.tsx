@@ -23,43 +23,69 @@ export function RadicacionMasivaPage() {
     const blob = await descargarPlantilla(ids);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'plantilla_incapacidades.xlsx'; a.click();
-    URL.revokeObjectURL(url); setModalOpen(false);
+    setTimeout(() => URL.revokeObjectURL(url), 1000); setModalOpen(false);
   };
 
   const handleExcel = async (file: File) => {
-    const res = await validarExcel(file);
-    setFilas(res.filas);
-    setDocumentos({});
-    setMostrarBloqueos(false);
+    try {
+      const res = await validarExcel(file);
+      setFilas(res.filas);
+      setDocumentos({});
+      setMostrarBloqueos(false);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: unknown } } };
+      const detail = err?.response?.data?.detail;
+      toast({ title: 'No se pudo validar el Excel',
+        description: typeof detail === 'string' ? detail : 'Archivo inválido. Verifique el formato .xlsx',
+        variant: 'destructive' });
+    }
   };
 
   const addDoc = (empleadoId: string, tipo: string, file: File) =>
     setDocumentos((p) => ({ ...p, [empleadoId]: { ...p[empleadoId], [tipo]: file } }));
 
-  const deleteRow = (fila: number) => setFilas((p) => p.filter((f) => f.fila !== fila));
+  const deleteRow = (fila: number) => {
+    const row = filas.find((f) => f.fila === fila);
+    if (row?.empleado_id) {
+      setDocumentos((p) => { const next = { ...p }; delete next[row.empleado_id!]; return next; });
+    }
+    setFilas((p) => p.filter((f) => f.fila !== fila));
+  };
 
   const handleZip = async (file: File) => {
-    const docs = filas.map((f) => String(f.datos.numero_documento ?? '')).filter(Boolean);
-    await mapearZip(file, docs); // backend validates the mapping/convention
-    // client-side: extract matching entries into the per-row doc map
-    const buf = new Uint8Array(await file.arrayBuffer());
-    const entries = unzipSync(buf);
-    let matched = 0;
-    for (const [name, bytes] of Object.entries(entries)) {
-      const base = name.split('/').pop() ?? name;
-      const m = base.match(/^([A-Za-z0-9]+)_([A-Z_]+)\.([A-Za-z0-9]+)$/);
-      if (!m) continue;
-      const [, doc, tipoRaw] = m;
-      const tipo = tipoRaw === 'INCAPACIDAD' ? 'INCAPACIDAD'
-        : tipoRaw === 'HISTORIA_CLINICA' ? 'HISTORIA_CLINICA'
-        : tipoRaw.startsWith('SOPORTE') ? 'SOPORTE' : null;
-      if (!tipo) continue;
-      const fila = filas.find((f) => String(f.datos.numero_documento ?? '') === doc && f.empleado_id);
-      if (!fila || !fila.empleado_id) continue;
-      addDoc(fila.empleado_id, tipo, new File([bytes as BlobPart], base));
-      matched++;
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: 'ZIP demasiado grande', description: 'El máximo es 20 MB', variant: 'destructive' });
+      return;
     }
-    toast({ title: 'ZIP procesado', description: `${matched} documento(s) reconocido(s)` });
+    try {
+      const docs = filas.map((f) => String(f.datos.numero_documento ?? '')).filter(Boolean);
+      await mapearZip(file, docs); // backend validates the mapping/convention
+      // client-side: extract matching entries into the per-row doc map
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const entries = unzipSync(buf);
+      let matched = 0;
+      for (const [name, bytes] of Object.entries(entries)) {
+        const base = name.split('/').pop() ?? name;
+        const m = base.match(/^([A-Za-z0-9]+)_([A-Z_]+)\.([A-Za-z0-9]+)$/);
+        if (!m) continue;
+        const [, doc, tipoRaw] = m;
+        const tipo = tipoRaw === 'INCAPACIDAD' ? 'INCAPACIDAD'
+          : tipoRaw === 'HISTORIA_CLINICA' ? 'HISTORIA_CLINICA'
+          : tipoRaw.startsWith('SOPORTE') ? 'SOPORTE' : null;
+        if (!tipo) continue;
+        const fila = filas.find((f) => String(f.datos.numero_documento ?? '') === doc && f.empleado_id);
+        if (!fila || !fila.empleado_id) continue;
+        addDoc(fila.empleado_id, tipo, new File([bytes as BlobPart], base));
+        matched++;
+      }
+      toast({ title: 'ZIP procesado', description: `${matched} documento(s) reconocido(s)` });
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: unknown } } };
+      const detail = err?.response?.data?.detail;
+      toast({ title: 'No se pudo procesar el ZIP',
+        description: typeof detail === 'string' ? detail : 'Archivo inválido o corrupto',
+        variant: 'destructive' });
+    }
   };
 
   const blocking = useMemo(() => filas.filter((f) =>
