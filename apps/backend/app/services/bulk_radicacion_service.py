@@ -83,6 +83,21 @@ def _parse_int(v):
         raise ValueError(f"Valor no numérico: {v!r}")
 
 
+def _text(v):
+    """Convierte una celda Excel a texto limpio, o None si está vacía.
+
+    openpyxl entrega los números como int/float; los campos de texto de la
+    plantilla (registro_medico, nombre_medico, ips, ...) deben llegar como
+    str para no romper la validación Pydantic en la radicación. Los enteros
+    que llegan como float (p.ej. ``5.0``) se rinden como ``"5"``.
+    """
+    if v is None or (isinstance(v, str) and not v.strip()):
+        return None
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v).strip()
+
+
 def _is_empty(values) -> bool:
     """Retorna True si todos los valores de la fila son None, cadena vacía o solo espacios."""
     return all(v is None or (isinstance(v, str) and not v.strip()) or v == "" for v in values)
@@ -121,24 +136,25 @@ async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: byte
             continue
 
         data = dict(zip(TEMPLATE_HEADERS, cells))
-        empleado = by_doc.get(str(data.get("numero_documento") or "").strip())
-        raw_datos = {k: (str(v) if v is not None else None) for k, v in data.items()}
+        numero_documento = _text(data.get("numero_documento")) or ""
+        empleado = by_doc.get(numero_documento)
+        raw_datos = {k: _text(v) for k, v in data.items()}
 
         try:
             parsed = {
                 "tipo": "ARL",
-                "empleado_numero_documento": str(data.get("numero_documento") or "").strip(),
-                "tipo_enfermedad": data.get("tipo_enfermedad"),
+                "empleado_numero_documento": numero_documento,
+                "tipo_enfermedad": _text(data.get("tipo_enfermedad")),
                 "fecha_inicio": _parse_date(data.get("fecha_inicio")),
                 "fecha_fin": _parse_date(data.get("fecha_fin")),
                 "dias_totales": _parse_int(data.get("dias_totales")),
-                "diagnostico_cie10": data.get("diagnostico_cie10"),
-                "descripcion_diagnostico": data.get("descripcion_diagnostico"),
-                "nombre_medico": data.get("nombre_medico"),
-                "registro_medico": data.get("registro_medico"),
-                "ips": data.get("ips"),
+                "diagnostico_cie10": _text(data.get("diagnostico_cie10")),
+                "descripcion_diagnostico": _text(data.get("descripcion_diagnostico")),
+                "nombre_medico": _text(data.get("nombre_medico")),
+                "registro_medico": _text(data.get("registro_medico")),
+                "ips": _text(data.get("ips")),
                 "prorroga": str(data.get("prorroga") or "").strip().upper() in ("SI", "SÍ", "TRUE", "1", "YES"),
-                "observaciones": data.get("observaciones"),
+                "observaciones": _text(data.get("observaciones")),
             }
         except ValueError as exc:
             resultados.append({

@@ -71,6 +71,27 @@ async def test_non_xlsx_upload_returns_400(client: AsyncClient, empresa_user_tok
 
 
 @pytest.mark.asyncio
+async def test_numeric_registro_medico_is_coerced_to_string(client: AsyncClient, empresa_user_token, test_empleado):
+    """openpyxl entrega celdas numéricas como int; registro_medico debe llegar como str.
+
+    Regresión del 422 (Input should be a valid string, input_value=1, input_type=int)
+    al reenviar los datos parseados a RadicacionRowInput en la radicación masiva.
+    """
+    doc = test_empleado.numero_documento
+    # registro_medico (col 12) numérico; openpyxl lo entrega como int.
+    row = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-01", "2026-06-05", 5, "S000.0", "", "Dr X", 12345, "", "NO", ""]
+    buf = _xlsx([row])
+    resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
+        files={"archivo": ("d.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        headers={"Authorization": f"Bearer {empresa_user_token}"})
+    assert resp.status_code == 200, resp.text
+    fila = resp.json()["filas"][0]
+    assert fila["valida"] is True
+    assert fila["datos"]["registro_medico"] == "12345"
+    assert isinstance(fila["datos"]["registro_medico"], str)
+
+
+@pytest.mark.asyncio
 async def test_warning_only_row_is_valid(client: AsyncClient, empresa_user_token, test_empleado):
     doc = test_empleado.numero_documento
     # fecha_inicio 2026-01-01 is >30 days before today (~2026-06-20) => RETROACTIVE_BEYOND_LIMIT (WARNING),
