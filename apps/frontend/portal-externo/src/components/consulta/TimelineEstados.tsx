@@ -170,8 +170,8 @@ export function TimelineEstados({ historial, className }: TimelineEstadosProps) 
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-gray-500">
-            <Clock className="h-12 w-12 mx-auto mb-2 opacity-30" />
+          <div className="py-8 text-gray-500">
+            <Clock className="h-12 w-12 mb-2 opacity-30" />
             <p className="text-sm">No hay historial de cambios disponible</p>
           </div>
         </CardContent>
@@ -206,7 +206,7 @@ export function TimelineEstados({ historial, className }: TimelineEstadosProps) 
 
         {/* Footer informativo */}
         <div className="mt-6 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">
+          <p className="text-xs text-gray-500">
             ℹ️ Los estados se muestran en orden cronológico descendente (más reciente primero)
           </p>
         </div>

@@ -78,7 +78,7 @@ export function FileList({
 }: FileListProps) {
   if (files.length === 0) {
     return (
-      <div className={cn('text-center py-6 text-sm text-gray-500', className)}>
+      <div className={cn('py-6 text-sm text-gray-500', className)}>
         {emptyMessage}
       </div>
     );

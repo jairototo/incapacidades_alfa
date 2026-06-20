@@ -78,7 +78,7 @@ function DetalleDrawer({ item, onClose }: DetalleDrawerProps) {
         {/* Content */}
         <div className="flex-1 p-6 space-y-6">
           {isLoading && (
-            <p className="text-sm text-muted-foreground py-12 text-center">
+            <p className="text-sm text-muted-foreground py-12">
               Cargando…
             </p>
           )}
@@ -95,7 +95,7 @@ function DetalleDrawer({ item, onClose }: DetalleDrawerProps) {
           )}
 
           {isError && (
-            <p className="text-sm text-destructive py-12 text-center">
+            <p className="text-sm text-destructive py-12">
               No se pudo cargar el detalle de la incapacidad.
             </p>
           )}

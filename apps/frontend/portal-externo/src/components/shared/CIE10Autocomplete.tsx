@@ -98,7 +98,7 @@ export function CIE10Autocomplete({
                 ))}
               </ul>
             ) : (
-              <div className="py-6 text-center text-sm">
+              <div className="py-6 text-sm">
                 <p className="font-medium text-gray-900">No se encontraron diagnósticos</p>
                 <p className="mt-1 text-xs text-gray-500">
                   Verifique el código o descripción ingresada
