@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RadicacionIndividualPage } from '@/components/radicacion/RadicacionIndividualPage';
 import { RadicacionMasivaPage } from '@/components/radicacion/masiva/RadicacionMasivaPage';
 import { ConsultaEmpresa } from '@/pages/ConsultaEmpresa';
+import { AppLayout } from '@/components/layout/AppLayout';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,10 +25,12 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/radicar/individual" element={<RadicacionIndividualPage />} />
-            <Route path="/radicar/masiva" element={<RadicacionMasivaPage />} />
-            <Route path="/consulta" element={<ConsultaEmpresa />} />
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/radicar/individual" element={<RadicacionIndividualPage />} />
+              <Route path="/radicar/masiva" element={<RadicacionMasivaPage />} />
+              <Route path="/consulta" element={<ConsultaEmpresa />} />
+            </Route>
           </Route>
           {/* Retire old public routes */}
           <Route path="/radicar" element={<Navigate to="/login" replace />} />
