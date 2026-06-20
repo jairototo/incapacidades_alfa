@@ -47,9 +47,59 @@ def get_sync_session():
     return _SyncSessionLocal()
 
 
+@celery_app.task(
+    name="auditar_incapacidad",
+    bind=True,
+    max_retries=3,
+    acks_late=True
+)
+def auditar_incapacidad_task(self, incapacidad_id: str):
+    """
+    Tarea de Celery para ejecutar la auditoría automática de una incapacidad (ASÍNCRONA).
+
+    Transición: RADICADA → EN_AUDITORIA (+ persiste auditoria_resultado)
+
+    Args:
+        incapacidad_id: UUID de la incapacidad (como string)
+
+    Raises:
+        Exception: Si falla, reintenta hasta 3 veces con 10 s de espera
+    """
+    import asyncio
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.orm import sessionmaker
+
+    logger.info(f"[CELERY] Iniciando auditoría para incapacidad {incapacidad_id}")
+
+    async def run():
+        from app.core.config import settings
+        from app.services.auditoria_service import auditar_incapacidad
+
+        engine = create_async_engine(settings.DATABASE_URL, echo=False)
+        async_session = sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,
+            autocommit=False
+        )
+
+        async with async_session() as db:
+            await auditar_incapacidad(db, UUID(incapacidad_id))
+
+        await engine.dispose()
+
+    try:
+        asyncio.run(run())
+        logger.success(f"[CELERY] Auditoría completada para incapacidad {incapacidad_id}")
+    except Exception as exc:
+        logger.error(f"[CELERY] Error auditando incapacidad {incapacidad_id}: {exc}")
+        raise self.retry(exc=exc, countdown=10)
+
+
 def enqueue_auditoria_incapacidad(incapacidad_id) -> None:
-    """TEMP no-op (Phase 4 replaces with the real Celery enqueue)."""
-    return None
+    """Hook usado por RadicacionPipelineService (reemplaza el no-op de Phase 2)."""
+    auditar_incapacidad_task.delay(str(incapacidad_id))
 
 
 @celery_app.task(
