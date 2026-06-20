@@ -12,17 +12,17 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, model_validato
 
 # Import for validation inconsistencies response
 from app.schemas.validation_inconsistencia import ValidationInconsistenciaRead
+# Fuente única de verdad compartida con la validación masiva/auditoría.
+from app.utils.validacion_incapacidad import REGEX_CIE10 as _REGEX_CIE10, TIPOS_ENFERMEDAD
 
 
 # ── Enums como literales ───────────────────────────────────────────────────────
 
 TIPOS_DOCUMENTO = ["CC", "CE", "PA", "TI"]
-TIPOS_ENFERMEDAD = ["ACCIDENTE_TRABAJO", "ENFERMEDAD_LABORAL", "ACCIDENTE_TRAYECTO"]
 TIPOS_DOCUMENTO_ARCHIVO = ["INCAPACIDAD_MEDICA", "HISTORIA_CLINICA", "SOPORTE_ADICIONAL"]
 ESTADOS_PRE_INCAPACIDAD = ["PENDIENTE", "PROCESADA", "RECHAZADA", "ERROR", "DEVUELTA"]
 
 _REGEX_SOLO_LETRAS = re.compile(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-']+$")
-_REGEX_CIE10 = re.compile(r"^[A-Z]\d{2}(\.\d{1,2})?$")
 _REGEX_REGISTRO_MEDICO = re.compile(r"^[a-zA-Z0-9\-]+$")
 _REGEX_NIT = re.compile(r"^\d{6,15}(-\d)?$")
 

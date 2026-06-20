@@ -28,5 +28,35 @@ def test_business_rules_flag_dias_mismatch():
     assert any(i["codigo"] == "DIAS_TOTALES_MISMATCH" for i in issues)
 
 
+def test_field_level_flags_invalid_tipo_enfermedad():
+    row = _valid_row(); row["tipo_enfermedad"] = "GRIPA"
+    issues = validate_field_level(row)
+    assert any(i["codigo"] == "INVALID_TIPO_ENFERMEDAD" and i["severidad"] == "ERROR" for i in issues)
+
+
+def test_field_level_accepts_every_catalog_tipo_enfermedad():
+    for tipo in ("ACCIDENTE_TRABAJO", "ENFERMEDAD_LABORAL", "ACCIDENTE_TRAYECTO"):
+        row = _valid_row(); row["tipo_enfermedad"] = tipo
+        assert not any(i["codigo"] == "INVALID_TIPO_ENFERMEDAD" for i in validate_field_level(row))
+
+
+def test_field_level_flags_invalid_cie10_format():
+    row = _valid_row(); row["diagnostico_cie10"] = "BADCODE"
+    issues = validate_field_level(row)
+    assert any(i["codigo"] == "INVALID_CIE10_FORMAT" and i["severidad"] == "ERROR" for i in issues)
+
+
+def test_field_level_accepts_lowercase_cie10():
+    row = _valid_row(); row["diagnostico_cie10"] = "m54.5"
+    assert not any(i["codigo"] == "INVALID_CIE10_FORMAT" for i in validate_field_level(row))
+
+
+def test_empty_cie10_reports_empty_not_format():
+    row = _valid_row(); row["diagnostico_cie10"] = ""
+    codigos = {i["codigo"] for i in validate_field_level(row)}
+    assert "EMPTY_DIAGNOSTICO_CIE10" in codigos
+    assert "INVALID_CIE10_FORMAT" not in codigos
+
+
 def test_valid_row_has_no_field_issues():
     assert validate_field_level(_valid_row()) == []
