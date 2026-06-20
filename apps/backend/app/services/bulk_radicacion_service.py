@@ -167,6 +167,11 @@ async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: byte
             "empleado_id": str(empleado.id) if empleado else None,
             "datos": {
                 **parsed,
+                # Campos de presentación que el frontend usa para mostrar la fila
+                # y para emparejar documentos del ZIP por número de documento.
+                "numero_documento": parsed["empleado_numero_documento"],
+                "empleado_nombres": raw_datos.get("empleado_nombres"),
+                "empleado_apellidos": raw_datos.get("empleado_apellidos"),
                 "fecha_inicio": parsed["fecha_inicio"].isoformat() if parsed["fecha_inicio"] else None,
                 "fecha_fin": parsed["fecha_fin"].isoformat() if parsed["fecha_fin"] else None,
             },

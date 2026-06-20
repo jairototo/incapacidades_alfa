@@ -26,6 +26,10 @@ async def test_validation_reports_errors_and_skips_empty(client: AsyncClient, em
     rows = resp.json()["filas"]
     assert len(rows) == 2  # empty row skipped
     assert rows[0]["valida"] is True and rows[0]["empleado_id"]
+    # valid rows carry the display fields the frontend renders (and uses for ZIP matching)
+    assert rows[0]["datos"]["numero_documento"] == doc
+    assert rows[0]["datos"]["empleado_nombres"] == "Ana"
+    assert rows[0]["datos"]["empleado_apellidos"] == "Gómez"
     assert rows[1]["valida"] is False
     codigos = {e["codigo"] for e in rows[1]["errores"]}
     assert "INVALID_DATE_RANGE" in codigos and "EMPTY_DIAGNOSTICO_CIE10" in codigos
