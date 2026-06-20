@@ -47,7 +47,7 @@ from app.core.security import get_current_user, PermissionChecker, Permissions, 
 from app.models.usuario import Usuario
 from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
 from app.core.logging import logger
-from app.services.bulk_radicacion_service import generar_plantilla
+from app.services.bulk_radicacion_service import generar_plantilla, parsear_y_validar
 
 router = APIRouter()
 
@@ -823,6 +823,32 @@ async def descargar_plantilla(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=plantilla_incapacidades.xlsx"},
     )
+
+
+@router.post(
+    "/radicar-masiva/validar",
+    summary="Validar Excel masivo (EMPRESA)",
+    tags=["incapacidades-empresa"],
+)
+async def validar_masivo(
+    archivo: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_empresa),
+):
+    """Valida cada fila del Excel subido y devuelve resultados por fila.
+
+    - Las filas completamente vacías son omitidas.
+    - Cada empleado se resuelve por numero_documento dentro de la empresa autenticada.
+    - Se retornan TODOS los errores por fila (no solo el primero).
+    - ``valida=True`` solo cuando no hay errores de nivel ERROR.
+    """
+    content = await archivo.read()
+    filas = await parsear_y_validar(db, current_user.empresa_id, content)
+    return {
+        "filas": filas,
+        "total": len(filas),
+        "validas": sum(1 for f in filas if f["valida"]),
+    }
 
 
 @router.get(
