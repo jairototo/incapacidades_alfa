@@ -751,7 +751,9 @@ async def radicar_individual(
         observaciones=observaciones,
     )
 
-    pipeline = RadicacionPipelineService(db, enqueue_auditoria=enqueue_auditoria_incapacidad)
+    from app.services.integracion.integracion_service import IntegracionService
+    integracion = IntegracionService(db)
+    pipeline = RadicacionPipelineService(db, enqueue_auditoria=enqueue_auditoria_incapacidad, integracion=integracion.procesar)
     result = await pipeline.radicar([row], empresa=current_user.empresa, radicado_por_id=current_user.id)
 
     item = result.items[0]
