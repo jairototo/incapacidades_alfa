@@ -169,8 +169,8 @@ export function RadicacionIndividualPage() {
   const maxDate = addDays(new Date(), 30);
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
-      <div className="bg-white rounded-lg shadow-sm border border-border p-6">
+    <div className="min-h-full bg-muted py-8 px-4">
+      <div className="mx-auto max-w-5xl rounded-xl border border-border bg-white p-6 shadow-[0_8px_30px_rgba(0,73,83,0.06)] sm:p-8">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8" noValidate>
           {/* Heading */}
           <div className="border-b pb-4">
@@ -181,92 +181,103 @@ export function RadicacionIndividualPage() {
           </div>
 
           {/* ── Sección Empleado ─────────────────────────────────────────────── */}
-          <section className="space-y-6">
+          <section className="space-y-4">
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">Empleado</h2>
             </div>
 
-            <Controller
-              name="empleado_id"
-              control={control}
-              render={({ field }) => (
-                <EmpleadoSelector
-                  value={field.value}
-                  onChange={field.onChange}
-                  error={errors.empleado_id?.message}
-                />
-              )}
-            />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+              <Controller
+                name="empleado_id"
+                control={control}
+                render={({ field }) => (
+                  <EmpleadoSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    error={errors.empleado_id?.message}
+                  />
+                )}
+              />
 
-            {/* Prórroga */}
-            <Controller
-              name="prorroga"
-              control={control}
-              render={({ field }) => (
-                <ProrrogaSwitch checked={field.value} onChange={field.onChange} />
-              )}
-            />
+              {/* Prórroga */}
+              <Controller
+                name="prorroga"
+                control={control}
+                render={({ field }) => (
+                  <ProrrogaSwitch checked={field.value} onChange={field.onChange} />
+                )}
+              />
+            </div>
           </section>
 
           {/* ── Sección Incapacidad ──────────────────────────────────────────── */}
-          <section className="space-y-6 border-t pt-6">
+          <section className="space-y-4 border-t pt-6">
             <div className="flex items-center gap-2">
               <Stethoscope className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">Información médica</h2>
             </div>
 
-            {/* Tipo de enfermedad */}
-            <Select
-              id="tipo_enfermedad"
-              label="Tipo de enfermedad"
-              {...register('tipo_enfermedad')}
-              error={errors.tipo_enfermedad?.message}
-              required
-            >
-              <option value="">Seleccione un tipo</option>
-              <option value="ACCIDENTE_TRABAJO">Accidente de Trabajo</option>
-              <option value="ENFERMEDAD_LABORAL">Enfermedad Laboral</option>
-              <option value="ACCIDENTE_TRAYECTO">Accidente de Trayecto</option>
-            </Select>
+            {/* Rejilla de 2 columnas: pares de campos lado a lado; campos anchos a todo lo ancho */}
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+              {/* Tipo de enfermedad */}
+              <Select
+                id="tipo_enfermedad"
+                label="Tipo de enfermedad"
+                {...register('tipo_enfermedad')}
+                error={errors.tipo_enfermedad?.message}
+                required
+              >
+                <option value="">Seleccione un tipo</option>
+                <option value="ACCIDENTE_TRABAJO">Accidente de Trabajo</option>
+                <option value="ENFERMEDAD_LABORAL">Enfermedad Laboral</option>
+                <option value="ACCIDENTE_TRAYECTO">Accidente de Trayecto</option>
+              </Select>
 
-            {/* Fechas */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <DatePicker
-                label="Fecha de inicio"
-                value={fecha_inicio}
-                onChange={(date) =>
-                  setValue('fecha_inicio', date as Date, { shouldValidate: true })
-                }
-                error={errors.fecha_inicio?.message as string}
-                required
-                maxDate={maxDate}
-              />
-              <DatePicker
-                label="Fecha de fin"
-                value={fecha_fin}
-                onChange={(date) =>
-                  setValue('fecha_fin', date as Date, { shouldValidate: true })
-                }
-                error={errors.fecha_fin?.message as string}
-                required
-                minDate={fecha_inicio}
-                maxDate={maxDate}
-              />
+              {/* IPS */}
               <Input
-                label="Días totales"
-                type="number"
-                value={fecha_inicio && fecha_fin ? computeDias(fecha_inicio, fecha_fin) : ''}
-                readOnly
-                disabled
-                helperText="Calculado automáticamente"
-                className="bg-gray-50"
+                label="IPS (Institución Prestadora de Salud)"
+                {...register('ips')}
+                error={errors.ips?.message as string}
+                placeholder="Clínica Santa María"
               />
-            </div>
 
-            {/* Diagnóstico CIE-10 */}
-            <div className="border-t pt-4 space-y-4">
-              <div>
+              {/* Fechas — fila completa */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-2">
+                <DatePicker
+                  label="Fecha de inicio"
+                  value={fecha_inicio}
+                  onChange={(date) =>
+                    setValue('fecha_inicio', date as Date, { shouldValidate: true })
+                  }
+                  error={errors.fecha_inicio?.message as string}
+                  required
+                  maxDate={maxDate}
+                />
+                <DatePicker
+                  label="Fecha de fin"
+                  value={fecha_fin}
+                  onChange={(date) =>
+                    setValue('fecha_fin', date as Date, { shouldValidate: true })
+                  }
+                  error={errors.fecha_fin?.message as string}
+                  required
+                  minDate={fecha_inicio}
+                  maxDate={maxDate}
+                />
+                <Input
+                  label="Días totales"
+                  type="number"
+                  value={fecha_inicio && fecha_fin ? computeDias(fecha_inicio, fecha_fin) : ''}
+                  readOnly
+                  disabled
+                  helperText="Calculado automáticamente"
+                  className="bg-gray-50"
+                />
+              </div>
+
+              {/* Diagnóstico CIE-10 — fila completa */}
+              <div className="lg:col-span-2">
                 <label htmlFor="cie10-input" className="block text-sm font-medium text-foreground mb-2">
                   Código CIE-10 <span className="text-red-500">*</span>
                 </label>
@@ -278,52 +289,37 @@ export function RadicacionIndividualPage() {
                 />
               </div>
 
-              <Textarea
-                label="Descripción del diagnóstico"
-                {...register('descripcion_diagnostico')}
-                error={errors.descripcion_diagnostico?.message as string}
-                placeholder="Describa el diagnóstico médico..."
-                maxCount={500}
-                showCount
-                rows={3}
-              />
-            </div>
-
-            {/* Médico tratante */}
-            <div className="border-t pt-4">
-              <h3 className="text-base font-semibold text-foreground mb-4">
-                Médico tratante <span className="text-red-500">*</span>
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Nombre del médico"
-                  {...register('nombre_medico')}
-                  error={errors.nombre_medico?.message as string}
-                  placeholder="Ej: Dr. Juan Pérez"
-                  required
-                />
-                <Input
-                  label="Registro médico"
-                  {...register('registro_medico')}
-                  error={errors.registro_medico?.message as string}
-                  placeholder="Ej: RM-12345"
-                  required
+              {/* Descripción del diagnóstico — fila completa */}
+              <div className="lg:col-span-2">
+                <Textarea
+                  label="Descripción del diagnóstico"
+                  {...register('descripcion_diagnostico')}
+                  error={errors.descripcion_diagnostico?.message as string}
+                  placeholder="Describa el diagnóstico médico..."
+                  maxCount={500}
+                  showCount
+                  rows={3}
                 />
               </div>
-            </div>
 
-            {/* IPS y observaciones */}
-            <div className="border-t pt-4">
-              <h3 className="text-base font-semibold text-foreground mb-4">
-                Información adicional
-              </h3>
-              <div className="space-y-4">
-                <Input
-                  label="IPS (Institución Prestadora de Salud)"
-                  {...register('ips')}
-                  error={errors.ips?.message as string}
-                  placeholder="Clínica Santa María"
-                />
+              {/* Médico tratante — par */}
+              <Input
+                label="Nombre del médico"
+                {...register('nombre_medico')}
+                error={errors.nombre_medico?.message as string}
+                placeholder="Ej: Dr. Juan Pérez"
+                required
+              />
+              <Input
+                label="Registro médico"
+                {...register('registro_medico')}
+                error={errors.registro_medico?.message as string}
+                placeholder="Ej: RM-12345"
+                required
+              />
+
+              {/* Observaciones — fila completa */}
+              <div className="lg:col-span-2">
                 <Textarea
                   label="Observaciones"
                   {...register('observaciones')}
