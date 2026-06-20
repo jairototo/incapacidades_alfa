@@ -1,34 +1,48 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import type { EmpleadoResponse } from '@/types/api';
 
 /**
- * Hook para listar empleados pertenecientes a la empresa del usuario autenticado.
- * Filtra siempre por empresa_id del store (contexto EMPRESA) y estado ACTIVO.
+ * Empleado tal como lo retorna GET /empresas/{empresa_id}/empleados
+ * (schema backend EmpleadoListItem — subconjunto liviano para listados).
+ */
+export interface EmpleadoListItem {
+  id: string;
+  numero_documento: string;
+  tipo_documento: string;
+  nombres: string;
+  apellidos: string;
+  cargo?: string | null;
+  estado: string;
+  created_at: string;
+}
+
+/**
+ * Hook para listar empleados de la empresa del usuario autenticado.
  *
- * La query está deshabilitada si el usuario no tiene empresa_id asignado.
+ * Llama el endpoint anidado y scopeado por token:
+ *   GET /api/v1/empresas/{empresa_id}/empleados
+ * (el backend rechaza con 403 si un usuario EMPRESA intenta consultar otra empresa).
  *
- * @param search - Texto libre para filtrar por nombre o documento
- * @returns React Query result con array de EmpleadoResponse
+ * Deshabilitada si el usuario no tiene empresa_id asignado.
+ *
+ * @param search - Texto libre: filtra por nombres, apellidos, documento o email.
  */
 export function useEmpleadosDeMiEmpresa(search: string) {
   const empresaId = useAuthStore((s) => s.user?.empresa_id);
   return useQuery({
     queryKey: ['empleados', 'mi-empresa', empresaId, search],
     queryFn: async () => {
-      const { data } = await api.get<EmpleadoResponse[]>('/empleados', {
+      const { data } = await api.get<EmpleadoListItem[]>(`/empresas/${empresaId}/empleados`, {
         params: {
-          empresa_id: empresaId,
           search: search || undefined,
           estado: 'ACTIVO',
           limit: 50,
         },
       });
-      // La API devuelve directamente un array de empleados (sin paginación)
       return data;
     },
     enabled: !!empresaId,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 5 * 60 * 1000,
   });
 }

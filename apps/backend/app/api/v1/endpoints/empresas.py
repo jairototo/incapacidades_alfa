@@ -15,6 +15,12 @@ from app.schemas.empresa import (
     EmpresaListItem
 )
 from app.services.empresa_service import empresa_service
+from app.services.empleado_service import empleado_service
+from app.schemas.empleado import EmpleadoListItem
+from app.core.security import get_current_user
+from app.core.exceptions import ForbiddenException
+from app.models.usuario import Usuario
+from app.utils.enums import RolUsuario, EstadoEmpleado
 from app.core.logging import logger
 
 router = APIRouter()
@@ -281,59 +287,40 @@ async def deactivate_empresa(
 
 @router.get(
     "/{empresa_id}/empleados",
-    response_model=List[dict],  # TODO: Usar schema de Empleado cuando esté disponible
+    response_model=List[EmpleadoListItem],
     summary="Obtener empleados de la empresa",
-    description="Listar todos los empleados de una empresa"
+    description="Listar empleados de una empresa con búsqueda y filtros. "
+                "Los usuarios EMPRESA solo pueden consultar su propia empresa."
 )
 async def get_empresa_empleados(
     empresa_id: UUID,
+    search: Optional[str] = Query(
+        None, description="Búsqueda en nombres, apellidos, documento o email"
+    ),
+    estado: Optional[EstadoEmpleado] = Query(None, description="Filtrar por estado del empleado"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    estado: Optional[str] = Query(None, description="Filtrar por estado del empleado"),
-    db: AsyncSession = Depends(get_db)
-) -> List[dict]:
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+) -> List[EmpleadoListItem]:
     """
-    Obtener empleados de una empresa.
-    
-    Args:
-        empresa_id: UUID de la empresa
-        skip: Registros a saltar
-        limit: Máximo de registros
-        estado: Filtrar por estado del empleado
-        db: Sesión de base de datos
-        
-    Returns:
-        Lista de empleados de la empresa
-        
-    Raises:
-        404: Si la empresa no existe
+    Lista los empleados de una empresa con búsqueda + filtros + paginación.
+
+    Scoping: un usuario con rol EMPRESA solo puede consultar los empleados de su
+    propia empresa (403 en caso contrario). Roles internos (ADMIN/AUDITOR/...) pueden
+    consultar cualquier empresa.
     """
-    logger.debug(f"Obtener empleados de empresa: {empresa_id}")
-    
-    # Verificar que la empresa existe
-    empresa = await empresa_service.get_empresa(db, empresa_id)
-    
-    # Filtrar empleados por estado si se especifica
-    empleados = empresa.empleados
-    if estado:
-        empleados = [e for e in empleados if e.estado == estado]
-    
-    # Aplicar paginación
-    empleados = empleados[skip:skip+limit]
-    
-    return [
-        {
-            "id": str(emp.id),
-            "tipo_documento": emp.tipo_documento,
-            "numero_documento": emp.numero_documento,
-            "nombres": emp.nombres,
-            "apellidos": emp.apellidos,
-            "estado": emp.estado,
-            "cargo": emp.cargo,
-            "fecha_ingreso": emp.fecha_ingreso.isoformat() if emp.fecha_ingreso else None,
-        }
-        for emp in empleados
-    ]
+    if current_user.rol == RolUsuario.EMPRESA and current_user.empresa_id != empresa_id:
+        raise ForbiddenException("No puede consultar empleados de otra empresa")
+
+    return await empleado_service.list_empleados(
+        db,
+        empresa_id=empresa_id,
+        estado=estado,
+        search=search,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
