@@ -153,6 +153,10 @@ class Incapacidad(BaseModel):
         "CommunicationLog", back_populates="incapacidad", cascade="all, delete-orphan",
     )
 
+    auditoria_resultados: Mapped[list["AuditoriaResultado"]] = relationship(
+        "AuditoriaResultado", back_populates="incapacidad", cascade="all, delete-orphan",
+    )
+
     radicado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[radicado_por_id])
     auditado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[auditado_por_id])
     aprobado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[aprobado_por_id])
