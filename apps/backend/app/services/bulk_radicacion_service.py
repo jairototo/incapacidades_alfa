@@ -173,7 +173,7 @@ async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: byte
                 "fecha_fin": parsed["fecha_fin"].isoformat() if parsed["fecha_fin"] else None,
             },
             "errores": errores,
-            "valida": len(errores) == 0,
+            "valida": not any(e.get("severidad") == "ERROR" for e in errores),
         })
 
     return resultados

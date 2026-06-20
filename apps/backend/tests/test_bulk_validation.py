@@ -64,3 +64,22 @@ async def test_non_xlsx_upload_returns_400(client: AsyncClient, empresa_user_tok
         files={"archivo": ("fake.xlsx", _io.BytesIO(b"%PDF-1.4 not an excel"), "application/pdf")},
         headers={"Authorization": f"Bearer {empresa_user_token}"})
     assert resp.status_code == 400, resp.text
+
+
+@pytest.mark.asyncio
+async def test_warning_only_row_is_valid(client: AsyncClient, empresa_user_token, test_empleado):
+    doc = test_empleado.numero_documento
+    # fecha_inicio 2026-01-01 is >30 days before today (~2026-06-20) => RETROACTIVE_BEYOND_LIMIT (WARNING),
+    # dias_totales=10 matches 2026-01-01..2026-01-10 so no mismatch; all required fields present => no ERROR.
+    row = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-01-01", "2026-01-10", 10, "S00.0", "", "Dr X", "RM-1", "", "", "NO", ""]
+    buf = _xlsx([row])
+    resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
+        files={"archivo": ("d.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        headers={"Authorization": f"Bearer {empresa_user_token}"})
+    assert resp.status_code == 200, resp.text
+    fila = resp.json()["filas"][0]
+    assert fila["valida"] is True  # warning does not block
+    codigos = {e["codigo"] for e in fila["errores"]}
+    assert "RETROACTIVE_BEYOND_LIMIT" in codigos  # but the warning IS surfaced
+    severidades = {e["severidad"] for e in fila["errores"]}
+    assert severidades == {"WARNING"}  # only a warning, no error
