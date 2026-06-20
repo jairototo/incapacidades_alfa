@@ -144,7 +144,7 @@ describe('TimelineEstados', () => {
       render(<TimelineEstados historial={historialCompleto} />);
 
       // Verificar que existen elementos con fechas (buscar por partes del texto)
-      const fechaElements = screen.getAllByText((content, element) => {
+      const fechaElements = screen.getAllByText((_content, element) => {
         return element?.textContent?.includes('2026') || false;
       });
 
@@ -155,8 +155,8 @@ describe('TimelineEstados', () => {
       render(<TimelineEstados historial={historialConUnSoloEstado} />);
 
       // Verificar que existe un elemento con la fecha (usar getAllByText porque puede aparecer en múltiples lugares)
-      const textosFecha = screen.getAllByText((content, element) => {
-        return element?.textContent?.includes('enero') && 
+      const textosFecha = screen.getAllByText((_content, element) => {
+        return element?.textContent?.includes('enero') &&
                element?.textContent?.includes('2026') || false;
       });
 

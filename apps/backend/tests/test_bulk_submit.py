@@ -10,7 +10,7 @@ async def test_bulk_submit_creates_all(client, empresa_user_token, test_empleado
     filas = [{
         "empleado_id": eid, "tipo_enfermedad": "ACCIDENTE_TRABAJO",
         "fecha_inicio": "2026-06-01", "fecha_fin": "2026-06-05", "dias_totales": 5,
-        "diagnostico_cie10": "S000.0", "nombre_medico": "Dr X", "registro_medico": "RM-1", "prorroga": False,
+        "diagnostico_cie10": "M545", "nombre_medico": "Dr X", "registro_medico": "RM-1", "prorroga": False,
     }]
     files = [("documentos", (f"{eid}__INCAPACIDAD.pdf", io.BytesIO(b"%PDF-1.4 " + b" " * 200), "application/pdf"))]
     resp = await client.post("/api/v1/incapacidades/radicar-masiva",
@@ -43,7 +43,7 @@ async def test_bulk_submit_reports_bad_document_but_still_creates(client, empres
     filas = [{
         "empleado_id": eid, "tipo_enfermedad": "ACCIDENTE_TRABAJO",
         "fecha_inicio": "2026-06-01", "fecha_fin": "2026-06-05", "dias_totales": 5,
-        "diagnostico_cie10": "S000.0", "nombre_medico": "Dr X", "registro_medico": "RM-1", "prorroga": False,
+        "diagnostico_cie10": "M545", "nombre_medico": "Dr X", "registro_medico": "RM-1", "prorroga": False,
     }]
     # An .exe document → DocumentoService extension/MIME validation rejects it → must be reported, not 500
     files = [("documentos", (f"{eid}__INCAPACIDAD.exe", io.BytesIO(b"MZ malicious " + b" " * 200), "application/octet-stream"))]

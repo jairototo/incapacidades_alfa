@@ -398,7 +398,7 @@ CREATE TABLE catalogo_cie10 (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    CONSTRAINT chk_cie10_codigo CHECK (codigo ~* '^[A-Z]\d{3}(\.\d{1,2})?$')
+    CONSTRAINT chk_cie10_codigo CHECK (codigo ~* '^[A-Z]\d{2}[0-9X]$')
 );
 
 CREATE UNIQUE INDEX idx_catalogo_cie10_codigo ON catalogo_cie10(codigo);

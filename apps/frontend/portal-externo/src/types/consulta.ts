@@ -112,7 +112,7 @@ export interface ConsultaIncapacidadResponse {
   diagnostico_cie10: string;
   
   /** Descripción del diagnóstico */
-  descripcion_diagnostico: string;
+  descripcion_diagnostico: string | null;
   
   /** EPS o entidad de salud */
   eps: string | null;

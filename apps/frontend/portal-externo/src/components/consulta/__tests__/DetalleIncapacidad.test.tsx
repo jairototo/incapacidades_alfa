@@ -1,14 +1,3 @@
-/**
- * Tests para el componente DetalleIncapacidad.
- * 
- * Cobertura:
- * - Renderizado de datos básicos
- * - Renderizado de badges de estado y tipo
- * - Formateo de fechas y moneda
- * - Renderizado condicional de empresa (ARL vs SALUD)
- * - Manejo de campos opcionales (observaciones, descripción diagnóstico)
- */
-
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { DetalleIncapacidad } from '../DetalleIncapacidad';
@@ -16,7 +5,6 @@ import type { ConsultaIncapacidadResponse } from '@/types/consulta';
 
 describe('DetalleIncapacidad', () => {
   const incapacidadARLBase: ConsultaIncapacidadResponse = {
-    id: '550e8400-e29b-41d4-a716-446655440000',
     numero: 'INC-ARL-20260117-0001',
     tipo: 'ARL',
     estado: 'EN_AUDITORIA',
@@ -25,21 +13,17 @@ describe('DetalleIncapacidad', () => {
     dias_totales: 10,
     diagnostico_cie10: 'S62.5',
     descripcion_diagnostico: 'Fractura de pulgar',
-    valor_dia: 80000,
-    valor_total: 800000,
-    observaciones: 'Reposo absoluto recomendado',
+    observaciones_publicas: 'Reposo absoluto recomendado',
     nombre_completo: 'Juan Pérez García',
-    documento: '1234567890',
     tipo_documento: 'CC',
-    empresa_razon_social: 'Empresa Test S.A.',
-    empresa_nit: '900123456-7',
+    eps: null,
     created_at: '2026-01-17T10:00:00Z',
+    updated_at: '2026-01-17T10:00:00Z',
     historial_estados: [],
-    documentos_publicos: [],
+    documentos: [],
   };
 
   const incapacidadSaludBase: ConsultaIncapacidadResponse = {
-    id: '550e8400-e29b-41d4-a716-446655440001',
     numero: 'INC-SALUD-20260115-0042',
     tipo: 'SALUD',
     estado: 'APROBADA',
@@ -48,17 +32,14 @@ describe('DetalleIncapacidad', () => {
     dias_totales: 6,
     diagnostico_cie10: 'J06.9',
     descripcion_diagnostico: null,
-    valor_dia: 60000,
-    valor_total: 360000,
-    observaciones: null,
+    observaciones_publicas: null,
     nombre_completo: 'María López Gómez',
-    documento: '9876543210',
     tipo_documento: 'CE',
-    empresa_razon_social: null,
-    empresa_nit: null,
+    eps: null,
     created_at: '2026-01-15T09:00:00Z',
+    updated_at: '2026-01-15T09:00:00Z',
     historial_estados: [],
-    documentos_publicos: [],
+    documentos: [],
   };
 
   describe('Renderizado básico', () => {
@@ -131,48 +112,17 @@ describe('DetalleIncapacidad', () => {
       expect(screen.getByText('Juan Pérez García')).toBeInTheDocument();
     });
 
-    it('debe mostrar documento de identidad completo', () => {
+    it('debe mostrar tipo de documento', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
 
-      expect(screen.getByText('Documento de identidad')).toBeInTheDocument();
-      expect(screen.getByText('CC 1234567890')).toBeInTheDocument();
+      expect(screen.getByText('Tipo de documento')).toBeInTheDocument();
+      expect(screen.getByText('CC')).toBeInTheDocument();
     });
 
     it('debe mostrar diferentes tipos de documento correctamente', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadSaludBase} />);
 
-      expect(screen.getByText('CE 9876543210')).toBeInTheDocument();
-    });
-  });
-
-  describe('Sección: Datos de la Empresa (solo ARL)', () => {
-    it('debe mostrar la sección de empresa para incapacidades ARL', () => {
-      render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
-
-      expect(screen.getByText('Empresa')).toBeInTheDocument();
-      expect(screen.getByText('Razón social')).toBeInTheDocument();
-      expect(screen.getByText('Empresa Test S.A.')).toBeInTheDocument();
-      expect(screen.getByText('NIT')).toBeInTheDocument();
-      expect(screen.getByText('900123456-7')).toBeInTheDocument();
-    });
-
-    it('NO debe mostrar la sección de empresa para incapacidades SALUD', () => {
-      render(<DetalleIncapacidad incapacidad={incapacidadSaludBase} />);
-
-      expect(screen.queryByText('Empresa')).not.toBeInTheDocument();
-      expect(screen.queryByText('Razón social')).not.toBeInTheDocument();
-    });
-
-    it('NO debe mostrar la sección de empresa si no hay datos (ARL sin empresa)', () => {
-      const incapacidadSinEmpresa: ConsultaIncapacidadResponse = {
-        ...incapacidadARLBase,
-        empresa_razon_social: null,
-        empresa_nit: null,
-      };
-
-      render(<DetalleIncapacidad incapacidad={incapacidadSinEmpresa} />);
-
-      expect(screen.queryByText('Empresa')).not.toBeInTheDocument();
+      expect(screen.getByText('CE')).toBeInTheDocument();
     });
   });
 
@@ -216,7 +166,6 @@ describe('DetalleIncapacidad', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
 
       expect(screen.getByText('Fecha de inicio')).toBeInTheDocument();
-      // Verificar que existe un elemento con la fecha formateada (solo verificamos que hay fecha)
       const labelFechaInicio = screen.getByText('Fecha de inicio').closest('div');
       expect(labelFechaInicio).toBeInTheDocument();
     });
@@ -225,7 +174,6 @@ describe('DetalleIncapacidad', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
 
       expect(screen.getByText('Fecha de fin')).toBeInTheDocument();
-      // Verificar que existe un elemento con la fecha formateada
       const labelFechaFin = screen.getByText('Fecha de fin').closest('div');
       expect(labelFechaFin).toBeInTheDocument();
     });
@@ -250,41 +198,6 @@ describe('DetalleIncapacidad', () => {
     });
   });
 
-  describe('Sección: Valores Económicos', () => {
-    it('debe formatear valor por día como moneda colombiana', () => {
-      render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
-
-      expect(screen.getByText('Valor por día')).toBeInTheDocument();
-      // Verificar que existe un elemento con el valor (el formato depende del locale)
-      const labelValorDia = screen.getByText('Valor por día').closest('div');
-      expect(labelValorDia).toBeInTheDocument();
-    });
-
-    it('debe formatear valor total como moneda colombiana', () => {
-      render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
-
-      expect(screen.getByText('Valor total')).toBeInTheDocument();
-      // Verificar que existe un elemento con el valor
-      const labelValorTotal = screen.getByText('Valor total').closest('div');
-      expect(labelValorTotal).toBeInTheDocument();
-    });
-
-    it('debe formatear correctamente valores grandes', () => {
-      const incapacidadValorGrande: ConsultaIncapacidadResponse = {
-        ...incapacidadARLBase,
-        valor_dia: 150000,
-        valor_total: 4500000,
-        dias_totales: 30,
-      };
-
-      render(<DetalleIncapacidad incapacidad={incapacidadValorGrande} />);
-
-      // Simplemente verificar que se renderizan los labels
-      expect(screen.getByText('Valor por día')).toBeInTheDocument();
-      expect(screen.getByText('Valor total')).toBeInTheDocument();
-    });
-  });
-
   describe('Sección: Información Adicional', () => {
     it('debe formatear y mostrar fecha de radicación', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
@@ -296,30 +209,26 @@ describe('DetalleIncapacidad', () => {
     it('debe mostrar estado actual formateado', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
 
-      // Aparece dos veces: en el badge y en la sección de información adicional
       const estadosTexto = screen.getAllByText(/EN AUDITORIA/i);
       expect(estadosTexto.length).toBeGreaterThan(0);
     });
   });
 
   describe('Secciones visuales', () => {
-    it('debe mostrar todos los títulos de secciones', () => {
+    it('debe mostrar los títulos de secciones esperados', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
 
       expect(screen.getByText('Datos del Solicitante')).toBeInTheDocument();
-      expect(screen.getByText('Empresa')).toBeInTheDocument();
       expect(screen.getByText('Información Médica')).toBeInTheDocument();
       expect(screen.getByText('Fechas y Períodos')).toBeInTheDocument();
-      expect(screen.getByText('Valores Económicos')).toBeInTheDocument();
       expect(screen.getByText('Información Adicional')).toBeInTheDocument();
     });
 
     it('debe mostrar iconos en los títulos de secciones', () => {
       const { container } = render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
 
-      // Verificar que hay elementos SVG (iconos de lucide-react)
       const svgIcons = container.querySelectorAll('svg');
-      expect(svgIcons.length).toBeGreaterThan(6); // Al menos un icono por sección + extras
+      expect(svgIcons.length).toBeGreaterThan(4);
     });
 
     it('debe mostrar el footer con información de ayuda', () => {
@@ -348,17 +257,15 @@ describe('DetalleIncapacidad', () => {
   });
 
   describe('Campos opcionales con "No especificado"', () => {
-    it('debe mostrar "No especificado" para campos null usando el componente CampoInfo', () => {
+    it('debe no mostrar "No especificado" cuando campos null no se renderizan', () => {
       const incapacidadConCamposNull: ConsultaIncapacidadResponse = {
         ...incapacidadSaludBase,
         descripcion_diagnostico: null,
-        observaciones: null,
+        observaciones_publicas: null,
       };
 
       render(<DetalleIncapacidad incapacidad={incapacidadConCamposNull} />);
 
-      // Los campos con null no se renderizan, pero si se renderizaran mostrarían "No especificado"
-      // En este caso, descripcion_diagnostico y observaciones no se muestran cuando son null
       expect(screen.queryByText('No especificado')).not.toBeInTheDocument();
     });
   });
@@ -385,7 +292,6 @@ describe('DetalleIncapacidad', () => {
         render(<DetalleIncapacidad incapacidad={incapacidad} />);
 
         const badges = screen.getAllByText(estado.replace(/_/g, ' '));
-        // El estado aparece en el badge y en la sección de información adicional
         expect(badges[0]).toHaveClass(colorClass);
       });
     });

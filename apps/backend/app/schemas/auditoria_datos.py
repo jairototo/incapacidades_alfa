@@ -8,7 +8,8 @@ from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-import re
+
+from app.utils.validacion_incapacidad import REGEX_CIE10
 
 
 class AuditoriaDatosAprobadosBase(BaseModel):
@@ -53,12 +54,10 @@ class AuditoriaDatosAprobadosBase(BaseModel):
     @field_validator('cie10_aprobado')
     @classmethod
     def validate_cie10(cls, v: str) -> str:
-        """Validar formato de código CIE-10."""
-        # Formato: Letra + 2 dígitos + opcional (punto + 1-2 dígitos)
-        pattern = r'^[A-Z]\d{3}(\.\d{1,2})?$'
-        if not re.match(pattern, v):
+        """Validar formato de código CIE-10 (letra + 2 dígitos + dígito o X, sin punto)."""
+        if not REGEX_CIE10.match(v.upper()):
             raise ValueError(
-                'Código CIE-10 inválido. Formato esperado: A00 o A00.1 o A00.12'
+                'Código CIE-10 inválido. Formato esperado: A048, M545 o A09X'
             )
         return v.upper()
     
@@ -110,11 +109,10 @@ class AuditoriaDatosAprobadosUpdate(BaseModel):
         """Validar formato de código CIE-10."""
         if v is None:
             return v
-        
-        pattern = r'^[A-Z]\d{3}(\.\d{1,2})?$'
-        if not re.match(pattern, v):
+
+        if not REGEX_CIE10.match(v.upper()):
             raise ValueError(
-                'Código CIE-10 inválido. Formato esperado: A00 o A00.1 o A00.12'
+                'Código CIE-10 inválido. Formato esperado: A048, M545 o A09X'
             )
         return v.upper()
 

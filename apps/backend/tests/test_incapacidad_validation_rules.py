@@ -6,7 +6,7 @@ def _valid_row():
     return dict(
         empleado_numero_documento="123456", tipo="ARL", tipo_enfermedad="ACCIDENTE_TRABAJO",
         fecha_inicio=dt.date(2026, 6, 1), fecha_fin=dt.date(2026, 6, 5), dias_totales=5,
-        diagnostico_cie10="S000.0", nombre_medico="Dr X", registro_medico="RM-1",
+        diagnostico_cie10="M545", nombre_medico="Dr X", registro_medico="RM-1",
     )
 
 
@@ -47,8 +47,20 @@ def test_field_level_flags_invalid_cie10_format():
 
 
 def test_field_level_accepts_lowercase_cie10():
-    row = _valid_row(); row["diagnostico_cie10"] = "m545.5"
+    row = _valid_row(); row["diagnostico_cie10"] = "m545"
     assert not any(i["codigo"] == "INVALID_CIE10_FORMAT" for i in validate_field_level(row))
+
+
+def test_field_level_accepts_x_filler_cie10():
+    # Código colombiano con cuarto carácter "X" de relleno (sin subcategoría), ej: A09X.
+    row = _valid_row(); row["diagnostico_cie10"] = "A09X"
+    assert not any(i["codigo"] == "INVALID_CIE10_FORMAT" for i in validate_field_level(row))
+
+
+def test_field_level_rejects_dotted_cie10():
+    # El formato internacional con punto (A04.8) NO se usa en Colombia → debe rechazarse.
+    row = _valid_row(); row["diagnostico_cie10"] = "A04.8"
+    assert any(i["codigo"] == "INVALID_CIE10_FORMAT" for i in validate_field_level(row))
 
 
 def test_empty_cie10_reports_empty_not_format():

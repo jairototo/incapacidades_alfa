@@ -96,14 +96,14 @@ export const datosIncapacidadSchema = z
       ['ACCIDENTE_TRABAJO', 'ENFERMEDAD_LABORAL', 'ACCIDENTE_TRAYECTO'],
       { message: 'Seleccione el tipo de enfermedad' }
     ),
-    fecha_inicio: z.date({ required_error: 'La fecha de inicio es obligatoria' }),
-    fecha_fin: z.date({ required_error: 'La fecha de fin es obligatoria' }),
+    fecha_inicio: z.date({ error: 'La fecha de inicio es obligatoria' }),
+    fecha_fin: z.date({ error: 'La fecha de fin es obligatoria' }),
     dias_totales: z.number().int().positive().optional(),
     diagnostico_cie10: z
       .string()
       .min(1, 'El diagnóstico CIE-10 es obligatorio')
       .max(10, 'Código CIE-10 inválido')
-      .regex(/^[A-Z]\d{3}(\.\d{1,2})?$/, 'Formato CIE-10 inválido (ej: A020 o A030.1)'),
+      .regex(/^[A-Z]\d{2}[0-9X]$/, 'Formato CIE-10 inválido (ej: A048, M545 o A09X)'),
     descripcion_diagnostico: z
       .string()
       .max(500, 'La descripción no puede exceder 500 caracteres')

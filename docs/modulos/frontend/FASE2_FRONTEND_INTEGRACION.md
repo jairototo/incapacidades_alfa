@@ -486,7 +486,7 @@ export const incapacidadSchema = z.object({
   diagnostico_cie10: z
     .string()
     .min(1, 'El código CIE-10 es requerido')
-    .regex(/^[A-Z]\d{3}(\.\d{1,2})?$/, 'Formato CIE-10 inválido')
+    .regex(/^[A-Z]\d{2}[0-9X]$/, 'Formato CIE-10 inválido')
     .transform(val => val.toUpperCase()),
   
   solicitante_id: z.string().uuid().optional(), // Opcional si lo radica internamente

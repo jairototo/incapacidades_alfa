@@ -1,14 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
-import { 
-  useSearchSolicitantes, 
-  useCreateSolicitante, 
-  useSolicitante,
-  useUpdateSolicitante,
-  useDeleteSolicitante,
-  solicitanteKeys 
+import {
+  useSearchSolicitantes,
+  useCreateSolicitante,
+  solicitanteKeys,
 } from '../queries/useSolicitantes';
 import * as api from '../api';
 

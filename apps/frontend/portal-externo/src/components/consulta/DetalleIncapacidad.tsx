@@ -17,7 +17,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { ConsultaIncapacidadResponse, EstadoIncapacidad, TipoIncapacidad } from '@/types/consulta';
-import { FileText, User, Building2, Calendar, DollarSign, Stethoscope, ClipboardCheck, Info } from 'lucide-react';
+import { FileText, User, Calendar, Stethoscope, ClipboardCheck, Info } from 'lucide-react';
 
 export interface DetalleIncapacidadProps {
   /**
@@ -62,18 +62,6 @@ const formatearFecha = (fechaISO: string): string => {
     month: 'long',
     day: 'numeric',
   });
-};
-
-/**
- * Formatea un número como moneda colombiana.
- */
-const formatearMoneda = (valor: number): string => {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(valor);
 };
 
 /**
@@ -124,8 +112,6 @@ const Badge = ({ children, className = '' }: BadgeProps) => (
  * ```
  */
 export function DetalleIncapacidad({ incapacidad, className = '' }: DetalleIncapacidadProps) {
-  const esARL = incapacidad.tipo === 'ARL';
-
   return (
     <Card className={`w-full ${className}`}>
       <CardHeader>
@@ -163,31 +149,11 @@ export function DetalleIncapacidad({ incapacidad, className = '' }: DetalleIncap
               valor={incapacidad.nombre_completo}
             />
             <CampoInfo
-              label="Documento de identidad"
-              valor={`${incapacidad.tipo_documento} ${incapacidad.documento}`}
+              label="Tipo de documento"
+              valor={incapacidad.tipo_documento}
             />
           </div>
         </section>
-
-        {/* Sección: Datos de la Empresa (solo para ARL) */}
-        {esARL && incapacidad.empresa_razon_social && (
-          <section className="pt-4 border-t">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
-              <Building2 className="h-5 w-5" />
-              Empresa
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <CampoInfo
-                label="Razón social"
-                valor={incapacidad.empresa_razon_social}
-              />
-              <CampoInfo
-                label="NIT"
-                valor={incapacidad.empresa_nit}
-              />
-            </div>
-          </section>
-        )}
 
         {/* Sección: Información Médica */}
         <section className="pt-4 border-t">
@@ -207,11 +173,11 @@ export function DetalleIncapacidad({ incapacidad, className = '' }: DetalleIncap
               />
             )}
           </div>
-          {incapacidad.observaciones && (
+          {incapacidad.observaciones_publicas && (
             <div className="mt-4">
               <CampoInfo
                 label="Observaciones médicas"
-                valor={incapacidad.observaciones}
+                valor={incapacidad.observaciones_publicas}
               />
             </div>
           )}
@@ -235,24 +201,6 @@ export function DetalleIncapacidad({ incapacidad, className = '' }: DetalleIncap
             <CampoInfo
               label="Días totales"
               valor={`${incapacidad.dias_totales} ${incapacidad.dias_totales === 1 ? 'día' : 'días'}`}
-            />
-          </div>
-        </section>
-
-        {/* Sección: Valores Económicos */}
-        <section className="pt-4 border-t">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
-            <DollarSign className="h-5 w-5" />
-            Valores Económicos
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CampoInfo
-              label="Valor por día"
-              valor={formatearMoneda(incapacidad.valor_dia)}
-            />
-            <CampoInfo
-              label="Valor total"
-              valor={formatearMoneda(incapacidad.valor_total)}
             />
           </div>
         </section>

@@ -136,11 +136,11 @@ Valores permitidos:
 
 ### V-MED-001 - Validación de Código CIE-10
 
-**Formato**: `^[A-Z]\d{3}\.\d{1}$`  
+**Formato**: `^[A-Z]\d{2}[0-9X]$` (estándar colombiano — Resolución 1273 / cuarto carácter; sin punto separador)  
 **Ejemplos válidos**:
-- M54.5 (dorsalgia)
-- I10 (hipertensión)
-- J06.9 (infección vía aérea)
+- M545 (dorsalgia)
+- A048 (otras enfermedades intestinales bacterianas)
+- A09X (cuarto carácter "X" de relleno, sin subcategoría)
 
 **Validaciones**:
 - Debe existir en CATALOGO_CIE10

@@ -19,6 +19,7 @@ describe('CIE10Autocomplete', () => {
   };
 
   const mockCIE10_1: CatalogoCIE10 = {
+    id: '1',
     codigo: 'A00',
     descripcion: 'Cólera',
     created_at: '2026-01-01T00:00:00Z',
@@ -26,6 +27,7 @@ describe('CIE10Autocomplete', () => {
   };
 
   const mockCIE10_2: CatalogoCIE10 = {
+    id: '2',
     codigo: 'A00.1',
     descripcion: 'Cólera debido a Vibrio cholerae 01, biotipo El Tor',
     created_at: '2026-01-01T00:00:00Z',
@@ -127,6 +129,7 @@ describe('CIE10Autocomplete', () => {
   it('should display success badge when value selected', () => {
     // Arrange
     const selectedValue: CatalogoCIE10 = {
+      id: '2',
       codigo: 'A00.1',
       descripcion: 'Cólera debido a Vibrio cholerae',
       created_at: '2026-01-01T00:00:00Z',

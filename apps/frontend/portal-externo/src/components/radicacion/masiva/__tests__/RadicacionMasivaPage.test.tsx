@@ -43,7 +43,7 @@ describe('RadicacionMasivaPage', () => {
     expect(screen.getAllByText(/AAAA-MM-DD/).length).toBeGreaterThan(0);
     // tipo_enfermedad catalog + CIE-10 example surfaced
     expect(screen.getByText(/ACCIDENTE_TRABAJO, ENFERMEDAD_LABORAL o ACCIDENTE_TRAYECTO/)).toBeInTheDocument();
-    expect(screen.getByText(/CIE-10 \(ej: A002 o M542\.5\)/)).toBeInTheDocument();
+    expect(screen.getByText(/CIE-10 sin punto \(ej: A048, M545 o A09X\)/)).toBeInTheDocument();
   });
 
   it('shows a blocking banner when submitting with an invalid row', async () => {

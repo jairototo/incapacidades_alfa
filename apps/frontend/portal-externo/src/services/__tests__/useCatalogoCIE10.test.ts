@@ -2,11 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
-import { 
-  useSearchCIE10, 
+import {
+  useSearchCIE10,
   useCIE10ByCodigo,
-  useCIE10Stats,
-  useListCIE10
 } from '../queries/useCatalogoCIE10';
 import * as api from '../api';
 

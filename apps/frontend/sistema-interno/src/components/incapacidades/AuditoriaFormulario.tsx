@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 // SCHEMAS DE VALIDACIÓN
 // ============================================================
 
-const cie10Regex = /^[A-Z]\d{3}(\.\d{1,2})?$/;
+const cie10Regex = /^[A-Z]\d{2}[0-9X]$/;
 
 const auditoriaFormSchema = z.object({
   observaciones: z.string().min(10, 'Mínimo 10 caracteres'),
@@ -32,7 +32,7 @@ const auditoriaFormSchema = z.object({
   dias_aprobados: z.number().int().positive().optional(),
   cie10_aprobado: z
     .string()
-    .regex(cie10Regex, 'Formato CIE-10 inválido (ej: A091, J062.9)')
+    .regex(cie10Regex, 'Formato CIE-10 inválido (ej: A048, M545 o A09X)')
     .toUpperCase()
     .optional(),
   diagnostico_aprobado: z.string().min(3, 'Mínimo 3 caracteres').optional(),

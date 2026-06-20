@@ -106,7 +106,7 @@ class RadicarIncapacidadSchema(BaseModel):
     @classmethod
     def validar_cie10(cls, v: str) -> str:
         v = v.strip().upper()
-        if not re.match(r'^[A-Z]\d{3}(\.\d{1,2})?$', v):
+        if not re.match(r'^[A-Z]\d{2}[0-9X]$', v):
             raise ValueError('Formato CIE-10 inválido. Ejemplo: A09, J18.1')
         return v
 

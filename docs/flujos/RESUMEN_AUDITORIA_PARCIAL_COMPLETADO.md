@@ -180,7 +180,7 @@ PAGADA_PARCIALMENTE → (terminal)
 
 1. **React Hook Form + Zod Validation**
    - 6 campos validados: observaciones, fecha_inicio_aprobada, fecha_fin_aprobada, dias_aprobados, cie10_aprobado, diagnostico_aprobado
-   - Validación CIE-10: `/^[A-Z]\d{3}(\.\d{1,2})?$/`
+   - Validación CIE-10: `/^[A-Z]\d{2}[0-9X]$/`
    - Min 10 caracteres para observaciones
    - Min 3 caracteres para diagnóstico
 

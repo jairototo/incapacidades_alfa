@@ -12,6 +12,8 @@ import re
 # Tipos de enfermedad ARL válidos (catálogo cerrado de 3 opciones).
 TIPOS_ENFERMEDAD = ["ACCIDENTE_TRABAJO", "ENFERMEDAD_LABORAL", "ACCIDENTE_TRAYECTO"]
 
-# Formato CIE-10: una letra + tres dígitos, opcionalmente ``.`` + 1-2 dígitos.
-# Ejemplos válidos: ``A000``, ``M54.5``, ``S00.0``.
-REGEX_CIE10 = re.compile(r"^[A-Z]\d{3}(\.\d{1,2})?$")
+# Formato CIE-10 (estándar colombiano — Resolución 1273 / cuarto carácter):
+# una letra + 2 dígitos + un cuarto carácter que es un dígito o la ``X`` de relleno.
+# SIN punto separador (no se usa el formato internacional con punto ``A04.8``).
+# Ejemplos válidos: ``A048``, ``M545``, ``A09X``.
+REGEX_CIE10 = re.compile(r"^[A-Z]\d{2}[0-9X]$")

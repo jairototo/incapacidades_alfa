@@ -772,7 +772,7 @@ export const radicacionIndividualSchema = z
     }),
     fecha_inicio: z.date({ required_error: 'La fecha de inicio es obligatoria' }),
     fecha_fin: z.date({ required_error: 'La fecha de fin es obligatoria' }),
-    diagnostico_cie10: z.string().regex(/^[A-Z]\d{3}(\.\d{1,2})?$/, 'Formato CIE-10 inválido'),
+    diagnostico_cie10: z.string().regex(/^[A-Z]\d{2}[0-9X]$/, 'Formato CIE-10 inválido'),
     descripcion_diagnostico: z.string().max(500).optional().or(z.literal('')),
     nombre_medico: z.string().min(2, 'El nombre del médico es obligatorio').max(200),
     registro_medico: z.string().min(3).max(50).regex(/^[a-zA-Z0-9\-]+$/, 'Solo letras, números y guiones'),

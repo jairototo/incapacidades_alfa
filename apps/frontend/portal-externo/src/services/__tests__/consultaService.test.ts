@@ -25,7 +25,6 @@ describe('consultaService', () => {
     it('debe consultar incapacidad por número exitosamente', async () => {
       const mockNumero = 'INC-ARL-20260117-0001';
       const mockResponse: ConsultaIncapacidadResponse = {
-        id: '550e8400-e29b-41d4-a716-446655440000',
         numero: mockNumero,
         tipo: 'ARL',
         estado: 'EN_AUDITORIA',
@@ -34,15 +33,12 @@ describe('consultaService', () => {
         dias_totales: 10,
         diagnostico_cie10: 'S62.5',
         descripcion_diagnostico: 'Fractura de pulgar',
-        valor_dia: 80000,
-        valor_total: 800000,
-        observaciones: null,
+        observaciones_publicas: null,
         nombre_completo: 'Juan Pérez García',
-        documento: '1234567890',
         tipo_documento: 'CC',
-        empresa_razon_social: 'Empresa Test S.A.',
-        empresa_nit: '900123456-7',
+        eps: null,
         created_at: '2026-01-17T10:00:00Z',
+        updated_at: '2026-01-17T10:00:00Z',
         historial_estados: [
           {
             estado: 'RADICADA',
@@ -55,7 +51,7 @@ describe('consultaService', () => {
             observaciones: 'Revisión iniciada',
           },
         ],
-        documentos_publicos: [
+        documentos: [
           {
             id: '550e8400-e29b-41d4-a716-446655440001',
             nombre_archivo: 'incapacidad_medica.pdf',
@@ -77,7 +73,7 @@ describe('consultaService', () => {
       expect(result.numero).toBe(mockNumero);
       expect(result.estado).toBe('EN_AUDITORIA');
       expect(result.historial_estados).toHaveLength(2);
-      expect(result.documentos_publicos).toHaveLength(1);
+      expect(result.documentos).toHaveLength(1);
     });
 
     it('debe manejar error 404 cuando la incapacidad no existe', async () => {
@@ -127,7 +123,6 @@ describe('consultaService', () => {
       const mockDocumento = '1234567890';
       const mockTipoDocumento = 'CC';
       const mockResponse: ConsultaIncapacidadResponse = {
-        id: '550e8400-e29b-41d4-a716-446655440000',
         numero: 'INC-SALUD-20260115-0042',
         tipo: 'SALUD',
         estado: 'APROBADA',
@@ -136,15 +131,12 @@ describe('consultaService', () => {
         dias_totales: 6,
         diagnostico_cie10: 'J06.9',
         descripcion_diagnostico: 'Infección respiratoria aguda',
-        valor_dia: 60000,
-        valor_total: 360000,
-        observaciones: null,
+        observaciones_publicas: null,
         nombre_completo: 'María López Gómez',
-        documento: mockDocumento,
         tipo_documento: mockTipoDocumento,
-        empresa_razon_social: null,
-        empresa_nit: null,
+        eps: null,
         created_at: '2026-01-15T09:00:00Z',
+        updated_at: '2026-01-15T09:00:00Z',
         historial_estados: [
           {
             estado: 'RADICADA',
@@ -162,7 +154,7 @@ describe('consultaService', () => {
             observaciones: 'Documentación completa',
           },
         ],
-        documentos_publicos: [
+        documentos: [
           {
             id: '550e8400-e29b-41d4-a716-446655440010',
             nombre_archivo: 'cedula_paciente.pdf',
@@ -191,10 +183,9 @@ describe('consultaService', () => {
         },
       });
       expect(result).toEqual(mockResponse);
-      expect(result.documento).toBe(mockDocumento);
       expect(result.tipo_documento).toBe(mockTipoDocumento);
       expect(result.tipo).toBe('SALUD');
-      expect(result.documentos_publicos).toHaveLength(2);
+      expect(result.documentos).toHaveLength(2);
     });
 
     it('debe manejar error 404 cuando no existe incapacidad para el documento', async () => {
