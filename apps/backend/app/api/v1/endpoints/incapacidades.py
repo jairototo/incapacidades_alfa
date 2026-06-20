@@ -876,6 +876,179 @@ async def mapear_zip_masivo(
     return {"asignaciones": asignaciones}
 
 
+@router.post(
+    "/radicar-masiva",
+    response_model=RadicacionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Radicar incapacidades masivas (EMPRESA)",
+    tags=["incapacidades-empresa"],
+)
+async def radicar_masiva(
+    filas: str = Form(...),
+    documentos: list[UploadFile] = File(default=[]),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(require_empresa),
+):
+    """Radica en lote incapacidades pre-validadas para usuarios EMPRESA.
+
+    ``filas``: arreglo JSON de filas validadas por el cliente. El servidor
+    re-valida cada fila (seguridad: nunca confiar en el cliente).
+
+    ``documentos``: lista de UploadFile nombrados ``{empleado_id}__{TIPO}.{ext}``
+    donde TIPO ∈ INCAPACIDAD | HISTORIA_CLINICA | SOPORTE.
+    """
+    import io as _io
+    import json as _json
+    from datetime import date as _date
+    from app.schemas.radicacion import RadicacionRowInput
+    from app.services.radicacion_pipeline_service import RadicacionPipelineService
+    from app.services.integracion.integracion_service import IntegracionService
+    from app.services.incapacidad_validation_rules import validate_row
+    from app.services.documento_service import DocumentoService
+    from app.tasks.incapacidad_tasks import enqueue_auditoria_incapacidad
+    from app.utils.enums import TipoDocumentoAdjunto
+
+    # --- Parse the JSON payload -----------------------------------------------
+    try:
+        raw_rows = _json.loads(filas)
+        if not isinstance(raw_rows, list):
+            raise ValueError
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail="El campo 'filas' debe ser un arreglo JSON válido",
+        )
+
+    if current_user.empresa is None:
+        raise HTTPException(status_code=403, detail="Usuario no vinculado a una empresa")
+
+    # --- Server-side re-validation (never trust the client) -------------------
+    parsed_rows: list[RadicacionRowInput] = []
+    invalidas: list[dict] = []
+
+    for r in raw_rows:
+        empleado_id_raw = r.get("empleado_id")
+
+        # Parse dates (may raise on bad input)
+        try:
+            fi = _date.fromisoformat(r["fecha_inicio"])
+            ff = _date.fromisoformat(r["fecha_fin"])
+        except (KeyError, ValueError, TypeError):
+            invalidas.append({
+                "empleado_id": empleado_id_raw,
+                "errores": [{"codigo": "INVALID_FECHA", "descripcion": "Fechas faltantes o inválidas"}],
+            })
+            continue
+
+        # Build the dict expected by validate_row (uses empleado_numero_documento as presence proxy)
+        row_dict = {
+            "tipo": "ARL",
+            "empleado_numero_documento": empleado_id_raw,  # non-empty = present
+            "tipo_enfermedad": r.get("tipo_enfermedad"),
+            "fecha_inicio": fi,
+            "fecha_fin": ff,
+            "dias_totales": r.get("dias_totales"),
+            "diagnostico_cie10": r.get("diagnostico_cie10"),
+            "nombre_medico": r.get("nombre_medico"),
+            "registro_medico": r.get("registro_medico"),
+        }
+        issues = validate_row(row_dict)
+        # Only ERROR-level issues block the batch
+        error_issues = [i for i in issues if i.get("severidad") == "ERROR"]
+        if error_issues:
+            invalidas.append({"empleado_id": empleado_id_raw, "errores": error_issues})
+            continue
+
+        try:
+            parsed_rows.append(RadicacionRowInput(
+                empleado_id=empleado_id_raw,
+                tipo_enfermedad=r["tipo_enfermedad"],
+                fecha_inicio=fi,
+                fecha_fin=ff,
+                dias_totales=r["dias_totales"],
+                diagnostico_cie10=r["diagnostico_cie10"],
+                descripcion_diagnostico=r.get("descripcion_diagnostico"),
+                nombre_medico=r["nombre_medico"],
+                registro_medico=r["registro_medico"],
+                ips=r.get("ips"),
+                valor_dia=r.get("valor_dia"),
+                prorroga=bool(r.get("prorroga")),
+                observaciones=r.get("observaciones"),
+            ))
+        except Exception as exc:
+            invalidas.append({
+                "empleado_id": empleado_id_raw,
+                "errores": [{"codigo": "PARSE_ERROR", "descripcion": str(exc)}],
+            })
+
+    if invalidas:
+        raise HTTPException(status_code=422, detail={"filas_invalidas": invalidas})
+
+    # --- Run shared pipeline ---------------------------------------------------
+    integracion = IntegracionService(db)
+    pipeline = RadicacionPipelineService(
+        db,
+        enqueue_auditoria=enqueue_auditoria_incapacidad,
+        integracion=integracion.procesar,
+    )
+    result = await pipeline.radicar(
+        parsed_rows,
+        empresa=current_user.empresa,
+        radicado_por_id=current_user.id,
+    )
+
+    # --- Attach documents mapped by "{empleado_id}__{TIPO}.{ext}" -------------
+    TIPO_MAP = {
+        "INCAPACIDAD": TipoDocumentoAdjunto.INCAPACIDAD_MEDICA.value,
+        "HISTORIA_CLINICA": TipoDocumentoAdjunto.HISTORIA_CLINICA.value,
+        "SOPORTE": TipoDocumentoAdjunto.OTROS.value,
+    }
+    by_empleado = {
+        str(i.empleado_id): i
+        for i in result.items
+        if i.success and i.incapacidad_id
+    }
+    doc_svc = DocumentoService(db)
+    for f in documentos:
+        try:
+            empleado_id_str, rest = f.filename.split("__", 1)
+            tipo_token = rest.rsplit(".", 1)[0]
+        except (ValueError, AttributeError):
+            continue
+        item = by_empleado.get(empleado_id_str)
+        if not item:
+            continue
+        content = await f.read()
+        await doc_svc.upload_documento(
+            incapacidad_id=item.incapacidad_id,
+            file_data=_io.BytesIO(content),
+            filename=f.filename,
+            content_type=f.content_type or "application/octet-stream",
+            tipo_documento=TIPO_MAP.get(tipo_token, TipoDocumentoAdjunto.OTROS.value),
+            uploaded_by_id=current_user.id,
+        )
+    await db.commit()
+
+    # --- Fault-isolated summary email -----------------------------------------
+    if result.total_radicadas and current_user.empresa.email_contacto:
+        from app.tasks.email_tasks import send_email_task
+        numeros = [i.numero for i in result.items if i.success]
+        cuerpo = (
+            "Se radicaron las siguientes incapacidades:<br>"
+            + "<br>".join(f"- {n}" for n in numeros)
+        )
+        try:
+            send_email_task.delay(
+                to=current_user.empresa.email_contacto,
+                subject="Confirmación de radicación masiva de incapacidades",
+                html_body=cuerpo,
+            )
+        except Exception as exc:
+            logger.error(f"No se pudo encolar el correo de resumen masivo: {exc}")
+
+    return result
+
+
 @router.get(
     "/{incapacidad_id}",
     response_model=IncapacidadDetalleResponse,
