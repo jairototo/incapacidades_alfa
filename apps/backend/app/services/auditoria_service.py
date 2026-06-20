@@ -18,6 +18,7 @@ from app.utils.enums import EstadoIncapacidad
 # Reglas que SIEMPRE se evalúan (para registrar también las que pasan).
 REGLAS_ESPERADAS = [
     ("EMPTY_EMPLEADO_NUMERO", "FIELD_VALIDATION"),
+    ("EMPTY_TIPO_ENFERMEDAD", "FIELD_VALIDATION"),
     ("EMPTY_DIAGNOSTICO_CIE10", "FIELD_VALIDATION"),
     ("EMPTY_NOMBRE_MEDICO", "FIELD_VALIDATION"),
     ("EMPTY_REGISTRO_MEDICO", "FIELD_VALIDATION"),
