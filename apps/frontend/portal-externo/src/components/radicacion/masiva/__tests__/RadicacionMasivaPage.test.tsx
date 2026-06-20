@@ -36,6 +36,16 @@ describe('RadicacionMasivaPage', () => {
     expect(screen.queryByRole('button', { name: /radicar incapacidades/i })).not.toBeInTheDocument();
   });
 
+  it('documents the per-column field format with the authoritative values', () => {
+    wrap();
+    expect(screen.getByText(/ver formato de campos/i)).toBeInTheDocument();
+    // date format matches what the backend actually parses
+    expect(screen.getAllByText(/AAAA-MM-DD/).length).toBeGreaterThan(0);
+    // tipo_enfermedad catalog + CIE-10 example surfaced
+    expect(screen.getByText(/ACCIDENTE_TRABAJO, ENFERMEDAD_LABORAL o ACCIDENTE_TRAYECTO/)).toBeInTheDocument();
+    expect(screen.getByText(/CIE-10 \(ej: A00 o M54\.5\)/)).toBeInTheDocument();
+  });
+
   it('shows a blocking banner when submitting with an invalid row', async () => {
     wrap();
     const excel = new File([new Uint8Array(10)], 'data.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

@@ -17,6 +17,26 @@ const PASOS = [
   { icon: Upload, title: 'Suba y radique', desc: 'Cargue el archivo y los soportes para radicar las incapacidades.' },
 ];
 
+// Formato esperado por columna de la plantilla. Refleja las reglas reales del
+// backend (validate_field_level / _parse_date / bulk_radicacion_service).
+const CAMPOS: { campo: string; req: boolean; formato: string }[] = [
+  { campo: 'numero_documento', req: true, formato: 'Documento de un empleado de su empresa' },
+  { campo: 'tipo_documento', req: false, formato: 'CC, CE, PA o TI' },
+  { campo: 'empleado_nombres', req: false, formato: 'Texto (informativo)' },
+  { campo: 'empleado_apellidos', req: false, formato: 'Texto (informativo)' },
+  { campo: 'tipo_enfermedad', req: true, formato: 'ACCIDENTE_TRABAJO, ENFERMEDAD_LABORAL o ACCIDENTE_TRAYECTO' },
+  { campo: 'fecha_inicio', req: true, formato: 'Fecha AAAA-MM-DD (ej: 2026-06-01)' },
+  { campo: 'fecha_fin', req: true, formato: 'Fecha AAAA-MM-DD, no anterior a fecha_inicio' },
+  { campo: 'dias_totales', req: false, formato: 'Número entero. Debe coincidir con el rango de fechas' },
+  { campo: 'diagnostico_cie10', req: true, formato: 'Código CIE-10 (ej: A00 o M54.5)' },
+  { campo: 'descripcion_diagnostico', req: false, formato: 'Texto libre' },
+  { campo: 'nombre_medico', req: true, formato: 'Texto' },
+  { campo: 'registro_medico', req: true, formato: 'Letras, números y guiones' },
+  { campo: 'ips', req: false, formato: 'Texto libre' },
+  { campo: 'prorroga', req: false, formato: 'SI o NO (por defecto NO)' },
+  { campo: 'observaciones', req: false, formato: 'Texto libre' },
+];
+
 export function RadicacionMasivaPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -177,6 +197,37 @@ export function RadicacionMasivaPage() {
               </li>
             ))}
           </ol>
+
+          <details className="mt-5 rounded-lg border border-border bg-muted/30 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-foreground">
+              Ver formato de campos
+            </summary>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Las fechas usan el formato <span className="font-mono">AAAA-MM-DD</span>. Los campos
+              marcados con <span className="text-[#D92D20]">*</span> son obligatorios.
+            </p>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="py-1.5 pr-4 font-medium">Columna</th>
+                    <th className="py-1.5 font-medium">Formato / valores</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CAMPOS.map((c) => (
+                    <tr key={c.campo} className="border-b border-border/60 align-top">
+                      <td className="py-1.5 pr-4 font-mono text-foreground">
+                        {c.campo}
+                        {c.req && <span className="text-[#D92D20]" aria-hidden="true"> *</span>}
+                      </td>
+                      <td className="py-1.5 text-muted-foreground">{c.formato}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
         </section>
       )}
 
