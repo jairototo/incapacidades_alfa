@@ -77,6 +77,13 @@ export function DatePicker({
           variant="outline"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
+          aria-haspopup="dialog"
+          aria-expanded={isOpen}
+          aria-label={
+            label
+              ? `${label}: ${selectedDate ? format(selectedDate, 'PPP', { locale: es }) : placeholder}`
+              : undefined
+          }
           className={cn(
             'w-full justify-start text-left font-normal',
             !selectedDate && 'text-muted-foreground',

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
+import type { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format } from 'date-fns';
-import { differenceInDays, addDays } from 'date-fns';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { FileText, Stethoscope, User } from 'lucide-react';
 
 import { radicacionIndividualSchema, type RadicacionIndividualFormData } from '@/schemas/radicacionIndividualSchema';
@@ -152,8 +152,14 @@ export function RadicacionIndividualPage() {
         });
       }
     } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{ detail?: string | unknown[] }>;
+      const detail = axiosErr?.response?.data?.detail;
       const msg =
-        err instanceof Error ? err.message : 'Error de red. Intente nuevamente.';
+        typeof detail === 'string'
+          ? detail
+          : err instanceof Error
+            ? err.message
+            : 'Error de red. Intente nuevamente.';
       toast({ title: 'Error de red', description: msg, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
@@ -212,6 +218,7 @@ export function RadicacionIndividualPage() {
 
             {/* Tipo de enfermedad */}
             <Select
+              id="tipo_enfermedad"
               label="Tipo de enfermedad"
               {...register('tipo_enfermedad')}
               error={errors.tipo_enfermedad?.message}
@@ -260,10 +267,11 @@ export function RadicacionIndividualPage() {
             {/* Diagnóstico CIE-10 */}
             <div className="border-t pt-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="cie10-input" className="block text-sm font-medium text-foreground mb-2">
                   Código CIE-10 <span className="text-red-500">*</span>
                 </label>
                 <CIE10Autocomplete
+                  id="cie10-input"
                   value={selectedCIE10}
                   onChange={setSelectedCIE10}
                   error={errors.diagnostico_cie10?.message as string}

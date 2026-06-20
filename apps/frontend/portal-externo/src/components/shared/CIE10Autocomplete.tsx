@@ -10,6 +10,7 @@ interface CIE10AutocompleteProps {
   value: CatalogoCIE10 | null;
   onChange: (cie10: CatalogoCIE10 | null) => void;
   error?: string;
+  id?: string;
 }
 
 /**
@@ -20,6 +21,7 @@ export function CIE10Autocomplete({
   value,
   onChange,
   error,
+  id,
 }: CIE10AutocompleteProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -51,6 +53,7 @@ export function CIE10Autocomplete({
       <div className="relative">
         <Input
           ref={inputRef}
+          id={id}
           placeholder="Buscar por código (ej: A00) o descripción (ej: diabetes)..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
