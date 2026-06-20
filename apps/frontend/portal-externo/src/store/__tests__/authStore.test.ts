@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useAuthStore, useIsEmpresaHabilitada } from '@/store/authStore';
-import type { LoginResponse } from '@/types/auth';
+import type { LoginResponse, User } from '@/types/auth';
 
-const baseUser = {
+const baseUser: User = {
   id: '1', username: 'empresa1', email: 'e@e.com', nombre_completo: 'Empresa Uno',
   rol: 'EMPRESA', estado: 'ACTIVO', empresa_id: 'emp-1',
   empresa: { id: 'emp-1', nit: '900', razon_social: 'ACME', estado: 'ACTIVA' },

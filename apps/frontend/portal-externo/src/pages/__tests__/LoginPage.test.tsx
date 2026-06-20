@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { LoginPage } from '@/pages/LoginPage';
 import { authService } from '@/services/authService';
-import { useNavigate } from 'react-router-dom';
 
 vi.mock('@/services/authService');
 
