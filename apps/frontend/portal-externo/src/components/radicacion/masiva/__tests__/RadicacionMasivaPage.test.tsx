@@ -1,0 +1,42 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RadicacionMasivaPage } from '@/components/radicacion/masiva/RadicacionMasivaPage';
+
+vi.mock('@/services/empresaEmpleadoService', () => ({ useEmpleadosDeMiEmpresa: () => ({ data: [], isLoading: false }) }));
+vi.mock('@/services/bulkRadicacionService', () => ({
+  descargarPlantilla: vi.fn(),
+  mapearZip: vi.fn(),
+  radicarMasiva: vi.fn(),
+  validarExcel: vi.fn().mockResolvedValue({
+    filas: [{ fila: 2, empleado_id: null, datos: { numero_documento: '1' },
+              errores: [{ codigo: 'EMPTY_DIAGNOSTICO_CIE10', descripcion: 'CIE-10 requerido', severidad: 'ERROR' }],
+              valida: false }],
+    total: 1, validas: 0,
+  }),
+}));
+
+const wrap = () => render(
+  <QueryClientProvider client={new QueryClient()}>
+    <MemoryRouter><RadicacionMasivaPage /></MemoryRouter>
+  </QueryClientProvider>,
+);
+
+describe('RadicacionMasivaPage', () => {
+  it('renders the template download and no submit button before rows', () => {
+    wrap();
+    expect(screen.getByRole('button', { name: /descargar plantilla/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /radicar incapacidades/i })).not.toBeInTheDocument();
+  });
+
+  it('shows a blocking banner when submitting with an invalid row', async () => {
+    wrap();
+    const excel = new File([new Uint8Array(10)], 'data.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    fireEvent.change(screen.getByLabelText(/subir excel/i), { target: { files: [excel] } });
+    // after validation, the row + submit button appear
+    const submit = await screen.findByRole('button', { name: /radicar incapacidades/i });
+    fireEvent.click(submit);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/impiden radicar/i);
+  });
+});
