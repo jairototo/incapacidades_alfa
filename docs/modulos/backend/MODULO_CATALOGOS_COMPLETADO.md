@@ -551,7 +551,7 @@ class IncapacidadCreate(BaseModel):
 ### Formato CIE-10 Válido
 
 ```regex
-^[A-Z]\d{2}(\.\d{1,2})?$
+^[A-Z]\d{3}(\.\d{1,2})?$
 ```
 
 **Ejemplos**:

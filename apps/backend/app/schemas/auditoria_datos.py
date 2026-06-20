@@ -55,7 +55,7 @@ class AuditoriaDatosAprobadosBase(BaseModel):
     def validate_cie10(cls, v: str) -> str:
         """Validar formato de código CIE-10."""
         # Formato: Letra + 2 dígitos + opcional (punto + 1-2 dígitos)
-        pattern = r'^[A-Z]\d{2}(\.\d{1,2})?$'
+        pattern = r'^[A-Z]\d{3}(\.\d{1,2})?$'
         if not re.match(pattern, v):
             raise ValueError(
                 'Código CIE-10 inválido. Formato esperado: A00 o A00.1 o A00.12'
@@ -111,7 +111,7 @@ class AuditoriaDatosAprobadosUpdate(BaseModel):
         if v is None:
             return v
         
-        pattern = r'^[A-Z]\d{2}(\.\d{1,2})?$'
+        pattern = r'^[A-Z]\d{3}(\.\d{1,2})?$'
         if not re.match(pattern, v):
             raise ValueError(
                 'Código CIE-10 inválido. Formato esperado: A00 o A00.1 o A00.12'

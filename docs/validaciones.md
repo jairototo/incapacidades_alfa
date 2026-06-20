@@ -136,7 +136,7 @@ Valores permitidos:
 
 ### V-MED-001 - Validación de Código CIE-10
 
-**Formato**: `^[A-Z]\d{2}\.\d{1}$`  
+**Formato**: `^[A-Z]\d{3}\.\d{1}$`  
 **Ejemplos válidos**:
 - M54.5 (dorsalgia)
 - I10 (hipertensión)

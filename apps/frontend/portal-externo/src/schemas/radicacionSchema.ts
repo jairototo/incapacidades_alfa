@@ -103,7 +103,7 @@ export const datosIncapacidadSchema = z
       .string()
       .min(1, 'El diagnóstico CIE-10 es obligatorio')
       .max(10, 'Código CIE-10 inválido')
-      .regex(/^[A-Z]\d{2}(\.\d{1,2})?$/, 'Formato CIE-10 inválido (ej: A00 o A00.1)'),
+      .regex(/^[A-Z]\d{3}(\.\d{1,2})?$/, 'Formato CIE-10 inválido (ej: A020 o A030.1)'),
     descripcion_diagnostico: z
       .string()
       .max(500, 'La descripción no puede exceder 500 caracteres')

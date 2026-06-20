@@ -35,7 +35,7 @@
   - Estado local: `selectedAction`, `diasCalculados`, `esAprobacionParcial`
   - useEffect para cálculo automático de días entre fechas
   - Date pickers (shadcn/ui Calendar) para fecha_inicio/fin_aprobada
-  - Input CIE-10 con validación regex `/^[A-Z]\d{2}(\.\d{1,2})?$/`
+  - Input CIE-10 con validación regex `/^[A-Z]\d{3}(\.\d{1,2})?$/`
   - Textarea diagnóstico aprobado (min 3 caracteres)
   - Campo observaciones siempre visible (min 10 caracteres)
   - 4 botones de acción con colores diferenciados

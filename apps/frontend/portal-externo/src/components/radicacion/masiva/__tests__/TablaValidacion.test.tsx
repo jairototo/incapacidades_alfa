@@ -5,7 +5,7 @@ import { TablaValidacion } from '@/components/radicacion/masiva/TablaValidacion'
 const datosOk = {
   numero_documento: '1', empleado_nombres: 'Ana', empleado_apellidos: 'Gómez',
   tipo_enfermedad: 'ACCIDENTE_TRABAJO', fecha_inicio: '2026-06-01', fecha_fin: '2026-06-05',
-  dias_totales: 5, diagnostico_cie10: 'S00.0', prorroga: false, nombre_medico: 'Dr X', ips: 'IPS Salud',
+  dias_totales: 5, diagnostico_cie10: 'S000.0', prorroga: false, nombre_medico: 'Dr X', ips: 'IPS Salud',
 };
 
 const filas = [
@@ -37,7 +37,7 @@ describe('TablaValidacion', () => {
     render(<TablaValidacion filas={filas as any} documentos={{}} onAddDoc={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getAllByText(/Ana Gómez/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('ACCIDENTE_TRABAJO').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('S00.0').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('S000.0').length).toBeGreaterThan(0);
     expect(screen.getAllByText('01/06/2026').length).toBeGreaterThan(0); // ISO formatted to DD/MM/YYYY
     expect(screen.getAllByText('No').length).toBeGreaterThan(0); // prorroga false
   });

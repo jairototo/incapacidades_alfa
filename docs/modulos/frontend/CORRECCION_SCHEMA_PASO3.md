@@ -71,7 +71,7 @@ nombre_ips: z.string().min(3, ...).max(200, ...),
 ```typescript
 diagnostico_cie10: z.string()
   .max(10, 'El código CIE-10 no puede exceder 10 caracteres')
-  .regex(/^[A-Z]\d{2}(\.\d{1,2})?$/, 'Formato CIE-10 inválido. Ejemplo: A00, A00.1')
+  .regex(/^[A-Z]\d{3}(\.\d{1,2})?$/, 'Formato CIE-10 inválido. Ejemplo: A00, A00.1')
   .optional()
   .or(z.literal('')),
 descripcion_diagnostico: z.string()

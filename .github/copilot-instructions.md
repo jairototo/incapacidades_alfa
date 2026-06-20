@@ -234,7 +234,7 @@ class IncapacidadCreate(BaseModel):
     @field_validator('diagnostico_cie10')
     @classmethod
     def validate_cie10(cls, v: str) -> str:
-        if not re.match(r'^[A-Z]\d{2}(\.\d{1,2})?$', v):
+        if not re.match(r'^[A-Z]\d{3}(\.\d{1,2})?$', v):
             raise ValueError('Código CIE-10 inválido')
         return v.upper()
 ```
@@ -370,7 +370,7 @@ import { z } from 'zod';
 const formSchema = z.object({
   fecha_inicio: z.date(),
   fecha_fin: z.date(),
-  diagnostico_cie10: z.string().regex(/^[A-Z]\d{2}(\.\d{1,2})?$/, 'CIE-10 inválido'),
+  diagnostico_cie10: z.string().regex(/^[A-Z]\d{3}(\.\d{1,2})?$/, 'CIE-10 inválido'),
   dias_totales: z.number().int().positive(),
 });
 

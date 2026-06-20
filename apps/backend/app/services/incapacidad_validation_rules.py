@@ -43,7 +43,7 @@ def validate_field_level(row: dict) -> list[dict]:
     if cie10 and not REGEX_CIE10.match(str(cie10).strip().upper()):
         issues.append(_issue(
             "INVALID_CIE10_FORMAT", "FIELD_VALIDATION", "ERROR",
-            "Formato CIE-10 inválido (ej: A00 o M54.5)", "diagnostico_cie10"))
+            "Formato CIE-10 inválido (ej: A002 o M542.5)", "diagnostico_cie10"))
     if not row.get("fecha_inicio"):
         issues.append(_issue("EMPTY_FECHA_INICIO", "FIELD_VALIDATION", "ERROR", "Fecha de inicio requerida", "fecha_inicio"))
     if not row.get("fecha_fin"):

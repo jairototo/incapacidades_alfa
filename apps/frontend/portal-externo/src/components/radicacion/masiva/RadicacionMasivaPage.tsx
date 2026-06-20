@@ -28,7 +28,7 @@ const CAMPOS: { campo: string; req: boolean; formato: string }[] = [
   { campo: 'fecha_inicio', req: true, formato: 'Fecha AAAA-MM-DD (ej: 2026-06-01)' },
   { campo: 'fecha_fin', req: true, formato: 'Fecha AAAA-MM-DD, no anterior a fecha_inicio' },
   { campo: 'dias_totales', req: false, formato: 'Número entero. Debe coincidir con el rango de fechas' },
-  { campo: 'diagnostico_cie10', req: true, formato: 'Código CIE-10 (ej: A00 o M54.5)' },
+  { campo: 'diagnostico_cie10', req: true, formato: 'Código CIE-10 (ej: A002 o M542.5)' },
   { campo: 'descripcion_diagnostico', req: false, formato: 'Texto libre' },
   { campo: 'nombre_medico', req: true, formato: 'Texto' },
   { campo: 'registro_medico', req: true, formato: 'Letras, números y guiones' },

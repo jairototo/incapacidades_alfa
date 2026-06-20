@@ -32,7 +32,7 @@ Implementación exitosa del **Paso 3: Datos de Incapacidad** del wizard de radic
 ### 2. Validaciones Implementadas
 - ✅ Fechas: `fecha_fin >= fecha_inicio`
 - ✅ Período máximo: `dias_totales <= 180 días`
-- ✅ Código CIE-10: Regex `/^[A-Z]\d{2}(\.\d{1,2})?$/`
+- ✅ Código CIE-10: Regex `/^[A-Z]\d{3}(\.\d{1,2})?$/`
 - ✅ Campos numéricos positivos (valor_dia, valor_total)
 - ✅ Longitudes de campos de texto (mínimo/máximo)
 
@@ -142,7 +142,7 @@ datosIncapacidadBaseSchema
   .refine(dias_totales <= 180, "Máximo 180 días")
 
 Fields:
-  - diagnostico_cie10: /^[A-Z]\d{2}(\.\d{1,2})?$/
+  - diagnostico_cie10: /^[A-Z]\d{3}(\.\d{1,2})?$/
   - descripcion_diagnostico: min 10, max 500 chars
   - nombre_medico: min 5, max 150, solo letras
   - registro_medico: min 5, max 30 chars
