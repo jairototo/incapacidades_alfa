@@ -19,6 +19,7 @@ from app.db.repositories.pre_incapacidad_repository import (
 from app.models.pre_documento import PreDocumento
 from app.models.pre_incapacidad import PreIncapacidad
 from app.schemas.pre_incapacidad import PreIncapacidadCreate
+from app.services.catalogo_service import catalogo_service
 
 # Tipos MIME permitidos para pre-documentos
 ALLOWED_MIME_TYPES = {
@@ -52,6 +53,18 @@ class PreIncapacidadService:
             PreIncapacidad creada con número de radicación secuencial.
         """
         inc = data.incapacidad
+
+        # El formato del CIE-10 ya lo valida el esquema; aquí verificamos que el
+        # código EXISTA en el catálogo (rechaza códigos con forma válida pero
+        # inexistentes, p.ej. "U999").
+        if inc.diagnostico_cie10:
+            codigo = inc.diagnostico_cie10.strip().upper()
+            existentes = await catalogo_service.codigos_existentes(self.db, {codigo})
+            if codigo not in existentes:
+                raise ValidationException(
+                    f"El código CIE-10 '{inc.diagnostico_cie10}' no existe en el catálogo"
+                )
+
         dias = (inc.fecha_fin - inc.fecha_inicio).days + 1
 
         obj = {

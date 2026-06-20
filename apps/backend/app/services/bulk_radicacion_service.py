@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestException
 from app.models.empleado import Empleado
+from app.services.catalogo_service import catalogo_service
 from app.services.incapacidad_validation_rules import validate_row
 
 TEMPLATE_HEADERS = [
@@ -129,6 +130,19 @@ async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: byte
     ).scalars().all()
     by_doc = {e.numero_documento.strip(): e for e in empleados}
 
+    # Pre-escaneo: recolectar los códigos CIE-10 presentes para verificar su
+    # existencia en el catálogo en UNA sola consulta (evita N+1). Un código con
+    # formato válido pero inexistente se rechaza (CIE10_NO_EXISTE).
+    codigos_cie10: set[str] = set()
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        cells = list(row) + [None] * (len(TEMPLATE_HEADERS) - len(row))
+        if _is_empty(cells):
+            continue
+        cie = _text(dict(zip(TEMPLATE_HEADERS, cells)).get("diagnostico_cie10"))
+        if cie:
+            codigos_cie10.add(cie.strip().upper())
+    catalogo_set = await catalogo_service.codigos_existentes(db, codigos_cie10)
+
     resultados = []
     for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         cells = list(row) + [None] * (len(TEMPLATE_HEADERS) - len(row))
@@ -167,7 +181,7 @@ async def parsear_y_validar(db: AsyncSession, empresa_id: UUID, file_bytes: byte
             })
             continue
 
-        errores = validate_row(parsed)
+        errores = validate_row(parsed, catalogo_codigos=catalogo_set)
 
         if empleado is None:
             errores.append({

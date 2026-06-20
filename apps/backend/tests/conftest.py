@@ -182,6 +182,28 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 # Fixtures para datos de prueba
 @pytest_asyncio.fixture
+async def seed_cie10(db_session: AsyncSession) -> list[str]:
+    """Siembra un set de códigos CIE-10 reales en el catálogo de pruebas.
+
+    Las rutas de radicación (masiva, individual y pública) rechazan los códigos
+    que cumplen el formato pero NO existen en el catálogo, así que las pruebas que
+    esperan una fila/radicación válida deben sembrar los códigos que usan.
+    """
+    from app.models.catalogo_cie10 import CatalogoCIE10
+
+    codigos = [
+        ("M545", "Dorsalgia"),
+        ("A048", "Otras enfermedades intestinales bacterianas especificadas"),
+        ("A09X", "Diarrea y gastroenteritis de presunto origen infeccioso"),
+        ("A009", "Cólera, no especificado"),
+        ("S060", "Conmoción cerebral"),
+    ]
+    db_session.add_all([CatalogoCIE10(codigo=c, descripcion=d) for c, d in codigos])
+    await db_session.commit()
+    return [c for c, _ in codigos]
+
+
+@pytest_asyncio.fixture
 async def test_empresa(db_session: AsyncSession):
     """Create a test empresa."""
     from app.models.empresa import Empresa

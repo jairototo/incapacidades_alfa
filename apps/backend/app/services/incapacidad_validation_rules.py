@@ -14,7 +14,15 @@ def _issue(codigo, categoria, severidad, descripcion, campo=None):
             "descripcion": descripcion, "campo_afectado": campo}
 
 
-def validate_field_level(row: dict) -> list[dict]:
+def validate_field_level(row: dict, catalogo_codigos: set[str] | None = None) -> list[dict]:
+    """Valida campos a nivel de fila.
+
+    ``catalogo_codigos``: si se pasa un set de códigos CIE-10 existentes (en
+    mayúsculas), un ``diagnostico_cie10`` con formato válido que NO esté en el
+    set genera ``CIE10_NO_EXISTE`` (ERROR). Si es ``None`` (por defecto) la
+    verificación de existencia se omite — preserva la pureza para usos sin BD
+    (p.ej. el job de auditoría).
+    """
     issues: list[dict] = []
     req = {
         "empleado_numero_documento": "EMPTY_EMPLEADO_NUMERO",
@@ -40,10 +48,16 @@ def validate_field_level(row: dict) -> list[dict]:
 
     # diagnostico_cie10 debe cumplir el formato CIE-10 (solo si viene diligenciado).
     cie10 = row.get("diagnostico_cie10")
-    if cie10 and not REGEX_CIE10.match(str(cie10).strip().upper()):
-        issues.append(_issue(
-            "INVALID_CIE10_FORMAT", "FIELD_VALIDATION", "ERROR",
-            "Formato CIE-10 inválido (ej: A048, M545 o A09X)", "diagnostico_cie10"))
+    if cie10:
+        cie10_norm = str(cie10).strip().upper()
+        if not REGEX_CIE10.match(cie10_norm):
+            issues.append(_issue(
+                "INVALID_CIE10_FORMAT", "FIELD_VALIDATION", "ERROR",
+                "Formato CIE-10 inválido (ej: A048, M545 o A09X)", "diagnostico_cie10"))
+        elif catalogo_codigos is not None and cie10_norm not in catalogo_codigos:
+            issues.append(_issue(
+                "CIE10_NO_EXISTE", "FIELD_VALIDATION", "ERROR",
+                f"El código CIE-10 '{cie10_norm}' no existe en el catálogo", "diagnostico_cie10"))
     if not row.get("fecha_inicio"):
         issues.append(_issue("EMPTY_FECHA_INICIO", "FIELD_VALIDATION", "ERROR", "Fecha de inicio requerida", "fecha_inicio"))
     if not row.get("fecha_fin"):
@@ -71,5 +85,5 @@ def validate_business_rules(row: dict) -> list[dict]:
     return issues
 
 
-def validate_row(row: dict) -> list[dict]:
-    return validate_field_level(row) + validate_business_rules(row)
+def validate_row(row: dict, catalogo_codigos: set[str] | None = None) -> list[dict]:
+    return validate_field_level(row, catalogo_codigos) + validate_business_rules(row)

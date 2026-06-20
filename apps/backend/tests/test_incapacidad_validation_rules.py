@@ -63,6 +63,32 @@ def test_field_level_rejects_dotted_cie10():
     assert any(i["codigo"] == "INVALID_CIE10_FORMAT" for i in validate_field_level(row))
 
 
+def test_field_level_flags_nonexistent_cie10_when_catalog_provided():
+    # U999 cumple el formato pero no está en el catálogo → CIE10_NO_EXISTE (ERROR).
+    row = _valid_row(); row["diagnostico_cie10"] = "U999"
+    issues = validate_field_level(row, catalogo_codigos={"M545"})
+    assert any(i["codigo"] == "CIE10_NO_EXISTE" and i["severidad"] == "ERROR" for i in issues)
+
+
+def test_field_level_accepts_existing_cie10_when_catalog_provided():
+    row = _valid_row(); row["diagnostico_cie10"] = "m545"  # normaliza a M545
+    assert not any(i["codigo"] == "CIE10_NO_EXISTE" for i in validate_field_level(row, catalogo_codigos={"M545"}))
+
+
+def test_field_level_skips_catalog_check_when_no_catalog():
+    # Sin catálogo (None, por defecto) la verificación de existencia se omite.
+    row = _valid_row(); row["diagnostico_cie10"] = "U999"
+    assert not any(i["codigo"] == "CIE10_NO_EXISTE" for i in validate_field_level(row))
+
+
+def test_field_level_no_existence_check_when_format_invalid():
+    # Si el formato es inválido no tiene sentido evaluar existencia (sería ruido).
+    row = _valid_row(); row["diagnostico_cie10"] = "BADCODE"
+    codigos = {i["codigo"] for i in validate_field_level(row, catalogo_codigos={"M545"})}
+    assert "INVALID_CIE10_FORMAT" in codigos
+    assert "CIE10_NO_EXISTE" not in codigos
+
+
 def test_empty_cie10_reports_empty_not_format():
     row = _valid_row(); row["diagnostico_cie10"] = ""
     codigos = {i["codigo"] for i in validate_field_level(row)}

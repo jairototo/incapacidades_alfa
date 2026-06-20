@@ -76,7 +76,7 @@ async def pre_incapacidad_en_db(db_session: AsyncSession) -> PreIncapacidad:
 # ── POST /radicar ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_radicar_returns_201_with_numero_radicacion(client: AsyncClient):
+async def test_radicar_returns_201_with_numero_radicacion(client: AsyncClient, seed_cie10):
     """POST /radicar debe retornar 201 con numero_radicacion y estado PENDIENTE."""
     with patch("app.tasks.incapacidad_tasks.promote_pre_incapacidad_task") as mock_task:
         mock_task.delay = MagicMock()
@@ -90,7 +90,7 @@ async def test_radicar_returns_201_with_numero_radicacion(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_radicar_enqueues_promotion_task(client: AsyncClient):
+async def test_radicar_enqueues_promotion_task(client: AsyncClient, seed_cie10):
     """POST /radicar debe encolar la tarea de promoción."""
     with patch("app.tasks.incapacidad_tasks.promote_pre_incapacidad_task") as mock_task:
         mock_task.delay = MagicMock()
@@ -101,7 +101,7 @@ async def test_radicar_enqueues_promotion_task(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_radicar_sin_empresa_returns_201(client: AsyncClient):
+async def test_radicar_sin_empresa_returns_201(client: AsyncClient, seed_cie10):
     """POST /radicar sin empresa (trabajador independiente) debe funcionar."""
     payload = dict(VALID_PAYLOAD)
     payload["empresa"] = None
@@ -158,6 +158,20 @@ async def test_radicar_invalid_tipo_documento_returns_422(client: AsyncClient):
     payload["empleado"]["tipo_documento"] = "INVALID"
 
     response = await client.post(RADICAR_URL, json=payload)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_radicar_nonexistent_cie10_returns_422(client: AsyncClient, seed_cie10):
+    """CIE-10 con formato válido pero inexistente en el catálogo debe retornar 422."""
+    payload = dict(VALID_PAYLOAD)
+    payload["incapacidad"] = dict(VALID_PAYLOAD["incapacidad"])
+    payload["incapacidad"]["diagnostico_cie10"] = "U999"
+
+    with patch("app.tasks.incapacidad_tasks.promote_pre_incapacidad_task") as mock_task:
+        mock_task.delay = MagicMock()
+        response = await client.post(RADICAR_URL, json=payload)
 
     assert response.status_code == 422
 

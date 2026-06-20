@@ -52,6 +52,7 @@ from app.schemas.radicacion import RadicacionRowInput
 from app.services.radicacion_pipeline_service import RadicacionPipelineService
 from app.services.integracion.integracion_service import IntegracionService
 from app.services.incapacidad_validation_rules import validate_row
+from app.services.catalogo_service import catalogo_service
 from app.services.documento_service import DocumentoService
 from app.tasks.incapacidad_tasks import enqueue_auditoria_incapacidad
 from app.utils.enums import TipoDocumentoAdjunto
@@ -978,6 +979,15 @@ async def radicar_masiva(
     parsed_rows: list[RadicacionRowInput] = []
     invalidas: list[dict] = []
 
+    # Catálogo CIE-10: verificar existencia de los códigos en una sola consulta.
+    # Un código con formato válido pero inexistente se rechaza (CIE10_NO_EXISTE).
+    codigos_cie10 = {
+        str(r["diagnostico_cie10"]).strip().upper()
+        for r in raw_rows
+        if isinstance(r, dict) and r.get("diagnostico_cie10")
+    }
+    catalogo_set = await catalogo_service.codigos_existentes(db, codigos_cie10)
+
     for r in raw_rows:
         empleado_id_raw = r.get("empleado_id")
 
@@ -1004,7 +1014,7 @@ async def radicar_masiva(
             "nombre_medico": r.get("nombre_medico"),
             "registro_medico": r.get("registro_medico"),
         }
-        issues = validate_row(row_dict)
+        issues = validate_row(row_dict, catalogo_codigos=catalogo_set)
         # Only ERROR-level issues block the batch
         error_issues = [i for i in issues if i.get("severidad") == "ERROR"]
         if error_issues:

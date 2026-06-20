@@ -76,6 +76,25 @@ class CatalogoRepository:
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
     
+    async def get_existing_codigos(self, db: AsyncSession, codigos: set[str]) -> set[str]:
+        """Devuelve el subconjunto de ``codigos`` (en mayúsculas) que existen en el catálogo.
+
+        Una sola consulta por lote para evitar N+1 al validar radicaciones masivas.
+
+        Args:
+            db: Sesión de base de datos
+            codigos: Conjunto de códigos CIE-10 a verificar
+
+        Returns:
+            Conjunto de códigos existentes (en mayúsculas). Vacío si ``codigos`` es vacío.
+        """
+        if not codigos:
+            return set()
+        upper = {c.upper() for c in codigos}
+        stmt = select(CatalogoCIE10.codigo).where(CatalogoCIE10.codigo.in_(upper))
+        result = await db.execute(stmt)
+        return set(result.scalars().all())
+
     async def get_all(
         self,
         db: AsyncSession,

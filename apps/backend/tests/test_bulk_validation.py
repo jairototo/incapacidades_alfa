@@ -13,7 +13,7 @@ def _xlsx(rows):
 
 
 @pytest.mark.asyncio
-async def test_validation_reports_errors_and_skips_empty(client: AsyncClient, empresa_user_token, test_empleado):
+async def test_validation_reports_errors_and_skips_empty(client: AsyncClient, empresa_user_token, test_empleado, seed_cie10):
     doc = test_empleado.numero_documento
     good = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-01", "2026-06-05", 5, "M545", "", "Dr X", "RM-1", "", "NO", ""]
     bad = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-10", "2026-06-05", 5, "", "", "Dr X", "RM-1", "", "NO", ""]
@@ -71,7 +71,7 @@ async def test_non_xlsx_upload_returns_400(client: AsyncClient, empresa_user_tok
 
 
 @pytest.mark.asyncio
-async def test_numeric_registro_medico_is_coerced_to_string(client: AsyncClient, empresa_user_token, test_empleado):
+async def test_numeric_registro_medico_is_coerced_to_string(client: AsyncClient, empresa_user_token, test_empleado, seed_cie10):
     """openpyxl entrega celdas numéricas como int; registro_medico debe llegar como str.
 
     Regresión del 422 (Input should be a valid string, input_value=1, input_type=int)
@@ -92,7 +92,22 @@ async def test_numeric_registro_medico_is_coerced_to_string(client: AsyncClient,
 
 
 @pytest.mark.asyncio
-async def test_warning_only_row_is_valid(client: AsyncClient, empresa_user_token, test_empleado):
+async def test_nonexistent_cie10_is_row_error(client: AsyncClient, empresa_user_token, test_empleado, seed_cie10):
+    """U999 cumple el formato pero no existe en el catálogo → CIE10_NO_EXISTE (ERROR)."""
+    doc = test_empleado.numero_documento
+    row = [doc, "CC", "Ana", "Gómez", "ACCIDENTE_TRABAJO", "2026-06-01", "2026-06-05", 5, "U999", "", "Dr X", "RM-1", "", "NO", ""]
+    buf = _xlsx([row])
+    resp = await client.post("/api/v1/incapacidades/radicar-masiva/validar",
+        files={"archivo": ("d.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        headers={"Authorization": f"Bearer {empresa_user_token}"})
+    assert resp.status_code == 200, resp.text
+    fila = resp.json()["filas"][0]
+    assert fila["valida"] is False
+    assert any(e["codigo"] == "CIE10_NO_EXISTE" for e in fila["errores"])
+
+
+@pytest.mark.asyncio
+async def test_warning_only_row_is_valid(client: AsyncClient, empresa_user_token, test_empleado, seed_cie10):
     doc = test_empleado.numero_documento
     # fecha_inicio 2026-01-01 is >30 days before today (~2026-06-20) => RETROACTIVE_BEYOND_LIMIT (WARNING),
     # dias_totales=10 matches 2026-01-01..2026-01-10 so no mismatch; all required fields present => no ERROR.

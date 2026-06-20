@@ -74,6 +74,25 @@ class CatalogoService:
         
         return cie10
     
+    async def codigos_existentes(
+        self,
+        db: AsyncSession,
+        codigos: set[str]
+    ) -> set[str]:
+        """Devuelve el subconjunto de códigos CIE-10 que existen en el catálogo (batch).
+
+        Pensado para validar la existencia de múltiples códigos en una sola
+        consulta (radicación masiva/individual), evitando N+1.
+
+        Args:
+            db: Sesión de base de datos
+            codigos: Conjunto de códigos CIE-10 a verificar
+
+        Returns:
+            Conjunto de códigos existentes (en mayúsculas)
+        """
+        return await self.repository.get_existing_codigos(db, codigos)
+
     async def get_all(
         self,
         db: AsyncSession,
