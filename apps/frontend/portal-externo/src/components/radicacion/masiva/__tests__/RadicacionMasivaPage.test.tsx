@@ -58,6 +58,38 @@ describe('RadicacionMasivaPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/impiden radicar/i);
   });
 
+  it('discards the previous file results when a new Excel is uploaded', async () => {
+    const { validarExcel } = await import('@/services/bulkRadicacionService');
+    const mk = (doc: string) => ({
+      filas: [{ fila: 2, empleado_id: null, datos: { numero_documento: doc },
+                errores: [{ codigo: 'X', descripcion: 'err', severidad: 'ERROR' }], valida: false }],
+      total: 1, validas: 0,
+    });
+    (validarExcel as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mk('1')).mockResolvedValueOnce(mk('99'));
+    wrap();
+    const input = screen.getByLabelText(/subir excel/i);
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array(10)], 'a.xlsx')] } });
+    expect(await screen.findByText(/Documento 1\b/)).toBeInTheDocument();
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array(10)], 'b.xlsx')] } });
+    expect(await screen.findByText(/Documento 99/)).toBeInTheDocument();
+    expect(screen.queryByText(/Documento 1\b/)).not.toBeInTheDocument();
+  });
+
+  it('clears previously valid rows when a re-upload fails validation', async () => {
+    const { validarExcel } = await import('@/services/bulkRadicacionService');
+    (validarExcel as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ filas: [{ fila: 2, empleado_id: 'e1',
+        datos: { numero_documento: '1' }, errores: [], valida: true }], total: 1, validas: 1 })
+      .mockRejectedValueOnce({ response: { data: { detail: 'Archivo inválido' } } });
+    wrap();
+    const input = screen.getByLabelText(/subir excel/i);
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array(10)], 'a.xlsx')] } });
+    expect(await screen.findByRole('button', { name: /radicar incapacidades/i })).toBeInTheDocument();
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array(10)], 'b.xlsx')] } });
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /radicar incapacidades/i })).not.toBeInTheDocument());
+  });
+
   it('shows an error toast when Excel validation fails', async () => {
     const { validarExcel } = await import('@/services/bulkRadicacionService');
     (validarExcel as ReturnType<typeof vi.fn>).mockRejectedValueOnce({

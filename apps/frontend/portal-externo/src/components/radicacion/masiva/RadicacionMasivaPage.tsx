@@ -54,11 +54,15 @@ export function RadicacionMasivaPage() {
   };
 
   const handleExcel = async (file: File) => {
+    // Descartar por completo el resultado del archivo anterior (filas, documentos
+    // por fila y archivos emparejados del ZIP) ANTES de validar el nuevo, para no
+    // mostrar ni enviar datos del archivo previo aunque la nueva validación falle.
+    setFilas([]);
+    setDocumentos({});
+    setMostrarBloqueos(false);
     try {
       const res = await validarExcel(file);
       setFilas(res.filas);
-      setDocumentos({});
-      setMostrarBloqueos(false);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: unknown } } };
       const detail = err?.response?.data?.detail;
