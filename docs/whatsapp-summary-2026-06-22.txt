@@ -1,0 +1,40 @@
+Avance del Portal de Incapacidades
+
+Buenos días 👋 Resumen del trabajo.
+
+🎯 EN QUÉ NOS ENFOCAMOS
+Transformamos el Portal Externo: dejó de ser una página pública y ahora es un portal privado con inicio de sesión, pensado para las empresas (ARL). Cada empresa entra con su usuario y solo ve y gestiona lo suyo. Esto se hizo de forma ordenada en 5 etapas, todas completadas.
+
+✅ LO QUE QUEDÓ CONSTRUIDO
+
+1. Acceso seguro
+Las empresas ahora ingresan con usuario y contraseña. El sistema valida que sea una empresa habilitada; si no lo es, muestra un aviso para contactar a Servicio al Cliente. Al entrar ven un tablero con 3 acciones claras: radicar una incapacidad, radicar varias a la vez, y consultar.
+
+2. Radicación individual
+La empresa registra una incapacidad de un empleado de forma guiada: elige al empleado de su lista, indica si es prórroga, llena los datos y adjunta los documentos. Al terminar recibe un correo de confirmación.
+
+3. Radicación masiva (varias a la vez)
+Se puede descargar una plantilla en Excel (opcionalmente ya pre-llenada con los empleados), completarla y subirla. El sistema revisa fila por fila y avisa qué está bien y qué no. Los documentos se pueden cargar uno por uno o todos juntos en un archivo ZIP. Solo deja enviar cuando todo está correcto, y al final manda un único correo resumen con todos los números de radicación.
+
+4. Revisión automática (auditoría)
+Cada incapacidad radicada pasa por una revisión automática que aplica las reglas del negocio y deja registro del resultado. La incapacidad avanza sola al estado "En auditoría".
+
+5. Consulta
+Cada empresa tiene una tabla para buscar y filtrar sus incapacidades (por estado, tipo, fechas o empleado) y abrir el detalle con la línea de tiempo de cada caso.
+
+🔌 INTEGRACIÓN CON SISTEMAS EXTERNOS
+Dejamos lista la conexión hacia ServiAlfa y Sicat y un registro de cada intento de comunicación, para tener trazabilidad. Hoy funciona en modo de prueba; queda preparado para enchufar la conexión real cuando esté disponible.
+
+🛠️ AJUSTES Y CORRECCIONES
+- Mejoramos la imagen del portal: nuevo inicio de sesión a pantalla dividida con la marca, barra de navegación, pie de página corporativo, íconos uniformes y pantallas más amplias.
+- Reforzamos la validación de diagnósticos (CIE-10): ahora se verifica contra el catálogo oficial, no solo el formato.
+- Corregimos varios detalles de la carga masiva (lectura de celdas de Excel, reinicio al volver a subir un archivo, manejo de errores y guías paso a paso).
+
+📌 ESTADO ACTUAL
+Las 5 etapas del nuevo portal para empresas están terminadas y probadas. El portal ya opera de forma autenticada y la documentación quedó actualizada.
+
+⏭️ LO QUE SIGUE
+- Conectar de verdad ServiAlfa y Sicat (hoy en modo prueba) cuando lleguen las especificaciones.
+- Continuar con el Sistema Interno (panel de administradores y auditores), que es la siguiente gran fase.
+
+Cualquier duda quedo atento 🙌
