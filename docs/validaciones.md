@@ -369,11 +369,24 @@ EN_AUDITORIA → PAGADA (debe pasar por APROBADA)
 
 | Endpoint | Método | Validaciones clave |
 |----------|--------|-------------------|
-| POST `/api/v1/incapacidades/consulta` | POST | V-RAD-001..004, V-PER-001..006, V-MED-001..004, V-DOC-001..004 |
+| POST `/api/v1/incapacidades/radicar` (individual, EMPRESA) | POST | V-RAD-001..004, V-PER-001..006, V-MED-001..004, V-DOC-001..004 |
+| POST `/api/v1/incapacidades/radicar-masiva/validar` (Excel, EMPRESA) | POST | V-RAD-001..004, V-MED-001 (formato + existencia CIE-10), por fila |
+| POST `/api/v1/incapacidades/radicar-masiva` (lote, EMPRESA) | POST | V-RAD-001..004, V-MED-001..004, V-DOC-001..004, por fila |
+| GET `/api/v1/incapacidades/mi-empresa` (consulta, EMPRESA) | GET | `empresa_id` forzado desde el token (RBAC) |
 | POST `/api/v1/documentos/upload` | POST | V-DOC-002, V-DOC-003, V-DOC-004 |
 | POST `/api/v1/incapacidades/{id}/aprobar` | POST | V-EST-002, validar DOCUMENTO validado=true |
 | POST `/api/v1/ordenes-pago` | POST | V-FIN-001..005, V-EST-003 |
 | PUT `/api/v1/usuarios/{id}` | PUT | V-USU-003, V-USU-004 |
+
+> **Notas sobre dónde se aplican V-MED-001 y V-RAD-004 (CIE-10 y tipo_enfermedad)**
+> tras el refactor del Portal Externo (2026-06):
+> - El **formato** CIE-10 (`^[A-Z]\d{2}[0-9X]$`) y `tipo_enfermedad` se validan a
+>   nivel de campo en cada fila (código `INVALID_CIE10_FORMAT` / `INVALID_TIPO_ENFERMEDAD`).
+> - La **existencia en catálogo** se valida en la radicación: si el código cumple
+>   el formato pero no existe en `catalogo_cie10`, se emite `CIE10_NO_EXISTE`
+>   (severidad ERROR) y se rechaza la fila/radicación.
+> - Solo las incidencias de severidad **ERROR** bloquean; las **WARNING** son
+>   advisory (no bloquean la radicación).
 
 ---
 

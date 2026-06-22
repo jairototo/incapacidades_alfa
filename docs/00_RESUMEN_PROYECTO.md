@@ -1,8 +1,33 @@
 # Resumen del Proyecto - Sistema de Gestión de Incapacidades
 
-**Fecha de actualización**: 9 de enero de 2026  
+**Fecha de actualización**: 20 de junio de 2026  
 **Versión**: 1.0.0  
 **Estado**: En desarrollo activo
+
+---
+
+> ## 🔁 ACTUALIZACIÓN 2026-06-20 — Portal Externo (empresa autenticada)
+>
+> Las secciones fechadas el 9 de enero (más abajo) describen un CRUD genérico y
+> un portal público que **ya no reflejan el flujo del Portal Externo**. Cambios
+> vigentes a tener en cuenta al leer este documento:
+>
+> - El **Portal Externo** es ahora un portal **autenticado solo para empresas**
+>   (rol `EMPRESA`, `empresa_id` vinculado); **solo ARL**. No hay radicación ni
+>   consulta anónima.
+> - **Radicación individual y masiva** comparten un único
+>   `RadicacionPipelineService` y crean la `Incapacidad` directamente.
+> - **Consulta**: la empresa consulta sus incapacidades vía
+>   `GET /api/v1/incapacidades/mi-empresa` (no por número/documento público).
+> - El **job de auditoría** opera sobre la `Incapacidad` y transiciona
+>   `RADICADA → EN_AUDITORIA`.
+> - **Integraciones ServiAlfa / Sicat**: **STUB** (no productivas); cada intento
+>   se registra en `communication_log`.
+> - **CIE-10**: formato colombiano `^[A-Z]\d{2}[0-9X]$` (sin punto) + existencia
+>   en catálogo. `tipo_enfermedad ∈ {ACCIDENTE_TRABAJO, ENFERMEDAD_LABORAL,
+>   ACCIDENTE_TRAYECTO}`.
+>
+> Fuente autoritativa: [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](./superpowers/PR-portal-externo-empresa-refactor.md).
 
 ---
 
@@ -142,7 +167,7 @@ PAGADA / ANULADA
 - **ADMIN**: Acceso total al sistema
 - **AUDITOR**: Revisión y auditoría de incapacidades
 - **APROBADOR**: Aprobación de pagos
-- **EMPRESA**: Consulta de incapacidades de su empresa
+- **EMPRESA**: Radica (individual y masiva) y consulta las incapacidades de su empresa desde el Portal Externo autenticado
 - **EMPLEADO**: Consulta de sus propias incapacidades
 - **READONLY**: Solo lectura
 

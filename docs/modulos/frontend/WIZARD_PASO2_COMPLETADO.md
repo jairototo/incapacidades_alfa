@@ -1,5 +1,9 @@
 # Wizard Paso 2: Datos Personales - Completado ✅
 
+> ⛔ **HISTÓRICO (2026-06-20):** paso del **antiguo wizard público de radicación**,
+> retirado del código tras el refactor a Portal Externo autenticado para empresas.
+> Ver [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](../../superpowers/PR-portal-externo-empresa-refactor.md).
+
 **Fecha de finalización**: 15 de enero de 2026  
 **Estado**: 100% Completado  
 **Tests**: 37/37 pasando (100%)  

@@ -1,5 +1,10 @@
 # ✅ Componente DocumentosDescargables - COMPLETADO
 
+> ⛔ **HISTÓRICO (2026-06-20):** el componente `DocumentosDescargables` (descarga
+> pública de soportes en la consulta anónima) **fue retirado** del código tras el
+> refactor a Portal Externo autenticado. Ver
+> [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](../../superpowers/PR-portal-externo-empresa-refactor.md).
+
 **Fecha de completación**: 14 de enero de 2026  
 **Estado**: Implementación 100% + Tests 100% (28/28 pasando)  
 **Tiempo total**: ~2 horas (incluye iteraciones de tests)

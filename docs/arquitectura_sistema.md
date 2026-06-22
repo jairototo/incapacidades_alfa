@@ -5,6 +5,18 @@
 
 ---
 
+> **Nota (2026-06-20) — Radicación del Portal Externo:** la radicación desde el
+> Portal Externo (empresa autenticada, individual y masiva) **ya no pasa por
+> `pre_incapacidad`**. Usa un `RadicacionPipelineService` compartido que crea la
+> `Incapacidad` directamente y dispara la auditoría (`RADICADA → EN_AUDITORIA`).
+> El servicio `pre_incapacidad_service` y el job `procesar_pre_incapacidades`/
+> `promote_pre_incapacidad_task` descritos abajo corresponden al flujo legado de
+> pre-incapacidad (aún presente en el backend), no al portal actual. Integraciones
+> ServiAlfa/Sicat son **STUB**. Ver
+> [`superpowers/PR-portal-externo-empresa-refactor.md`](./superpowers/PR-portal-externo-empresa-refactor.md).
+
+---
+
 ## Visión de Arquitectura
 
 ```

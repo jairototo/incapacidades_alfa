@@ -1,5 +1,13 @@
 # Plan de Desarrollo Frontend - Sistema de Gestión de Incapacidades
 
+> ## ⛔ DOCUMENTO HISTÓRICO / PARCIALMENTE OBSOLETO (2026-06-20)
+>
+> La parte de **Portal Externo** de este plan describe un portal **público sin
+> autenticación** (radicación y consulta anónimas) que **ya no existe**. El Portal
+> Externo es hoy un portal **autenticado solo para empresas** (rol `EMPRESA`, solo
+> ARL) con radicación individual + masiva y consulta autenticada por empresa.
+> Estado actual: [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](../superpowers/PR-portal-externo-empresa-refactor.md).
+
 ## Visión General
 
 Desarrollo frontend en fases para portal externo y sistema interno, siguiendo una estrategia incremental que prioriza la funcionalidad de cara al cliente.

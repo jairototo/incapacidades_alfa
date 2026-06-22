@@ -1,6 +1,20 @@
 # Fase 1: Portal Externo - Radicación y Consulta de Incapacidades
 
-**Objetivo**: Portal público para radicación y consulta de incapacidades SIN autenticación.
+> ## ⛔ DOCUMENTO HISTÓRICO / OBSOLETO (2026-06-20)
+>
+> Este documento describe el **antiguo Portal Externo público sin autenticación**
+> (wizard de 5 pasos, radicación y consulta anónimas, ARL + SALUD). Ese diseño
+> **fue reemplazado** por un portal **autenticado solo para empresas** (rol
+> `EMPRESA`, solo ARL), con radicación individual y masiva y consulta autenticada
+> por empresa. El wizard público, la búsqueda pública por número/documento y los
+> componentes asociados fueron retirados del código.
+>
+> Se conserva como referencia histórica del diseño original. Para el estado
+> actual ver:
+> - [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](../superpowers/PR-portal-externo-empresa-refactor.md)
+> - Planes `docs/superpowers/plans/2026-06-19-phase{1..5}-*.md`
+
+**Objetivo** *(diseño original, obsoleto)*: Portal público para radicación y consulta de incapacidades SIN autenticación.
 
 ---
 

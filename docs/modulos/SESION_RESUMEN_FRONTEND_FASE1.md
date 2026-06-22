@@ -1,8 +1,16 @@
 # Resumen de Sesión - Frontend Fase 1 Completado
 
+> ## ⛔ REGISTRO HISTÓRICO (2026-06-20)
+>
+> Resumen de la construcción del **antiguo wizard público de radicación** (Pasos
+> 1-5, sin autenticación). Ese portal fue **reemplazado** por el Portal Externo
+> autenticado para empresas (radicación individual + masiva, consulta por
+> empresa). Se conserva como registro de aquella sesión. Estado actual:
+> [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](../superpowers/PR-portal-externo-empresa-refactor.md).
+
 **Fecha**: 16 de enero de 2026  
 **Duración**: Múltiples sesiones (Pasos 1-5)  
-**Estado**: ✅ COMPLETADO
+**Estado**: ✅ COMPLETADO *(del diseño original, hoy obsoleto)*
 
 ---
 

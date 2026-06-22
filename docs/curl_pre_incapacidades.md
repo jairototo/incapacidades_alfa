@@ -1,5 +1,13 @@
 # Pruebas cURL — Endpoint de Pre-Incapacidades
 
+> **Nota (2026-06-20):** estos comandos prueban el flujo **legado de
+> pre-incapacidad** (aún presente en el backend). El **Portal Externo** actual
+> (empresa autenticada) **no usa pre-incapacidad**: radica directamente con
+> `POST /api/v1/incapacidades/radicar` (individual) y
+> `POST /api/v1/incapacidades/radicar-masiva[/validar]` (masiva), ambos con token
+> de rol `EMPRESA`. Ver
+> [`superpowers/PR-portal-externo-empresa-refactor.md`](./superpowers/PR-portal-externo-empresa-refactor.md).
+
 Comandos `curl` para probar el ciclo completo del endpoint de radicación de pre-incapacidades (ARL).  
 Los datos de empleado/empresa corresponden a registros reales de la base de datos de desarrollo.
 

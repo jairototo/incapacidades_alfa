@@ -1,5 +1,10 @@
 # Wizard Paso 3 - Datos de Incapacidad ✅ COMPLETADO
 
+> ⛔ **HISTÓRICO (2026-06-20):** paso del **antiguo wizard público de radicación**,
+> retirado del código tras el refactor a Portal Externo autenticado para empresas.
+> Nota: el formato CIE-10 vigente es `^[A-Z]\d{2}[0-9X]$` (sin punto). Ver
+> [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](../../superpowers/PR-portal-externo-empresa-refactor.md).
+
 **Fecha:** 14 de enero de 2026  
 **Desarrollador:** GitHub Copilot AI Agent  
 **Fase:** Portal Externo - Wizard de Radicación de Incapacidades

@@ -1,8 +1,18 @@
 # Plan de Implementación: Consulta de Incapacidades
 
+> ## ⛔ DOCUMENTO HISTÓRICO / SUPERADO (2026-06-20)
+>
+> Este plan propone una **consulta pública** (endpoint sin autenticación, búsqueda
+> por número/documento). Esa aproximación **fue descartada**. La consulta se
+> implementó como **consulta autenticada por empresa**:
+> `GET /api/v1/incapacidades/mi-empresa` (rol `EMPRESA`, `empresa_id` forzado desde
+> el token), con un drawer de detalle que reutiliza los componentes
+> `DetalleIncapacidad` y `TimelineEstados`. Ver Fase 5 en
+> [`docs/superpowers/plans/2026-06-19-phase5-consulta.md`](../superpowers/plans/2026-06-19-phase5-consulta.md).
+
 **Fecha de creación**: 17 de enero de 2026  
 **Versión**: 1.0.0  
-**Estado**: 📋 Planificación  
+**Estado**: 📋 Planificación *(superado — ver banner)*  
 **Prioridad**: 🔴 CRÍTICA - Bloquea Fase 1
 
 ---

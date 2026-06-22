@@ -2,9 +2,29 @@
 
 **Versión API**: v1.0.0  
 **Base URL**: `http://localhost:8010/api/v1`  
-**Última actualización**: 23 de enero de 2026
+**Última actualización**: 20 de junio de 2026
 
 ---
+
+> ## 🔁 ACTUALIZACIÓN 2026-06-20 — Endpoints del Portal Externo
+>
+> El Portal Externo dejó de ser público. Los endpoints que consume hoy requieren
+> autenticación con rol `EMPRESA` (`empresa_id` del token):
+>
+> | Endpoint | Método | Uso |
+> |----------|--------|-----|
+> | `/api/v1/auth/login` | POST | Login de la empresa (reutilizado) |
+> | `/api/v1/incapacidades/radicar` | POST | Radicación individual |
+> | `/api/v1/incapacidades/radicar-masiva/validar` | POST | Valida plantilla Excel por fila |
+> | `/api/v1/incapacidades/radicar-masiva` | POST | Radicación masiva (lote + ZIP de soportes) |
+> | `/api/v1/incapacidades/mi-empresa` | GET | Consulta de incapacidades de la empresa |
+> | `/api/v1/empresas/{empresa_id}/empleados` | GET | Empleados de la empresa (anidado) |
+>
+> El endpoint **`GET /api/v1/incapacidades/consultar` (público, sin auth) ya no
+> se usa desde el Portal Externo**; la consulta es autenticada por empresa. Las
+> referencias a "endpoints públicos sin autenticación" más abajo corresponden al
+> diseño original. Integraciones ServiAlfa/Sicat son **STUB**. Fuente:
+> [`../superpowers/PR-portal-externo-empresa-refactor.md`](../superpowers/PR-portal-externo-empresa-refactor.md).
 
 ## Tabla de Contenidos
 

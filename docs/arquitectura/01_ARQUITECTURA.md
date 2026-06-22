@@ -1,5 +1,14 @@
 # Arquitectura del Sistema de Gestión de Incapacidades
 
+> **Actualización 2026-06-20 — Portal Externo:** el diagrama y la sección "Portal
+> Externo" describen el diseño original **público sin autenticación**. Hoy el
+> Portal Externo es un portal **autenticado solo para empresas** (rol `EMPRESA`,
+> solo ARL): login con `POST /api/v1/auth/login`, radicación **individual y
+> masiva** (Excel + ZIP) mediante un `RadicacionPipelineService` compartido, y
+> **consulta autenticada por empresa** (`GET /api/v1/incapacidades/mi-empresa`),
+> no consulta pública por número. Integraciones ServiAlfa/Sicat son **STUB**. Ver
+> [`../superpowers/PR-portal-externo-empresa-refactor.md`](../superpowers/PR-portal-externo-empresa-refactor.md).
+
 ## 1. Visión General
 
 Sistema de gestión de incapacidades para aseguradora con cobertura de ARL y pólizas de salud.
@@ -122,9 +131,12 @@ Sistema de gestión de incapacidades para aseguradora con cobertura de ARL y pó
 
 ## 2.1 Detalle de Capa de Presentación
 
-### Portal Externo (Público)
+### Portal Externo (Empresa autenticada)
 
-**Propósito**: Interfaz para radicación y consulta de incapacidades sin autenticación.
+**Propósito**: Interfaz **autenticada para empresas** (rol `EMPRESA`, solo ARL)
+para radicación individual y masiva, y consulta de las incapacidades de la propia
+empresa. *(El diseño original — radicación/consulta pública sin autenticación —
+fue reemplazado; ver banner al inicio del documento.)*
 
 **Tecnologías**:
 - React 18 + TypeScript

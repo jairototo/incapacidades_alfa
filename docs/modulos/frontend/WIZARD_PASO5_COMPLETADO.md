@@ -1,5 +1,9 @@
 # Wizard Paso 5 - Resumen y Radicación - COMPLETADO ✅
 
+> ⛔ **HISTÓRICO (2026-06-20):** paso del **antiguo wizard público de radicación**,
+> retirado del código tras el refactor a Portal Externo autenticado para empresas.
+> Ver [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](../../superpowers/PR-portal-externo-empresa-refactor.md).
+
 **Fecha**: 16 de enero de 2026  
 **Estado**: ✅ COMPLETADO 100%  
 **Tests**: 217 pasando (39 nuevos tests agregados)  

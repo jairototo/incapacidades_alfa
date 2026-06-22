@@ -1,5 +1,10 @@
 # ✅ Componente BusquedaIncapacidad - Completado
 
+> ⛔ **HISTÓRICO (2026-06-20):** el componente `BusquedaIncapacidad` (búsqueda
+> pública por número/documento) **fue retirado** del código. La consulta es ahora
+> autenticada por empresa (`GET /api/v1/incapacidades/mi-empresa`). Ver
+> [`docs/superpowers/plans/2026-06-19-phase5-consulta.md`](../../superpowers/plans/2026-06-19-phase5-consulta.md).
+
 **Fecha**: 21 de enero de 2026  
 **Estado**: Implementación completa  
 **Cobertura de tests**: 55% (12/22 tests pasando)

@@ -1,5 +1,10 @@
 # Wizard Paso 1 - Selector de Tipo de Incapacidad
 
+> ⛔ **HISTÓRICO (2026-06-20):** describe un paso del **antiguo wizard público de
+> radicación**, retirado del código tras el refactor a Portal Externo autenticado
+> para empresas (radicación individual + masiva). Ver
+> [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](../../superpowers/PR-portal-externo-empresa-refactor.md).
+
 ## Implementación Completada ✅
 
 **Fecha**: 14 de enero de 2026  

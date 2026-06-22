@@ -1,5 +1,14 @@
 # Definición de Endpoints REST API
 
+> **Actualización 2026-06-20 — Portal Externo:** los endpoints marcados como
+> "Público (sin autenticación)" en este documento reflejan el diseño original. El
+> Portal Externo es hoy un portal **autenticado para empresas** (rol `EMPRESA`):
+> radica vía `POST /api/v1/incapacidades/radicar` (individual) y
+> `POST /api/v1/incapacidades/radicar-masiva[/validar]` (masiva), y consulta vía
+> `GET /api/v1/incapacidades/mi-empresa`. La radicación crea la `Incapacidad`
+> directamente (sin pre-incapacidad para este portal). Ver
+> [`../superpowers/PR-portal-externo-empresa-refactor.md`](../superpowers/PR-portal-externo-empresa-refactor.md).
+
 ## 1. Especificación General
 
 - **Protocolo**: HTTPS

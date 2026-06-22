@@ -1,8 +1,44 @@
 # Estado del Proyecto - Sistema de Gestión de Incapacidades
 
-**Fecha de actualización**: 17 de enero de 2026  
+**Fecha de actualización**: 20 de junio de 2026  
 **Versión**: 0.9.0-beta  
-**Estado general**: ⚠️ En Desarrollo - Fase 1 Incompleta
+**Estado general**: 🔄 En Desarrollo
+
+---
+
+> ## 🔁 ACTUALIZACIÓN 2026-06-20 — Portal Externo refactorizado
+>
+> **El contenido fechado el 17 de enero (más abajo) describe el antiguo Portal
+> Externo público y ya NO refleja la arquitectura actual.** Se conserva como
+> registro histórico. El estado vigente es:
+>
+> - **Portal Externo = portal autenticado solo para empresas (rol `EMPRESA`).**
+>   Ya no existe radicación ni consulta pública/anónima. El acceso reutiliza
+>   `POST /api/v1/auth/login`; solo usuarios `EMPRESA` con `empresa_id` vinculado
+>   pueden entrar (`ProtectedRoute`).
+> - **Alcance: solo ARL.** SALUD queda fuera del alcance de este portal.
+> - **Radicación individual y masiva** comparten el mismo `RadicacionPipelineService`
+>   (individual = masiva con N=1). La radicación crea la `Incapacidad`
+>   directamente (sin la antigua pre-incapacidad para este portal).
+> - **Radicación masiva**: carga de plantilla Excel + ZIP de soportes, validación
+>   por fila (formato y existencia de CIE-10 contra catálogo), creación por lotes.
+> - **Job de auditoría** evalúa reglas sobre la `Incapacidad` (no sobre
+>   pre-incapacidad) y transiciona `RADICADA → EN_AUDITORIA`.
+> - **Consulta**: `GET /api/v1/incapacidades/mi-empresa` (solo `EMPRESA`,
+>   `empresa_id` forzado desde el token). El "módulo de consulta pendiente" que
+>   se describe abajo **ya está implementado** como consulta autenticada por
+>   empresa (Fase 5), no como endpoint público.
+> - **Integraciones ServiAlfa / Sicat**: clientes **STUB** (no productivos);
+>   `IntegracionService` registra cada intento en `communication_log`.
+> - **CIE-10**: formato `^[A-Z]\d{2}[0-9X]$` (estándar colombiano, sin punto) y
+>   validación de existencia en catálogo.
+> - **UI/UX**: login en pantalla dividida, navbar superior con menú + dropdown de
+>   usuario, footer compartido con versión dinámica, layout de radicación
+>   individual a 2 columnas.
+>
+> **Fuente autoritativa del estado actual:**
+> [`docs/superpowers/PR-portal-externo-empresa-refactor.md`](./superpowers/PR-portal-externo-empresa-refactor.md)
+> y los planes `docs/superpowers/plans/2026-06-19-phase{1..5}-*.md`.
 
 ---
 
@@ -28,8 +64,14 @@
 | Módulo Órdenes Pago | 100% | - | ✅ |
 | Módulo Usuarios | 100% | - | ✅ |
 | Tests Backend | 87% | Incrementar a >90% | 🟡 |
-| **Frontend - Radicación** | **100%** | **-** | **✅** |
-| **Frontend - Consulta** | **0%** | **Implementación completa** | **🔴** |
+| **Frontend - Radicación (individual + masiva)** | **100%** | **-** | **✅** |
+| **Frontend - Consulta (autenticada por empresa)** | **100%** | **-** | **✅** |
+
+> ⚠️ La tabla anterior se conserva como referencia histórica del 17-ene. Tras el
+> refactor del Portal Externo (ver banner superior), la radicación pública fue
+> reemplazada por radicación autenticada individual **y masiva**, y la consulta
+> se implementó como consulta autenticada por empresa (`/incapacidades/mi-empresa`),
+> no como endpoint público.
 
 ### ⚠️ Estado Real de Frontend Fase 1
 

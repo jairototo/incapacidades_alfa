@@ -1,4 +1,13 @@
-# Skill Radicador Público ARL
+# Skill Radicador ARL (Portal Empresa)
+
+> **Actualización 2026-06-20:** la radicación dejó de ser pública/anónima. Hoy es
+> un flujo **autenticado para empresas** (rol `EMPRESA`, solo ARL). El usuario que
+> radica es la propia empresa, ya identificada por su token; los datos del
+> empleado provienen de la empresa vinculada. Existen dos modos que comparten el
+> mismo pipeline de validación: **radicación individual** y **radicación masiva**
+> (plantilla Excel + ZIP de soportes). Las validaciones de campos y documentos de
+> abajo siguen vigentes; el "solicitante" ya no es un tercero anónimo sino la
+> empresa autenticada.
 
 ## Rol
 

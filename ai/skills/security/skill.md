@@ -82,12 +82,16 @@ async def aprobar(
 
 | Acción | Roles autorizados |
 |---|---|
-| Radicar (portal público) | Sin auth (endpoint público) |
+| Radicar desde el Portal Externo (individual y masiva) | EMPRESA (con `empresa_id` vinculado) |
+| Consulta de incapacidades de la empresa (`/incapacidades/mi-empresa`) | EMPRESA (`empresa_id` forzado desde el token) |
 | Listar pendientes / auditar | ADMIN, AUDITOR |
 | Aprobar / Rechazar / Pagar | ADMIN, APROBADOR |
-| Consulta pública (portal) | Sin auth |
 | Gestión de usuarios | Solo ADMIN |
 | Lectura general | ADMIN, AUDITOR, APROBADOR, READONLY |
+
+> **Nota (2026-06-20):** el Portal Externo dejó de ser público. La radicación y la
+> consulta requieren autenticación con rol `EMPRESA`. Ya no existen endpoints de
+> radicación/consulta sin autenticación para el portal.
 
 ---
 
@@ -107,7 +111,7 @@ class RadicarIncapacidadSchema(BaseModel):
     def validar_cie10(cls, v: str) -> str:
         v = v.strip().upper()
         if not re.match(r'^[A-Z]\d{2}[0-9X]$', v):
-            raise ValueError('Formato CIE-10 inválido. Ejemplo: A09, J18.1')
+            raise ValueError('Formato CIE-10 inválido (estándar colombiano, sin punto). Ejemplo: M545, A048, A09X')
         return v
 
     @model_validator(mode='after')

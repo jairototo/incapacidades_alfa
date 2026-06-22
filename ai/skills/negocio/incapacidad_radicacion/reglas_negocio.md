@@ -3,8 +3,13 @@
 ## Objetivo
 
 Permitir la recepción de solicitudes de incapacidades y eventos laborales
-mediante un portal público, generando un número de radicado para posterior
-validación por parte de la ARL.
+mediante el **Portal Externo autenticado para empresas** (rol `EMPRESA`, solo
+ARL), generando un número de radicado para posterior validación por parte de la
+ARL. La empresa puede radicar de forma **individual o masiva** (plantilla Excel +
+ZIP de soportes).
+
+> **Nota (2026-06-20):** el portal dejó de ser público/anónimo; el acceso requiere
+> autenticación con rol `EMPRESA`.
 
 La radicación NO implica aprobación, reconocimiento económico ni aceptación
 de responsabilidad por parte de la ARL.

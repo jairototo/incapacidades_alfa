@@ -683,6 +683,13 @@ ORDER BY dias_en_estado DESC;
 
 ## 9. Flujo Unificado Pre-Incapacidad → Incapacidad (desde 2026-06-09)
 
+> **Nota (2026-06-20):** este flujo (pre-incapacidad → job → incapacidad) es el
+> **flujo legado**, aún presente en el backend. El **Portal Externo** (empresa
+> autenticada, radicación individual y masiva) **no lo usa**: crea la
+> `Incapacidad` directamente mediante el `RadicacionPipelineService` compartido y
+> transiciona `RADICADA → EN_AUDITORIA` sin pasar por `PreIncapacidad`. Ver
+> [`../superpowers/PR-portal-externo-empresa-refactor.md`](../superpowers/PR-portal-externo-empresa-refactor.md).
+
 El job de Celery `promote_pre_incapacidad_task` crea directamente una `Incapacidad` completa
 desde la `PreIncapacidad` en un solo paso:
 
