@@ -802,16 +802,51 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
     ) -> List[Incapacidad]:
         """
         Obtiene incapacidades aprobadas pendientes de pago.
-        
+
         Args:
             db: Sesión de base de datos
             skip: Número de registros a saltar
             limit: Número máximo de registros
-            
+
         Returns:
             Lista de incapacidades en estado LIQUIDACION
         """
         return await self.get_by_estado(db, EstadoIncapacidad.LIQUIDACION, skip, limit)
+
+    async def get_pendientes_vencidos(
+        self,
+        db: AsyncSession,
+        dias: int = 8,
+    ) -> List[Incapacidad]:
+        """
+        Obtiene incapacidades en estado PENDIENTE cuya fecha de pendiente_desde
+        supera el umbral de días sin respuesta (alerta de vencimiento).
+
+        Solo se consideran registros con pendiente_desde IS NOT NULL.
+
+        Args:
+            db: Sesión de base de datos
+            dias: Número de días sin respuesta antes de generar alerta (default 8)
+
+        Returns:
+            Lista de incapacidades PENDIENTE con más de `dias` días en ese estado
+        """
+        cutoff = datetime.utcnow() - timedelta(days=dias)
+        query = (
+            select(Incapacidad)
+            .options(
+                selectinload(Incapacidad.empleado),
+                selectinload(Incapacidad.empresa),
+            )
+            .where(
+                Incapacidad.estado == EstadoIncapacidad.PENDIENTE,
+                Incapacidad.pendiente_desde.isnot(None),
+                Incapacidad.pendiente_desde <= cutoff,
+            )
+            .order_by(Incapacidad.pendiente_desde.asc())
+        )
+        result = await db.execute(query)
+        return list(result.scalars().all())
 
 
 # Singleton instance

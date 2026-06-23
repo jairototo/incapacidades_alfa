@@ -29,6 +29,22 @@ celery_app.conf.update(
 # Auto-discover tasks
 celery_app.autodiscover_tasks(["app.tasks"])
 
+# Celery Beat periodic schedule
+from celery.schedules import crontab  # noqa: E402
+
+celery_app.conf.beat_schedule = {
+    # Procesar incapacidades RADICADAS que no hayan pasado a auditoría
+    "procesar-radicadas-pendientes": {
+        "task": "procesar_incapacidades_radicadas_pendientes",
+        "schedule": crontab(minute=0, hour="*/1"),  # cada hora
+    },
+    # Alerta diaria: incapacidades en PENDIENTE > PENDIENTE_ALERT_DAYS días
+    "check-pendientes-alert": {
+        "task": "tasks.check_pendientes_alert",
+        "schedule": crontab(hour=8, minute=0),  # diario a las 8am Bogotá
+    },
+}
+
 # Import tasks (ensure they are registered)
 from app.tasks import (  # noqa
     report_tasks,

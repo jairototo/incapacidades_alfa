@@ -267,6 +267,53 @@ def radicar_incapacidad_automatica_task(self, incapacidad_id: str):
         db.close()
 
 
+@celery_app.task(name="tasks.check_pendientes_alert")
+def check_pendientes_alert() -> None:
+    """
+    Tarea diaria (beat). Registra en log las incapacidades atascadas en PENDIENTE
+    durante más de PENDIENTE_ALERT_DAYS días sin respuesta.
+
+    No realiza transiciones de estado; solo alerta. El auditor decide la acción.
+    """
+    import asyncio
+    from app.core.config import settings
+
+    asyncio.run(_check_pendientes_alert_async(settings.PENDIENTE_ALERT_DAYS))
+
+
+async def _check_pendientes_alert_async(dias: int) -> None:
+    """Lógica async de la alerta de PENDIENTE vencidos."""
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.orm import sessionmaker as sa_sessionmaker
+    from app.core.config import settings
+    from app.db.repositories.incapacidad_repository import incapacidad_repository
+
+    engine = create_async_engine(settings.DATABASE_URL, echo=False)
+    async_session_factory = sa_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+        autocommit=False,
+    )
+
+    async with async_session_factory() as db:
+        vencidas = await incapacidad_repository.get_pendientes_vencidos(db, dias)
+        count = len(vencidas)
+        if count == 0:
+            logger.info("[PENDIENTE-ALERT] No hay incapacidades vencidas en PENDIENTE.")
+        else:
+            logger.warning(
+                f"[PENDIENTE-ALERT] {count} incapacidad(es) llevan >{dias} días en PENDIENTE."
+            )
+            for inc in vencidas:
+                logger.warning(
+                    f"[PENDIENTE-ALERT] {inc.numero} lleva >{dias} días sin respuesta"
+                )
+
+    await engine.dispose()
+
+
 @celery_app.task(name="procesar_incapacidades_radicadas_pendientes")
 def procesar_incapacidades_radicadas_pendientes_task():
     """

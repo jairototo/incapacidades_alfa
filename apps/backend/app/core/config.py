@@ -104,6 +104,9 @@ class Settings(BaseSettings):
     SLA_LIQUIDACION_DIAS: int = 3
     SLA_PAGADA_DIAS: int = 10
 
+    # Alert thresholds
+    PENDIENTE_ALERT_DAYS: int = 8
+
 
 # Create settings instance
 settings = Settings()
