@@ -107,6 +107,22 @@ def downgrade() -> None:
                existing_comment='PENDIENTE | PROCESADA | RECHAZADA | ERROR | DEVUELTA',
                existing_nullable=False)
 
+    # Reverse data mapping — must run BEFORE dropping the new type.
+    # New values not present in the old 11-value enum are mapped to the closest old equivalent.
+    reverse_mapping = {
+        'PENDIENTE': 'OBSERVADA',
+        'LIQUIDACION': 'APROBADA',
+        'LIQUIDACION_PARCIAL': 'APROBADA_PARCIALMENTE',
+        'GLOSADA': 'RECHAZADA',
+        'PAGADA_PARCIAL': 'PAGADA_PARCIALMENTE',
+        'CREACION_SINIESTRO': 'EN_AUDITORIA',  # best available old state
+    }
+    for new, old in reverse_mapping.items():
+        op.execute(f"UPDATE incapacidad SET estado = '{old}' WHERE estado = '{new}'")
+    for new, old in reverse_mapping.items():
+        op.execute(f"UPDATE historial_estado SET estado_anterior = '{old}' WHERE estado_anterior = '{new}'")
+        op.execute(f"UPDATE historial_estado SET estado_nuevo = '{old}' WHERE estado_nuevo = '{new}'")
+
     # Drop new check constraint
     op.execute("ALTER TABLE incapacidad DROP CONSTRAINT IF EXISTS chk_incapacidad_estado")
 

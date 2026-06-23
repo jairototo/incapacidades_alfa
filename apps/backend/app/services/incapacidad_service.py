@@ -761,7 +761,7 @@ class IncapacidadService:
             usuario_id: ID del usuario
             
         Returns:
-            Incapacidad en estado EN_PAGO
+            Incapacidad en estado PAGADA
         """
         incapacidad = await self.get_incapacidad(db, incapacidad_id)
         

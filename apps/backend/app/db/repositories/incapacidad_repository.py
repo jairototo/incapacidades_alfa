@@ -481,6 +481,7 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
                     EstadoIncapacidad.LIQUIDACION_PARCIAL.value,
                     EstadoIncapacidad.GLOSADA.value,
                     EstadoIncapacidad.PENDIENTE.value,
+                    EstadoIncapacidad.CREACION_SINIESTRO.value,
                 ]),
                 func.date(HistorialEstado.created_at) == hoy
             )

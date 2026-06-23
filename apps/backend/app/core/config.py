@@ -100,9 +100,9 @@ class Settings(BaseSettings):
     # Business Rules
     SLA_RADICADA_DIAS: int = 1
     SLA_EN_AUDITORIA_DIAS: int = 5
-    SLA_OBSERVADA_DIAS: int = 10
-    SLA_APROBADA_DIAS: int = 3
-    SLA_EN_PAGO_DIAS: int = 10
+    SLA_PENDIENTE_DIAS: int = 10
+    SLA_LIQUIDACION_DIAS: int = 3
+    SLA_PAGADA_DIAS: int = 10
 
 
 # Create settings instance
