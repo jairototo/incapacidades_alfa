@@ -111,11 +111,14 @@ export function FiltersBar({ filters, onFiltersChange, empresas }: FiltersBarPro
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="TODOS">Todos</SelectItem>
-              <SelectItem value={EstadoIncapacidad.RADICADA}>RADICADA</SelectItem>
-              <SelectItem value={EstadoIncapacidad.EN_AUDITORIA}>EN_AUDITORIA</SelectItem>
-              <SelectItem value={EstadoIncapacidad.OBSERVADA}>OBSERVADA</SelectItem>
-              <SelectItem value={EstadoIncapacidad.APROBADA}>APROBADA</SelectItem>
-              <SelectItem value={EstadoIncapacidad.RECHAZADA}>RECHAZADA</SelectItem>
+              <SelectItem value={EstadoIncapacidad.RADICADA}>Radicada</SelectItem>
+              <SelectItem value={EstadoIncapacidad.EN_AUDITORIA}>En Auditoría</SelectItem>
+              <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+              <SelectItem value="LIQUIDACION">En Liquidación</SelectItem>
+              <SelectItem value="LIQUIDACION_PARCIAL">Liquidación Parcial</SelectItem>
+              <SelectItem value="GLOSADA">Glosada</SelectItem>
+              <SelectItem value={EstadoIncapacidad.PAGADA}>Pagada</SelectItem>
+              <SelectItem value="PAGADA_PARCIAL">Pagada Parcial</SelectItem>
             </SelectContent>
           </Select>
         </div>

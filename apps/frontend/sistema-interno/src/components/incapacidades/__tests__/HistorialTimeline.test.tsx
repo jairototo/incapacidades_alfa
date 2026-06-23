@@ -31,7 +31,7 @@ const mockHistorial = [
     entity_type: 'incapacidad',
     entity_id: 'inc-123',
     estado_anterior: EstadoIncapacidad.EN_AUDITORIA,
-    estado_nuevo: EstadoIncapacidad.OBSERVADA,
+    estado_nuevo: EstadoIncapacidad.PENDIENTE,
     cambiado_por: 'user-auditor', // Agregado
     cambiado_por_nombre: 'Auditor Pérez',
     observacion: 'Faltan documentos: historia clínica completa',
@@ -41,7 +41,7 @@ const mockHistorial = [
     id: 'hist-4',
     entity_type: 'incapacidad',
     entity_id: 'inc-123',
-    estado_anterior: EstadoIncapacidad.OBSERVADA,
+    estado_anterior: EstadoIncapacidad.PENDIENTE,
     estado_nuevo: EstadoIncapacidad.EN_AUDITORIA,
     cambiado_por: 'user-system', // Agregado
     cambiado_por_nombre: 'Sistema',
@@ -53,7 +53,7 @@ const mockHistorial = [
     entity_type: 'incapacidad',
     entity_id: 'inc-123',
     estado_anterior: EstadoIncapacidad.EN_AUDITORIA,
-    estado_nuevo: EstadoIncapacidad.APROBADA,
+    estado_nuevo: EstadoIncapacidad.LIQUIDACION,
     cambiado_por: 'user-auditor', // Agregado
     cambiado_por_nombre: 'Auditor Pérez',
     observacion: 'Aprobado: cumple todos los requisitos',
@@ -81,7 +81,7 @@ describe('HistorialTimeline', () => {
     render(<HistorialTimeline historial={mockHistorial} />);
 
     // Debe mostrar todos los estados (múltiples badges)
-    const estadoElements = screen.getAllByText(/RADICADA|EN_AUDITORIA|OBSERVADA|APROBADA/);
+    const estadoElements = screen.getAllByText(/RADICADA|EN_AUDITORIA|PENDIENTE|LIQUIDACION/);
     expect(estadoElements.length).toBeGreaterThan(0);
 
     // El badge "Más reciente" debe estar presente (solo en el primer item)

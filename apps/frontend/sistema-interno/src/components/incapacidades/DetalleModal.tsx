@@ -479,17 +479,18 @@ export function DetalleModal({ open, onClose, incapacidadId }: DetalleModalProps
  */
 function getEstadoIcon(estado: EstadoIncapacidad) {
   switch (estado) {
-    case EstadoIncapacidad.APROBADA:
+    case EstadoIncapacidad.LIQUIDACION:
     case EstadoIncapacidad.PAGADA:
+    case EstadoIncapacidad.PAGADA_PARCIAL:
       return <CheckCircle2 className="h-3 w-3 text-green-600" />;
-    case EstadoIncapacidad.RECHAZADA:
-    case EstadoIncapacidad.ANULADA:
+    case EstadoIncapacidad.GLOSADA:
       return <XCircle className="h-3 w-3 text-red-600" />;
-    case EstadoIncapacidad.OBSERVADA:
+    case EstadoIncapacidad.PENDIENTE:
       return <AlertCircle className="h-3 w-3 text-yellow-600" />;
     case EstadoIncapacidad.RADICADA:
     case EstadoIncapacidad.EN_AUDITORIA:
-    case EstadoIncapacidad.EN_PAGO:
+    case EstadoIncapacidad.CREACION_SINIESTRO:
+    case EstadoIncapacidad.LIQUIDACION_PARCIAL:
     default:
       return <Clock className="h-3 w-3 text-blue-600" />;
   }

@@ -69,16 +69,16 @@ export function HistorialTimeline({ historial }: HistorialTimelineProps) {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant={getEstadoBadgeVariant(item.estado_nuevo)}>
-                          {item.estado_nuevo}
+                          {STATE_LABELS[item.estado_nuevo] || item.estado_nuevo}
                         </Badge>
-                        
+
                         {index === 0 && (
                           <Badge variant="outline" className="text-xs">
                             Más reciente
                           </Badge>
                         )}
                       </div>
-                      
+
                       <p className="text-sm text-slate-500">
                         {formatDate(item.created_at)}
                       </p>
@@ -89,11 +89,11 @@ export function HistorialTimeline({ historial }: HistorialTimelineProps) {
                   {item.estado_anterior && (
                     <div className="flex items-center gap-2 text-sm">
                       <Badge variant="outline" className="text-xs">
-                        {item.estado_anterior}
+                        {STATE_LABELS[item.estado_anterior] || item.estado_anterior}
                       </Badge>
                       <span className="text-slate-400">→</span>
                       <Badge variant={getEstadoBadgeVariant(item.estado_nuevo)} className="text-xs">
-                        {item.estado_nuevo}
+                        {STATE_LABELS[item.estado_nuevo] || item.estado_nuevo}
                       </Badge>
                     </div>
                   )}
@@ -159,6 +159,19 @@ export function HistorialTimeline({ historial }: HistorialTimelineProps) {
   );
 }
 
+// State labels for display
+const STATE_LABELS: Record<string, string> = {
+  RADICADA: 'Radicada',
+  EN_AUDITORIA: 'En Auditoría',
+  PENDIENTE: 'Pendiente',
+  CREACION_SINIESTRO: 'Creación de Siniestro',
+  LIQUIDACION: 'En Liquidación',
+  LIQUIDACION_PARCIAL: 'En Liquidación Parcial',
+  GLOSADA: 'Glosada',
+  PAGADA: 'Pagada',
+  PAGADA_PARCIAL: 'Pagada Parcialmente',
+};
+
 // Helper functions
 function getEstadoIcon(estado: string) {
   switch (estado) {
@@ -166,15 +179,17 @@ function getEstadoIcon(estado: string) {
       return <FileText className="h-6 w-6 text-white" />;
     case 'EN_AUDITORIA':
       return <Clock className="h-6 w-6 text-white" />;
-    case 'OBSERVADA':
+    case 'PENDIENTE':
       return <AlertTriangle className="h-6 w-6 text-white" />;
-    case 'APROBADA':
-      return <CheckCircle className="h-6 w-6 text-white" />;
-    case 'RECHAZADA':
-      return <XCircle className="h-6 w-6 text-white" />;
-    case 'EN_PAGO':
+    case 'CREACION_SINIESTRO':
+      return <FileText className="h-6 w-6 text-white" />;
+    case 'LIQUIDACION':
+    case 'LIQUIDACION_PARCIAL':
       return <DollarSign className="h-6 w-6 text-white" />;
+    case 'GLOSADA':
+      return <XCircle className="h-6 w-6 text-white" />;
     case 'PAGADA':
+    case 'PAGADA_PARCIAL':
       return <CheckCircle className="h-6 w-6 text-white" />;
     default:
       return <Circle className="h-6 w-6 text-white" />;
@@ -184,19 +199,23 @@ function getEstadoIcon(estado: string) {
 function getEstadoBackground(estado: string): string {
   switch (estado) {
     case 'RADICADA':
-      return 'bg-slate-500';
-    case 'EN_AUDITORIA':
       return 'bg-blue-500';
-    case 'OBSERVADA':
+    case 'EN_AUDITORIA':
+      return 'bg-yellow-500';
+    case 'PENDIENTE':
       return 'bg-orange-500';
-    case 'APROBADA':
-      return 'bg-green-500';
-    case 'RECHAZADA':
-      return 'bg-red-500';
-    case 'EN_PAGO':
+    case 'CREACION_SINIESTRO':
+      return 'bg-cyan-500';
+    case 'LIQUIDACION':
       return 'bg-purple-500';
+    case 'LIQUIDACION_PARCIAL':
+      return 'bg-indigo-500';
+    case 'GLOSADA':
+      return 'bg-red-500';
     case 'PAGADA':
-      return 'bg-emerald-500';
+      return 'bg-green-500';
+    case 'PAGADA_PARCIAL':
+      return 'bg-teal-500';
     default:
       return 'bg-slate-400';
   }
@@ -208,14 +227,17 @@ function getEstadoBadgeVariant(estado: string): 'default' | 'secondary' | 'destr
       return 'secondary';
     case 'EN_AUDITORIA':
       return 'default';
-    case 'OBSERVADA':
+    case 'PENDIENTE':
       return 'outline';
-    case 'APROBADA':
+    case 'CREACION_SINIESTRO':
+      return 'secondary';
+    case 'LIQUIDACION':
+    case 'LIQUIDACION_PARCIAL':
       return 'default';
-    case 'RECHAZADA':
+    case 'GLOSADA':
       return 'destructive';
-    case 'EN_PAGO':
     case 'PAGADA':
+    case 'PAGADA_PARCIAL':
       return 'default';
     default:
       return 'secondary';

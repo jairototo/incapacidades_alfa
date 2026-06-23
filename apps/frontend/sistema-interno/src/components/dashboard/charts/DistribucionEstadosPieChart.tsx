@@ -7,14 +7,15 @@ interface DistribucionEstadosPieChartProps {
 }
 
 const ESTADO_COLORS: Record<string, string> = {
-  RADICADA: '#9333ea',
-  EN_AUDITORIA: '#f59e0b',
-  OBSERVADA: '#ef4444',
-  APROBADA: '#10b981',
-  RECHAZADA: '#dc2626',
-  EN_PAGO: '#3b82f6',
-  PAGADA: '#059669',
-  ANULADA: '#6b7280',
+  RADICADA: '#3b82f6',
+  EN_AUDITORIA: '#eab308',
+  PENDIENTE: '#f97316',
+  CREACION_SINIESTRO: '#06b6d4',
+  LIQUIDACION: '#a855f7',
+  LIQUIDACION_PARCIAL: '#6366f1',
+  GLOSADA: '#ef4444',
+  PAGADA: '#22c55e',
+  PAGADA_PARCIAL: '#14b8a6',
 };
 
 export function DistribucionEstadosPieChart({ data }: DistribucionEstadosPieChartProps) {

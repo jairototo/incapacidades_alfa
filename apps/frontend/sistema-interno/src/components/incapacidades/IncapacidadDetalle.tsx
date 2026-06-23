@@ -276,14 +276,17 @@ function getEstadoBadgeVariant(estado: string): 'default' | 'secondary' | 'destr
       return 'secondary';
     case 'EN_AUDITORIA':
       return 'default';
-    case 'OBSERVADA':
+    case 'PENDIENTE':
       return 'outline';
-    case 'APROBADA':
+    case 'CREACION_SINIESTRO':
+      return 'secondary';
+    case 'LIQUIDACION':
+    case 'LIQUIDACION_PARCIAL':
       return 'default';
-    case 'RECHAZADA':
+    case 'GLOSADA':
       return 'destructive';
-    case 'EN_PAGO':
     case 'PAGADA':
+    case 'PAGADA_PARCIAL':
       return 'default';
     default:
       return 'secondary';

@@ -149,7 +149,7 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
       const estadoMap: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive', label: string }> = {
         'RADICADA': { variant: 'default', label: 'Radicada' },
         'EN_AUDITORIA': { variant: 'secondary', label: 'En Auditoría' },
-        'OBSERVADA': { variant: 'outline', label: 'Observada' },
+        'PENDIENTE': { variant: 'outline', label: 'Pendiente' },
       };
       
       const config = estadoMap[row.original.estado] || { variant: 'outline', label: row.original.estado };
@@ -197,9 +197,9 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
 
 /**
  * Página de Incapacidades Pendientes
- * 
+ *
  * Features:
- * - Listado de incapacidades pendientes (RADICADA, EN_AUDITORIA, OBSERVADA)
+ * - Listado de incapacidades pendientes (RADICADA, EN_AUDITORIA, PENDIENTE)
  * - Filtros colapsables (tipo, prioridad, empresa, antigüedad)
  * - Tabla ordenada por prioridad y antigüedad
  * - Auto-refresh cada 2 minutos

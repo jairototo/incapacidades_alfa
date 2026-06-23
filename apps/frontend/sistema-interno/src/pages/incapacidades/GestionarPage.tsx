@@ -158,7 +158,7 @@ export function GestionarPage() {
   }
 
   // Determinar si se pueden aplicar acciones de gestión
-  const canManage = ['RADICADA', 'EN_AUDITORIA', 'OBSERVADA'].includes(incapacidad.estado);
+  const canManage = ['RADICADA', 'EN_AUDITORIA', 'PENDIENTE'].includes(incapacidad.estado);
 
   return (
     <div className="space-y-6">
@@ -312,7 +312,7 @@ export function GestionarPage() {
                       </p>
                       <p className="text-sm text-slate-500 mt-1">
                         Las acciones de auditoría solo están disponibles para incapacidades en estado{' '}
-                        <strong>RADICADA</strong>, <strong>EN_AUDITORIA</strong> u <strong>OBSERVADA</strong>.
+                        <strong>RADICADA</strong>, <strong>EN_AUDITORIA</strong> o <strong>PENDIENTE</strong>.
                       </p>
                       <p className="text-sm text-slate-600 mt-3">
                         Estado actual: <Badge variant={getEstadoBadgeVariant(incapacidad.estado)}>{incapacidad.estado}</Badge>
@@ -342,29 +342,27 @@ export function GestionarPage() {
   );
 }
 
-// Helper function para badge de estado (incluye estados de aprobación parcial)
+// Helper function para badge de estado
 function getEstadoBadgeVariant(estado: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (estado) {
     case 'RADICADA':
       return 'secondary';
     case 'EN_AUDITORIA':
       return 'default';
-    case 'OBSERVADA':
+    case 'PENDIENTE':
       return 'outline';
-    case 'APROBADA':
+    case 'CREACION_SINIESTRO':
+      return 'secondary';
+    case 'LIQUIDACION':
       return 'default';
-    case 'APROBADA_PARCIALMENTE':
-      return 'default'; // Color similar a APROBADA
-    case 'RECHAZADA':
+    case 'LIQUIDACION_PARCIAL':
+      return 'default';
+    case 'GLOSADA':
       return 'destructive';
-    case 'EN_PAGO':
-      return 'default';
-    case 'EN_PAGO_PARCIAL':
-      return 'default'; // Color similar a EN_PAGO
     case 'PAGADA':
       return 'default';
-    case 'PAGADA_PARCIALMENTE':
-      return 'default'; // Color similar a PAGADA
+    case 'PAGADA_PARCIAL':
+      return 'default';
     default:
       return 'secondary';
   }

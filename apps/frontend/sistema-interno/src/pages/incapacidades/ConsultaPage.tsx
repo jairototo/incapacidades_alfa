@@ -22,14 +22,15 @@ import { TipoIncapacidad } from '@/types/enums';
  */
 function getEstadoBadgeVariant(estado: string) {
   switch (estado) {
-    case 'APROBADA':
+    case 'LIQUIDACION':
     case 'PAGADA':
+    case 'PAGADA_PARCIAL':
       return 'default';
-    case 'RECHAZADA':
+    case 'GLOSADA':
       return 'destructive';
-    case 'OBSERVADA':
+    case 'PENDIENTE':
       return 'outline';
-    case 'EN_PAGO':
+    case 'LIQUIDACION_PARCIAL':
       return 'secondary';
     default:
       return 'secondary';

@@ -118,9 +118,9 @@ class DashboardService {
 
       // Auditadas hoy: cambio a estado final hoy
       if (
-        incapacidad.estado === 'APROBADA' ||
-        incapacidad.estado === 'RECHAZADA' ||
-        incapacidad.estado === 'OBSERVADA'
+        incapacidad.estado === 'LIQUIDACION' ||
+        incapacidad.estado === 'GLOSADA' ||
+        incapacidad.estado === 'PENDIENTE'
       ) {
         const fechaActualizacion = new Date(incapacidad.updated_at);
         fechaActualizacion.setHours(0, 0, 0, 0);
@@ -129,8 +129,8 @@ class DashboardService {
           stats.auditadas_hoy++;
         }
 
-        // Rechazadas/Observadas
-        if (incapacidad.estado === 'RECHAZADA' || incapacidad.estado === 'OBSERVADA') {
+        // Glosadas/Pendientes
+        if (incapacidad.estado === 'GLOSADA' || incapacidad.estado === 'PENDIENTE') {
           stats.rechazadas_observadas++;
         }
       }

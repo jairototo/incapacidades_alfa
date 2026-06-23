@@ -20,12 +20,12 @@ const mockIncapacidad = {
 describe('GestionActions', () => {
   const mockOnAction = vi.fn();
 
-  it('debe renderizar los 3 botones de acción (Aprobar, Observar, Rechazar)', () => {
+  it('debe renderizar los 3 botones de acción (Aprobar, Poner en Pendiente, Glosar)', () => {
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockOnAction} />);
 
     expect(screen.getByRole('button', { name: /Aprobar/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Observar/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Rechazar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Poner en Pendiente/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Glosar/i })).toBeInTheDocument();
   });
 
   it('debe seleccionar una acción al hacer click', async () => {
@@ -43,8 +43,8 @@ describe('GestionActions', () => {
     const user = userEvent.setup();
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockOnAction} />);
 
-    const observarBtn = screen.getByRole('button', { name: /Observar/i });
-    await user.click(observarBtn);
+    const pendienteBtn = screen.getByRole('button', { name: /Poner en Pendiente/i });
+    await user.click(pendienteBtn);
 
     // Debe aparecer el textarea
     await waitFor(() => {
@@ -55,21 +55,21 @@ describe('GestionActions', () => {
     expect(screen.getByRole('button', { name: /Confirmar/i })).toBeInTheDocument();
   });
 
-  it('debe validar que se requiere observación para RECHAZAR y OBSERVAR', async () => {
+  it('debe validar que se requiere observación para GLOSAR y PENDIENTE', async () => {
     const user = userEvent.setup();
     const mockCallback = vi.fn();
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockCallback} />);
 
-    // Seleccionar "Rechazar"
-    const rechazarBtn = screen.getByRole('button', { name: /Rechazar/i });
-    await user.click(rechazarBtn);
+    // Seleccionar "Glosar"
+    const glosarBtn = screen.getByRole('button', { name: /Glosar/i });
+    await user.click(glosarBtn);
 
     // El textarea debe aparecer
     const textarea = await screen.findByLabelText(/Observaciones/i);
     expect(textarea).toBeInTheDocument();
 
     // Debe mostrar texto indicando que es requerido
-    expect(screen.getByText(/Requerido: Justifique las razones del rechazo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Requerido: Justifique las razones de la glosa/i)).toBeInTheDocument();
   });
 
   it('debe llamar a onAction con el objeto correcto { nuevoEstado, observacion }', async () => {
@@ -77,9 +77,9 @@ describe('GestionActions', () => {
     const mockCallback = vi.fn();
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockCallback} />);
 
-    // Seleccionar "Observar"
-    const observarBtn = screen.getByRole('button', { name: /Observar/i });
-    await user.click(observarBtn);
+    // Seleccionar "Poner en Pendiente"
+    const pendienteBtn = screen.getByRole('button', { name: /Poner en Pendiente/i });
+    await user.click(pendienteBtn);
 
     // Escribir observación
     const textarea = await screen.findByLabelText(/Observaciones/i);
@@ -92,13 +92,13 @@ describe('GestionActions', () => {
     // Verificar llamada con objeto
     await waitFor(() => {
       expect(mockCallback).toHaveBeenCalledWith({
-        nuevoEstado: 'OBSERVADA',
+        nuevoEstado: 'PENDIENTE',
         observacion: 'Faltan documentos adicionales',
       });
     });
   });
 
-  it('debe permitir confirmar APROBADA sin observación', async () => {
+  it('debe permitir confirmar LIQUIDACION sin observación', async () => {
     const user = userEvent.setup();
     const mockCallback = vi.fn();
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockCallback} />);
@@ -115,7 +115,7 @@ describe('GestionActions', () => {
     await waitFor(() => {
       expect(mockCallback).toHaveBeenCalledWith(
         expect.objectContaining({
-          nuevoEstado: 'APROBADA',
+          nuevoEstado: 'LIQUIDACION',
         })
        );
     });
@@ -126,7 +126,7 @@ describe('GestionActions', () => {
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockOnAction} isLoading={true} />);
 
     const aprobarBtn = screen.getByRole('button', { name: /Aprobar/i });
-    
+
     // Todos los botones deben estar deshabilitados cuando isLoading es true
     expect(aprobarBtn).toBeDisabled();
   });

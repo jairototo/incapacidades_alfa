@@ -265,7 +265,7 @@ describe('GestionarPage', () => {
     vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
     vi.mocked(incapacidadService.cambiarEstado).mockResolvedValue({
       ...mockIncapacidad,
-      estado: EstadoIncapacidad.APROBADA,
+      estado: EstadoIncapacidad.LIQUIDACION,
     });
 
     render(<GestionarPage />, { wrapper: createWrapper() });

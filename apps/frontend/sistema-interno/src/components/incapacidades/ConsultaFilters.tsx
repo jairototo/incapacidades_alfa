@@ -131,11 +131,13 @@ export function ConsultaFilters({ onSearch, isLoading }: ConsultaFiltersProps) {
                       <SelectItem value="ALL">Todos</SelectItem>
                       <SelectItem value="RADICADA">Radicada</SelectItem>
                       <SelectItem value="EN_AUDITORIA">En Auditoría</SelectItem>
-                      <SelectItem value="OBSERVADA">Observada</SelectItem>
-                      <SelectItem value="APROBADA">Aprobada</SelectItem>
-                      <SelectItem value="RECHAZADA">Rechazada</SelectItem>
-                      <SelectItem value="EN_PAGO">En Pago</SelectItem>
+                      <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+                      <SelectItem value="CREACION_SINIESTRO">Creación de Siniestro</SelectItem>
+                      <SelectItem value="LIQUIDACION">En Liquidación</SelectItem>
+                      <SelectItem value="LIQUIDACION_PARCIAL">Liquidación Parcial</SelectItem>
+                      <SelectItem value="GLOSADA">Glosada</SelectItem>
                       <SelectItem value="PAGADA">Pagada</SelectItem>
+                      <SelectItem value="PAGADA_PARCIAL">Pagada Parcial</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

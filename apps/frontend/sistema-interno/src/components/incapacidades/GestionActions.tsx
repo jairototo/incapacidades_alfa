@@ -40,16 +40,16 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
 
   const onSubmit = (data: GestionFormData) => {
     if (!selectedAction) return;
-    
+
     // Validar que haya observación si es requerida
-    const needsObservation = selectedAction === 'RECHAZADA' || selectedAction === 'OBSERVADA';
+    const needsObservation = selectedAction === 'GLOSADA' || selectedAction === 'PENDIENTE';
     if (needsObservation && !data.observacion?.trim()) {
       return;
     }
-    
-    onAction({ 
-      nuevoEstado: selectedAction, 
-      observacion: data.observacion 
+
+    onAction({
+      nuevoEstado: selectedAction,
+      observacion: data.observacion,
     });
   };
 
@@ -58,7 +58,7 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
     reset();
   };
 
-  const needsObservation = selectedAction === 'RECHAZADA' || selectedAction === 'OBSERVADA';
+  const needsObservation = selectedAction === 'GLOSADA' || selectedAction === 'PENDIENTE';
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -73,59 +73,59 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
 
       {/* Botones de acción */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Aprobar */}
+        {/* Aprobar → LIQUIDACION */}
         <Button
           type="button"
-          variant={selectedAction === 'APROBADA' ? 'default' : 'outline'}
+          variant={selectedAction === 'LIQUIDACION' ? 'default' : 'outline'}
           className={`h-32 flex flex-col items-center justify-center space-y-3 transition-all ${
-            selectedAction === 'APROBADA' ? 'ring-2 ring-green-500 shadow-lg' : ''
+            selectedAction === 'LIQUIDACION' ? 'ring-2 ring-green-500 shadow-lg' : ''
           }`}
-          onClick={() => setSelectedAction('APROBADA')}
+          onClick={() => setSelectedAction('LIQUIDACION')}
           disabled={isLoading}
         >
           <CheckCircle className="h-10 w-10 text-green-600" />
           <div className="text-center">
             <p className="font-semibold">Aprobar</p>
             <p className="text-xs text-slate-500 mt-1">
-              Aprobar incapacidad para pago
+              Pasar a liquidación
             </p>
           </div>
         </Button>
 
-        {/* Observar */}
+        {/* Poner en Pendiente */}
         <Button
           type="button"
-          variant={selectedAction === 'OBSERVADA' ? 'default' : 'outline'}
+          variant={selectedAction === 'PENDIENTE' ? 'default' : 'outline'}
           className={`h-32 flex flex-col items-center justify-center space-y-3 transition-all ${
-            selectedAction === 'OBSERVADA' ? 'ring-2 ring-orange-500 shadow-lg' : ''
+            selectedAction === 'PENDIENTE' ? 'ring-2 ring-orange-500 shadow-lg' : ''
           }`}
-          onClick={() => setSelectedAction('OBSERVADA')}
+          onClick={() => setSelectedAction('PENDIENTE')}
           disabled={isLoading}
         >
           <AlertCircle className="h-10 w-10 text-orange-600" />
           <div className="text-center">
-            <p className="font-semibold">Observar</p>
+            <p className="font-semibold">Poner en Pendiente</p>
             <p className="text-xs text-slate-500 mt-1">
               Solicitar información adicional
             </p>
           </div>
         </Button>
 
-        {/* Rechazar */}
+        {/* Glosar → GLOSADA */}
         <Button
           type="button"
-          variant={selectedAction === 'RECHAZADA' ? 'destructive' : 'outline'}
+          variant={selectedAction === 'GLOSADA' ? 'destructive' : 'outline'}
           className={`h-32 flex flex-col items-center justify-center space-y-3 transition-all ${
-            selectedAction === 'RECHAZADA' ? 'ring-2 ring-red-500 shadow-lg' : ''
+            selectedAction === 'GLOSADA' ? 'ring-2 ring-red-500 shadow-lg' : ''
           }`}
-          onClick={() => setSelectedAction('RECHAZADA')}
+          onClick={() => setSelectedAction('GLOSADA')}
           disabled={isLoading}
         >
           <XCircle className="h-10 w-10 text-red-600" />
           <div className="text-center">
-            <p className="font-semibold">Rechazar</p>
+            <p className="font-semibold">Glosar</p>
             <p className="text-xs text-slate-500 mt-1">
-              Rechazar definitivamente
+              Marcar como glosada
             </p>
           </div>
         </Button>
@@ -139,9 +139,9 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
               Observaciones {needsObservation && <span className="text-red-500">*</span>}
             </Label>
             <p className="text-sm text-slate-500">
-              {selectedAction === 'APROBADA' && 'Opcional: Agregue comentarios adicionales sobre la aprobación'}
-              {selectedAction === 'OBSERVADA' && 'Requerido: Describa la información faltante o las correcciones necesarias'}
-              {selectedAction === 'RECHAZADA' && 'Requerido: Justifique las razones del rechazo'}
+              {selectedAction === 'LIQUIDACION' && 'Opcional: Agregue comentarios adicionales sobre la aprobación'}
+              {selectedAction === 'PENDIENTE' && 'Requerido: Describa la información faltante o las correcciones necesarias'}
+              {selectedAction === 'GLOSADA' && 'Requerido: Justifique las razones de la glosa'}
             </p>
             <Textarea
               id="observacion"
@@ -172,12 +172,12 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
             >
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isLoading}
               className={
-                selectedAction === 'APROBADA' ? 'bg-green-600 hover:bg-green-700' :
-                selectedAction === 'OBSERVADA' ? 'bg-orange-600 hover:bg-orange-700' :
+                selectedAction === 'LIQUIDACION' ? 'bg-green-600 hover:bg-green-700' :
+                selectedAction === 'PENDIENTE' ? 'bg-orange-600 hover:bg-orange-700' :
                 'bg-red-600 hover:bg-red-700'
               }
             >
@@ -192,9 +192,9 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
         <Alert className="bg-blue-50 border-blue-200">
           <AlertCircle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
-            {selectedAction === 'APROBADA' && 'La incapacidad quedará lista para generar orden de pago.'}
-            {selectedAction === 'OBSERVADA' && 'Se notificará al solicitante para que complete la información.'}
-            {selectedAction === 'RECHAZADA' && 'Esta acción es definitiva y no se podrá revertir.'}
+            {selectedAction === 'LIQUIDACION' && 'La incapacidad quedará lista para generar orden de pago.'}
+            {selectedAction === 'PENDIENTE' && 'Se notificará al solicitante para que complete la información.'}
+            {selectedAction === 'GLOSADA' && 'Esta acción marca la incapacidad como glosada.'}
           </AlertDescription>
         </Alert>
       )}

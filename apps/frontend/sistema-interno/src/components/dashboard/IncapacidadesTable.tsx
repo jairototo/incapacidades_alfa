@@ -105,21 +105,35 @@ export function IncapacidadesTable({
         accessorKey: 'estado',
         header: 'Estado',
         cell: ({ row }) => {
-          const estadoColors: Record<string, string> = {
+          const STATE_COLORS: Record<string, string> = {
             RADICADA: 'bg-blue-100 text-blue-800',
             EN_AUDITORIA: 'bg-yellow-100 text-yellow-800',
-            OBSERVADA: 'bg-orange-100 text-orange-800',
-            APROBADA: 'bg-green-100 text-green-800',
-            RECHAZADA: 'bg-red-100 text-red-800',
+            PENDIENTE: 'bg-orange-100 text-orange-800',
+            LIQUIDACION: 'bg-purple-100 text-purple-800',
+            LIQUIDACION_PARCIAL: 'bg-indigo-100 text-indigo-800',
+            GLOSADA: 'bg-red-100 text-red-800',
+            PAGADA: 'bg-green-100 text-green-800',
+            PAGADA_PARCIAL: 'bg-teal-100 text-teal-800',
+          };
+
+          const STATE_LABELS: Record<string, string> = {
+            RADICADA: 'Radicada',
+            EN_AUDITORIA: 'En Auditoría',
+            PENDIENTE: 'Pendiente',
+            LIQUIDACION: 'En Liquidación',
+            LIQUIDACION_PARCIAL: 'En Liquidación Parcial',
+            GLOSADA: 'Glosada',
+            PAGADA: 'Pagada',
+            PAGADA_PARCIAL: 'Pagada Parcialmente',
           };
 
           return (
             <div
               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                estadoColors[row.original.estado] || 'bg-gray-100 text-gray-800'
+                STATE_COLORS[row.original.estado] || 'bg-gray-100 text-gray-800'
               }`}
             >
-              {row.original.estado}
+              {STATE_LABELS[row.original.estado] || row.original.estado}
             </div>
           );
         },
