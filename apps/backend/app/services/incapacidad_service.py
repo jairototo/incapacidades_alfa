@@ -56,6 +56,7 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
         EstadoIncapacidad.GLOSADA,
     ],
     EstadoIncapacidad.CREACION_SINIESTRO: [
+        EstadoIncapacidad.EN_AUDITORIA,
         EstadoIncapacidad.LIQUIDACION,
         EstadoIncapacidad.GLOSADA,
     ],
@@ -650,6 +651,74 @@ class IncapacidadService:
             cambiado_por_id=usuario_id
         )
         
+        return incapacidad_actualizada
+
+    async def iniciar_creacion_siniestro(
+        self,
+        db: AsyncSession,
+        incapacidad_id: UUID,
+        numero_siniestro_externo: str,
+        usuario_id: UUID,
+        observacion: str,
+    ) -> "Incapacidad":
+        """
+        Inicia el proceso de creación/vinculación de siniestro externo.
+
+        Transición: EN_AUDITORIA → CREACION_SINIESTRO
+        Solo aplica a incapacidades de tipo ARL.
+        Guarda el numero_siniestro en el campo de la incapacidad y encola la tarea Celery.
+
+        Args:
+            db: Sesión de base de datos
+            incapacidad_id: ID de la incapacidad
+            numero_siniestro_externo: Número del siniestro en el sistema externo
+            usuario_id: ID del usuario ADMIN que ejecuta la acción
+            observacion: Observación obligatoria para el historial
+
+        Returns:
+            Incapacidad en estado CREACION_SINIESTRO
+
+        Raises:
+            BadRequestException: Si la incapacidad no es ARL o la observación está vacía
+            InvalidStateException: Si el estado actual no permite la transición
+        """
+        incapacidad = await self.get_incapacidad(db, incapacidad_id)
+
+        if incapacidad.tipo != TipoIncapacidad.ARL:
+            raise BadRequestException(
+                "CREACION_SINIESTRO solo aplica a incapacidades ARL"
+            )
+
+        if not observacion or not observacion.strip():
+            raise BadRequestException(
+                "La observación es obligatoria para iniciar la creación de siniestro"
+            )
+
+        await self._validate_state_transition(
+            incapacidad.estado,
+            EstadoIncapacidad.CREACION_SINIESTRO,
+        )
+
+        update_data = {
+            "estado": EstadoIncapacidad.CREACION_SINIESTRO,
+            "numero_siniestro": numero_siniestro_externo,
+        }
+
+        estado_anterior = incapacidad.estado
+        incapacidad_actualizada = await self.repository.update(
+            db, id=incapacidad_id, obj_in=update_data
+        )
+
+        await historial_estado_service.create_historial_entry(
+            db=db,
+            entity_type="incapacidad",
+            entity_id=incapacidad_id,
+            estado_anterior=estado_anterior.value,
+            estado_nuevo=EstadoIncapacidad.CREACION_SINIESTRO.value,
+            observacion=observacion,
+            cambiado_por_id=usuario_id,
+        )
+
         return incapacidad_actualizada
 
     async def retornar_a_auditoria(

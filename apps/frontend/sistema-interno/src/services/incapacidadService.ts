@@ -270,4 +270,21 @@ export const incapacidadService = {
     );
     return data;
   },
+
+  /**
+   * WORKFLOW: Iniciar vinculación de siniestro externo (solo ADMIN)
+   * POST /api/v1/incapacidades/{incapacidad_id}/creacion-siniestro
+   * Transición: EN_AUDITORIA → CREACION_SINIESTRO
+   * Encola tarea Celery que retorna a EN_AUDITORIA automáticamente
+   */
+  async iniciarCreacionSiniestro(
+    id: string,
+    payload: { numero_siniestro: string; observacion: string }
+  ): Promise<Incapacidad> {
+    const { data } = await api.post<Incapacidad>(
+      `/incapacidades/${id}/creacion-siniestro`,
+      payload
+    );
+    return data;
+  },
 };

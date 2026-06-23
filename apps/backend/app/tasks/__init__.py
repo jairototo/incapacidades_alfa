@@ -49,6 +49,7 @@ celery_app.conf.beat_schedule = {
 from app.tasks import (  # noqa
     report_tasks,
     incapacidad_tasks,
+    siniestro_tasks,
 )
 
 
