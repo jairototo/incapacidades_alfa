@@ -163,9 +163,8 @@ async def test_get_pendientes_vencidos_empty_when_no_old_records(db_session):
     from app.db.repositories.incapacidad_repository import incapacidad_repository
 
     result = await incapacidad_repository.get_pendientes_vencidos(db_session, dias=8)
-    # May contain records from other tests depending on isolation, but the core assertion
-    # is that the method returns a list (possibly empty).
-    assert isinstance(result, list)
+    # Verify that the result is actually an empty list when no old records exist.
+    assert result == []
 
 
 @pytest.mark.asyncio
@@ -178,11 +177,11 @@ async def test_get_pendientes_vencidos_exact_boundary(
     from app.models.incapacidad import Incapacidad
     from app.db.repositories.incapacidad_repository import incapacidad_repository
 
-    # Set pendiente_desde to exactly 8 days + 1 second ago to be just past the boundary
+    # Set pendiente_desde to exactly 8 days + 30 seconds ago to be just past the boundary
     inc = _make_inc(
         "INC-ALERT-BOUNDARY-001",
         EstadoIncapacidad.PENDIENTE,
-        pendiente_desde=datetime.utcnow() - timedelta(days=8, seconds=1),
+        pendiente_desde=datetime.utcnow() - timedelta(days=8, seconds=30),
     )
     inc.empleado_id = test_empleado.id
     inc.empresa_id = test_empresa.id
