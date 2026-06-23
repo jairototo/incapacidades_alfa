@@ -43,46 +43,31 @@ from app.core.storage_core import storage_backend
 ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
     EstadoIncapacidad.RADICADA: [
         EstadoIncapacidad.EN_AUDITORIA,
-        EstadoIncapacidad.CANCELADA
     ],
     EstadoIncapacidad.EN_AUDITORIA: [
-        EstadoIncapacidad.OBSERVADA,
-        EstadoIncapacidad.APROBADA,
-        EstadoIncapacidad.APROBADA_PARCIALMENTE,  # Nueva transición para aprobación parcial
-        EstadoIncapacidad.RECHAZADA,
-        EstadoIncapacidad.CANCELADA
+        EstadoIncapacidad.PENDIENTE,
+        EstadoIncapacidad.LIQUIDACION,
+        EstadoIncapacidad.LIQUIDACION_PARCIAL,
+        EstadoIncapacidad.GLOSADA,
+        EstadoIncapacidad.CREACION_SINIESTRO,
     ],
-    EstadoIncapacidad.OBSERVADA: [
+    EstadoIncapacidad.PENDIENTE: [
         EstadoIncapacidad.EN_AUDITORIA,
-        EstadoIncapacidad.RECHAZADA,
-        EstadoIncapacidad.CANCELADA
+        EstadoIncapacidad.GLOSADA,
     ],
-    EstadoIncapacidad.APROBADA: [
-        EstadoIncapacidad.EN_PAGO,
-        EstadoIncapacidad.CANCELADA
+    EstadoIncapacidad.CREACION_SINIESTRO: [
+        EstadoIncapacidad.LIQUIDACION,
+        EstadoIncapacidad.GLOSADA,
     ],
-    EstadoIncapacidad.APROBADA_PARCIALMENTE: [  # Nuevas transiciones para aprobación parcial
-        EstadoIncapacidad.EN_PAGO_PARCIAL,
-        EstadoIncapacidad.CANCELADA
-    ],
-    EstadoIncapacidad.RECHAZADA: [
-        EstadoIncapacidad.CANCELADA
-    ],
-    EstadoIncapacidad.EN_PAGO: [
+    EstadoIncapacidad.LIQUIDACION: [
         EstadoIncapacidad.PAGADA,
-        EstadoIncapacidad.CANCELADA
     ],
-    EstadoIncapacidad.EN_PAGO_PARCIAL: [  # Nuevas transiciones para pago parcial
-        EstadoIncapacidad.PAGADA_PARCIALMENTE,
-        EstadoIncapacidad.CANCELADA
+    EstadoIncapacidad.LIQUIDACION_PARCIAL: [
+        EstadoIncapacidad.PAGADA_PARCIAL,
     ],
-    EstadoIncapacidad.PAGADA: [
-        EstadoIncapacidad.CANCELADA
-    ],
-    EstadoIncapacidad.PAGADA_PARCIALMENTE: [  # Nuevas transiciones para pago parcial
-        EstadoIncapacidad.CANCELADA
-    ],
-    EstadoIncapacidad.CANCELADA: []
+    EstadoIncapacidad.GLOSADA: [],
+    EstadoIncapacidad.PAGADA: [],
+    EstadoIncapacidad.PAGADA_PARCIAL: [],
 }
 
 
@@ -341,7 +326,7 @@ class IncapacidadService:
         """
         Listar incapacidades pendientes de auditoría con cálculos.
         
-        Estados pendientes: RADICADA, EN_AUDITORIA, OBSERVADA
+        Estados pendientes: RADICADA, EN_AUDITORIA, PENDIENTE
         
         Args:
             db: Sesión de base de datos
@@ -359,7 +344,7 @@ class IncapacidadService:
         estados_pendientes = [
             EstadoIncapacidad.RADICADA,
             EstadoIncapacidad.EN_AUDITORIA,
-            EstadoIncapacidad.OBSERVADA
+            EstadoIncapacidad.PENDIENTE,
         ]
         
         # Usar repository para obtener incapacidades filtradas
@@ -431,7 +416,7 @@ class IncapacidadService:
         # Solo permitir actualizaciones en ciertos estados
         estados_editables = [
             EstadoIncapacidad.RADICADA,
-            EstadoIncapacidad.OBSERVADA
+            EstadoIncapacidad.PENDIENTE,
         ]
         
         if incapacidad.estado not in estados_editables:
@@ -592,28 +577,29 @@ class IncapacidadService:
             update_data['auditado_por_id'] = usuario_id
         
         if accion == "SOLICITAR_INFORMACION":
-            nuevo_estado = EstadoIncapacidad.OBSERVADA
+            nuevo_estado = EstadoIncapacidad.PENDIENTE
+        elif accion == "CREACION_SINIESTRO":
+            nuevo_estado = EstadoIncapacidad.CREACION_SINIESTRO
         elif accion == "APROBAR_PARA_PAGO":
-            nuevo_estado = EstadoIncapacidad.APROBADA
+            nuevo_estado = EstadoIncapacidad.LIQUIDACION
             update_data['fecha_aprobacion'] = datetime.utcnow()
             if usuario_id:
                 update_data['aprobado_por_id'] = usuario_id
         elif accion == "APROBAR_PARA_PAGO_PARCIAL":
-            # Nueva lógica para aprobación parcial
-            nuevo_estado = EstadoIncapacidad.APROBADA_PARCIALMENTE
+            nuevo_estado = EstadoIncapacidad.LIQUIDACION_PARCIAL
             update_data['fecha_aprobacion'] = datetime.utcnow()
             if usuario_id:
                 update_data['aprobado_por_id'] = usuario_id
-            
+
             # Guardar datos aprobados en tabla separada
             if datos_aprobados:
                 from app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
-                
+
                 # Verificar si ya existe registro
                 datos_existentes = await auditoria_datos_repository.get_by_incapacidad(
                     db, incapacidad_id
                 )
-                
+
                 datos_to_save = {
                     'incapacidad_id': incapacidad_id,
                     'fecha_inicio_aprobada': datos_aprobados.get('fecha_inicio_aprobada'),
@@ -625,17 +611,15 @@ class IncapacidadService:
                     'auditado_por_id': usuario_id,
                     'fecha_auditoria': datetime.utcnow()
                 }
-                
+
                 if datos_existentes:
-                    # Actualizar existente
                     await auditoria_datos_repository.update(
                         db, id=datos_existentes.id, obj_in=datos_to_save
                     )
                 else:
-                    # Crear nuevo
                     await auditoria_datos_repository.create(db, obj_in=datos_to_save)
         elif accion == "RECHAZAR":
-            nuevo_estado = EstadoIncapacidad.RECHAZADA
+            nuevo_estado = EstadoIncapacidad.GLOSADA
             update_data['fecha_rechazo'] = datetime.utcnow()
             update_data['motivo_rechazo'] = observaciones
         else:
@@ -682,28 +666,28 @@ class IncapacidadService:
         
         await self._validate_state_transition(
             incapacidad.estado,
-            EstadoIncapacidad.APROBADA
+            EstadoIncapacidad.LIQUIDACION
         )
-        
+
         update_data = {
-            'estado': EstadoIncapacidad.APROBADA,
+            'estado': EstadoIncapacidad.LIQUIDACION,
             'fecha_aprobacion': datetime.utcnow()
         }
-        
+
         if usuario_id:
             update_data['aprobado_por_id'] = usuario_id
-        
+
         # Actualizar incapacidad
         estado_anterior = incapacidad.estado
         incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-        
+
         # Registrar en historial
         await historial_estado_service.create_historial_entry(
             db=db,
             entity_type="incapacidad",
             entity_id=incapacidad_id,
             estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.APROBADA.value,
+            estado_nuevo=EstadoIncapacidad.LIQUIDACION.value,
             observacion="Incapacidad aprobada para pago",
             cambiado_por_id=usuario_id
         )
@@ -733,30 +717,30 @@ class IncapacidadService:
         
         await self._validate_state_transition(
             incapacidad.estado,
-            EstadoIncapacidad.RECHAZADA
+            EstadoIncapacidad.GLOSADA
         )
-        
+
         update_data = {
-            'estado': EstadoIncapacidad.RECHAZADA,
+            'estado': EstadoIncapacidad.GLOSADA,
             'motivo_rechazo': motivo,
             'fecha_rechazo': datetime.utcnow()
         }
-        
+
         if usuario_id:
             update_data['auditado_por_id'] = usuario_id
-        
+
         # Actualizar incapacidad
         estado_anterior = incapacidad.estado
         incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-        
+
         # Registrar en historial
         await historial_estado_service.create_historial_entry(
             db=db,
             entity_type="incapacidad",
             entity_id=incapacidad_id,
             estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.RECHAZADA.value,
-            observacion=f"Incapacidad rechazada: {motivo}",
+            estado_nuevo=EstadoIncapacidad.GLOSADA.value,
+            observacion=f"Incapacidad glosada: {motivo}",
             cambiado_por_id=usuario_id
         )
         
@@ -783,31 +767,31 @@ class IncapacidadService:
         
         await self._validate_state_transition(
             incapacidad.estado,
-            EstadoIncapacidad.EN_PAGO
+            EstadoIncapacidad.PAGADA
         )
-        
+
         # Validar que tenga valor calculado
         if not incapacidad.valor_total or incapacidad.valor_total <= 0:
             raise BadRequestException(
                 "La incapacidad debe tener un valor_total calculado antes de enviar a pago"
             )
-        
+
         update_data = {
-            'estado': EstadoIncapacidad.EN_PAGO
+            'estado': EstadoIncapacidad.PAGADA
         }
-        
+
         # Actualizar incapacidad
         estado_anterior = incapacidad.estado
         incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-        
+
         # Registrar en historial
         await historial_estado_service.create_historial_entry(
             db=db,
             entity_type="incapacidad",
             entity_id=incapacidad_id,
             estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.EN_PAGO.value,
-            observacion=f"Incapacidad enviada a pago por valor de ${incapacidad.valor_total}",
+            estado_nuevo=EstadoIncapacidad.PAGADA.value,
+            observacion=f"Incapacidad pagada por valor de ${incapacidad.valor_total}",
             cambiado_por_id=usuario_id
         )
         
@@ -895,14 +879,14 @@ class IncapacidadService:
         
         if incapacidad.fecha_aprobacion:
             historial.append({
-                'estado': EstadoIncapacidad.APROBADA.value,
+                'estado': EstadoIncapacidad.LIQUIDACION.value,
                 'fecha': incapacidad.fecha_aprobacion,
                 'usuario_id': incapacidad.aprobado_por_id
             })
-        
+
         if incapacidad.fecha_rechazo:
             historial.append({
-                'estado': EstadoIncapacidad.RECHAZADA.value,
+                'estado': EstadoIncapacidad.GLOSADA.value,
                 'fecha': incapacidad.fecha_rechazo,
                 'motivo': incapacidad.motivo_rechazo
             })
@@ -1250,17 +1234,17 @@ class IncapacidadService:
             {
                 "estado": h.estado_nuevo.value if hasattr(h.estado_nuevo, 'value') else str(h.estado_nuevo),
                 "fecha_cambio": h.created_at.isoformat(),
-                # Solo incluir observaciones si el estado es OBSERVADA
-                "observaciones": h.observacion if str(h.estado_nuevo) == "OBSERVADA" else None
+                # Solo incluir observaciones si el estado es PENDIENTE
+                "observaciones": h.observacion if str(h.estado_nuevo) == "PENDIENTE" else None
             }
             for h in historial_completo
         ]
-        
-        # Determinar observaciones públicas (solo si está OBSERVADA)
+
+        # Determinar observaciones públicas (solo si está PENDIENTE)
         observaciones_publicas = None
         estado_actual = incapacidad.estado.value if hasattr(incapacidad.estado, 'value') else str(incapacidad.estado)
-        if estado_actual == "OBSERVADA" and historial:
-            # Buscar la última observación del estado OBSERVADA
+        if estado_actual == "PENDIENTE" and historial:
+            # Buscar la última observación del estado PENDIENTE
             for h in reversed(historial):
                 if h.get("observaciones"):
                     observaciones_publicas = h["observaciones"]

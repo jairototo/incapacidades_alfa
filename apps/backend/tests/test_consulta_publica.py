@@ -225,7 +225,7 @@ class TestConsultaPublica:
             entity_type="incapacidad",
             entity_id=test_incapacidad.id,
             estado_anterior=EstadoIncapacidad.EN_AUDITORIA,
-            estado_nuevo=EstadoIncapacidad.OBSERVADA,
+            estado_nuevo=EstadoIncapacidad.PENDIENTE,
             observacion="Falta documentación",
             cambiado_por_id=test_usuario.id
         )
@@ -304,14 +304,14 @@ class TestConsultaPublica:
         tipos_docs = [doc["tipo_documento"] for doc in data["documentos"]]
         assert "SOPORTE_PAGO" not in tipos_docs
 
-    async def test_observaciones_solo_si_observada(
+    async def test_observaciones_solo_si_pendiente(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
         test_incapacidad,
         test_usuario
     ):
-        """Observaciones solo aparecen si está OBSERVADA."""
+        """Observaciones solo aparecen si está PENDIENTE."""
         # Caso 1: RADICADA - no debe tener observaciones
         response_radicada = await client.get(
             "/api/v1/incapacidades/consultar",
@@ -320,33 +320,33 @@ class TestConsultaPublica:
         assert response_radicada.status_code == 200
         data_radicada = response_radicada.json()
         assert data_radicada["observaciones_publicas"] is None
-        
-        # Cambiar a OBSERVADA
-        test_incapacidad.estado = EstadoIncapacidad.OBSERVADA
+
+        # Cambiar a PENDIENTE
+        test_incapacidad.estado = EstadoIncapacidad.PENDIENTE
         await db_session.commit()
-        
+
         # Crear historial con observaciones
         historial_obs = HistorialEstado(
             entity_type="incapacidad",
             entity_id=test_incapacidad.id,
             estado_anterior=EstadoIncapacidad.RADICADA,
-            estado_nuevo=EstadoIncapacidad.OBSERVADA,
+            estado_nuevo=EstadoIncapacidad.PENDIENTE,
             observacion="Falta adjuntar historia clínica completa",
             cambiado_por_id=test_usuario.id
         )
-        
+
         db_session.add(historial_obs)
         await db_session.commit()
-        
-        # Caso 2: OBSERVADA - debe tener observaciones
-        response_observada = await client.get(
+
+        # Caso 2: PENDIENTE - debe tener observaciones
+        response_pendiente = await client.get(
             "/api/v1/incapacidades/consultar",
             params={"numero": test_incapacidad.numero}
         )
-        assert response_observada.status_code == 200
-        data_observada = response_observada.json()
-        assert data_observada["observaciones_publicas"] is not None
-        assert "historia clínica" in data_observada["observaciones_publicas"].lower()
+        assert response_pendiente.status_code == 200
+        data_pendiente = response_pendiente.json()
+        assert data_pendiente["observaciones_publicas"] is not None
+        assert "historia clínica" in data_pendiente["observaciones_publicas"].lower()
 
     async def test_respuesta_incluye_diagnostico_basico(
         self,

@@ -336,7 +336,7 @@ async def descargar_documento_publico(
     "/pendientes",
     response_model=List[IncapacidadPendienteResponse],
     summary="Listar incapacidades pendientes de auditoría",
-    description="Obtiene incapacidades en estados RADICADA, EN_AUDITORIA, OBSERVADA ordenadas por prioridad y antigüedad",
+    description="Obtiene incapacidades en estados RADICADA, EN_AUDITORIA, PENDIENTE ordenadas por prioridad y antigüedad",
     tags=["incapacidades-auditoria"],
     dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_READ]))],
 )
@@ -353,7 +353,7 @@ async def listar_incapacidades_pendientes(
     """
     Listar incapacidades pendientes de auditoría.
     
-    Filtra automáticamente por estados: RADICADA, EN_AUDITORIA, OBSERVADA.
+    Filtra automáticamente por estados: RADICADA, EN_AUDITORIA, PENDIENTE.
     Ordena por prioridad (URGENTE → ALTA → NORMAL → BAJA) y luego por antigüedad.
     
     ## Filtros disponibles:
@@ -532,7 +532,7 @@ async def list_incapacidades(
     
     Filtros disponibles:
     - tipo: ARL o SALUD
-    - estado: RADICADA, EN_AUDITORIA, OBSERVADA, APROBADA, RECHAZADA, EN_PAGO, PAGADA, CANCELADA
+    - estado: RADICADA, EN_AUDITORIA, PENDIENTE, CREACION_SINIESTRO, LIQUIDACION, LIQUIDACION_PARCIAL, GLOSADA, PAGADA, PAGADA_PARCIAL
     - número: Número único de incapacidad
     - empleado_id/empleado_documento: Por empleado (UUID o documento)
     - afiliado_id/afiliado_documento: Por afiliado (UUID o documento)
@@ -656,9 +656,9 @@ async def get_stats(
     
     Métricas calculadas:
     - **Pendientes**: Incapacidades en RADICADA o EN_AUDITORIA
-    - **Auditadas Hoy**: Incapacidades que cambiaron a APROBADA/RECHAZADA/OBSERVADA hoy
+    - **Auditadas Hoy**: Incapacidades que cambiaron a LIQUIDACION/GLOSADA/PENDIENTE hoy
     - **Próximas a Vencer**: Incapacidades con más de 7 días sin cambio de estado
-    - **Rechazadas/Observadas**: Incapacidades en RECHAZADA u OBSERVADA
+    - **Glosadas/Pendientes**: Incapacidades en GLOSADA o PENDIENTE
     
     Filtros opcionales:
     - empresa_id: ID de la empresa
@@ -1192,7 +1192,7 @@ async def update_incapacidad(
     Actualiza los datos de una incapacidad.
     
     Restricciones:
-    - Solo se puede actualizar en estados: RADICADA, OBSERVADA
+    - Solo se puede actualizar en estados: RADICADA, PENDIENTE
     - Si se actualizan fechas, se recalculan días_totales
     - Actualiza el campo updated_at automáticamente
     
@@ -1241,10 +1241,11 @@ async def auditar_incapacidad(
     Audita una incapacidad con soporte para aprobación parcial.
     
     Acciones disponibles:
-    - SOLICITAR_INFORMACION: Pasa a OBSERVADA (requiere aclaración)
-    - APROBAR_PARA_PAGO: Pasa a APROBADA (100% de días aprobados)
-    - APROBAR_PARA_PAGO_PARCIAL: Pasa a APROBADA_PARCIALMENTE (días menores a solicitados)
-    - RECHAZAR: Pasa a RECHAZADA (no procede)
+    - SOLICITAR_INFORMACION: Pasa a PENDIENTE (requiere aclaración)
+    - CREACION_SINIESTRO: Pasa a CREACION_SINIESTRO (siniestro requerido)
+    - APROBAR_PARA_PAGO: Pasa a LIQUIDACION (100% de días aprobados)
+    - APROBAR_PARA_PAGO_PARCIAL: Pasa a LIQUIDACION_PARCIAL (días menores a solicitados)
+    - RECHAZAR: Pasa a GLOSADA (no procede)
     
     Para APROBAR_PARA_PAGO_PARCIAL se requieren campos adicionales:
     - fecha_inicio_aprobada
@@ -1295,8 +1296,8 @@ async def aprobar_incapacidad(
     """
     Aprueba una incapacidad para pago.
     
-    Transición: EN_AUDITORIA → APROBADA
-    
+    Transición: EN_AUDITORIA → LIQUIDACION
+
     Validaciones:
     - Debe estar en estado EN_AUDITORIA
     - Registra fecha de aprobación y aprobador
@@ -1320,8 +1321,8 @@ async def rechazar_incapacidad(
     """
     Rechaza una incapacidad.
     
-    Transición: EN_AUDITORIA u OBSERVADA → RECHAZADA
-    
+    Transición: EN_AUDITORIA o PENDIENTE → GLOSADA
+
     Validaciones:
     - Motivo es obligatorio (mínimo 10 caracteres)
     - Registra fecha de rechazo y motivo
@@ -1344,10 +1345,10 @@ async def enviar_a_pago(
     """
     Envía una incapacidad aprobada a pago.
     
-    Transición: APROBADA → EN_PAGO
-    
+    Transición: LIQUIDACION → PAGADA
+
     Validaciones:
-    - Debe estar en estado APROBADA
+    - Debe estar en estado LIQUIDACION
     - Debe tener valor_total calculado
     """
     incap = await incapacidad_service.enviar_a_pago(db, incapacidad_id, current_user.id)
@@ -1368,10 +1369,10 @@ async def marcar_como_pagada(
     """
     Marca una incapacidad como pagada.
     
-    Transición: EN_PAGO → PAGADA
-    
+    Transición: LIQUIDACION → PAGADA
+
     Validaciones:
-    - Debe estar en estado EN_PAGO
+    - Debe estar en estado LIQUIDACION
     - Estado final del workflow
     """
     incap = await incapacidad_service.marcar_como_pagada(db, incapacidad_id, current_user.id)

@@ -84,20 +84,20 @@ class OrdenPagoService:
         observaciones: Optional[str] = None
     ) -> OrdenPago:
         """
-        Crea una orden de pago desde una incapacidad APROBADA.
-        
+        Crea una orden de pago desde una incapacidad en LIQUIDACION.
+
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
             usuario_id: ID del usuario que crea la orden
             observaciones: Observaciones opcionales
-            
+
         Returns:
             OrdenPago creada
-            
+
         Raises:
             NotFoundException: Si la incapacidad no existe
-            BadRequestException: Si la incapacidad no está APROBADA
+            BadRequestException: Si la incapacidad no está en LIQUIDACION
             ConflictException: Si ya existe una orden activa para esta incapacidad
         """
         # 1. Verificar que la incapacidad existe
@@ -105,10 +105,10 @@ class OrdenPagoService:
         if not incapacidad:
             raise NotFoundException(f"Incapacidad {incapacidad_id} no encontrada")
         
-        # 2. Validar que esté en estado APROBADA
-        if incapacidad.estado != EstadoIncapacidad.APROBADA:
+        # 2. Validar que esté en estado LIQUIDACION
+        if incapacidad.estado != EstadoIncapacidad.LIQUIDACION:
             raise BadRequestException(
-                f"La incapacidad debe estar APROBADA. Estado actual: {incapacidad.estado}"
+                f"La incapacidad debe estar en LIQUIDACION. Estado actual: {incapacidad.estado}"
             )
         
         # 3. Verificar que no exista otra orden activa (no ANULADA ni RECHAZADA)
@@ -318,7 +318,7 @@ class OrdenPagoService:
         
         # 6. Actualizar estado de la incapacidad a PAGADA
         incapacidad = await self.incapacidad_repository.get_by_id(db, orden_pago.incapacidad_id)
-        if incapacidad and incapacidad.estado in [EstadoIncapacidad.APROBADA, EstadoIncapacidad.EN_PAGO]:
+        if incapacidad and incapacidad.estado in [EstadoIncapacidad.LIQUIDACION, EstadoIncapacidad.LIQUIDACION_PARCIAL]:
             from app.services.incapacidad_service import incapacidad_service
             await incapacidad_service.cambiar_estado(
                 db=db,

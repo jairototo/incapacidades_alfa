@@ -333,12 +333,12 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
             limit: Número máximo de registros
             
         Returns:
-            Lista de incapacidades en estado RADICADA o OBSERVADA
+            Lista de incapacidades en estado RADICADA o PENDIENTE
         """
         query = select(Incapacidad).where(
             or_(
                 Incapacidad.estado == EstadoIncapacidad.RADICADA,
-                Incapacidad.estado == EstadoIncapacidad.OBSERVADA
+                Incapacidad.estado == EstadoIncapacidad.PENDIENTE
             )
         ).order_by(
             Incapacidad.prioridad.desc(),
@@ -477,9 +477,10 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
             .where(
                 HistorialEstado.entity_type == "incapacidad",
                 HistorialEstado.estado_nuevo.in_([
-                    EstadoIncapacidad.APROBADA.value,
-                    EstadoIncapacidad.RECHAZADA.value,
-                    EstadoIncapacidad.OBSERVADA.value
+                    EstadoIncapacidad.LIQUIDACION.value,
+                    EstadoIncapacidad.LIQUIDACION_PARCIAL.value,
+                    EstadoIncapacidad.GLOSADA.value,
+                    EstadoIncapacidad.PENDIENTE.value,
                 ]),
                 func.date(HistorialEstado.created_at) == hoy
             )
@@ -520,7 +521,7 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
                 Incapacidad.estado.in_([
                     EstadoIncapacidad.RADICADA,
                     EstadoIncapacidad.EN_AUDITORIA,
-                    EstadoIncapacidad.OBSERVADA
+                    EstadoIncapacidad.PENDIENTE,
                 ]),
                 ultima_actualizacion_subquery.c.ultima_actualizacion <= siete_dias_atras,
                 *base_conditions
@@ -532,12 +533,12 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
         
         # Métrica 4: Rechazadas u Observadas
         rechazadas_query = select(func.count(Incapacidad.id)).where(
-            Incapacidad.estado.in_([EstadoIncapacidad.RECHAZADA, EstadoIncapacidad.OBSERVADA]),
+            Incapacidad.estado.in_([EstadoIncapacidad.GLOSADA, EstadoIncapacidad.PENDIENTE]),
             *base_conditions
         )
         result = await db.execute(rechazadas_query)
         rechazadas_observadas = result.scalar() or 0
-        
+
         return {
             "pendientes": pendientes,
             "auditadas_hoy": auditadas_hoy,
@@ -686,11 +687,11 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
         ]
         
         # 5. Distribución de Pendientes por Estado
-        # Solo estados activos: RADICADA, EN_AUDITORIA, OBSERVADA
+        # Solo estados activos: RADICADA, EN_AUDITORIA, PENDIENTE
         estados_pendientes = [
             EstadoIncapacidad.RADICADA,
             EstadoIncapacidad.EN_AUDITORIA,
-            EstadoIncapacidad.OBSERVADA
+            EstadoIncapacidad.PENDIENTE,
         ]
         
         distribucion_estados_query = (
@@ -751,14 +752,14 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
                     case((Incapacidad.estado == EstadoIncapacidad.RADICADA or Incapacidad.estado == EstadoIncapacidad.EN_AUDITORIA, 1))
                 ).label('radicadas'),
                 func.count(
-                    case((Incapacidad.estado == EstadoIncapacidad.APROBADA, 1))
+                    case((Incapacidad.estado == EstadoIncapacidad.LIQUIDACION, 1))
                 ).label('aprobadas'),
                 func.count(
-                    case((Incapacidad.estado == EstadoIncapacidad.RECHAZADA, 1))
+                    case((Incapacidad.estado == EstadoIncapacidad.GLOSADA, 1))
                 ).label('rechazadas'),
                 func.coalesce(
                     func.sum(
-                        case((Incapacidad.estado == EstadoIncapacidad.APROBADA, Incapacidad.valor_total))
+                        case((Incapacidad.estado == EstadoIncapacidad.LIQUIDACION, Incapacidad.valor_total))
                     ), 0
                 ).label('valor_total_aprobado')
             )
@@ -807,9 +808,9 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
             limit: Número máximo de registros
             
         Returns:
-            Lista de incapacidades en estado APROBADA
+            Lista de incapacidades en estado LIQUIDACION
         """
-        return await self.get_by_estado(db, EstadoIncapacidad.APROBADA, skip, limit)
+        return await self.get_by_estado(db, EstadoIncapacidad.LIQUIDACION, skip, limit)
 
 
 # Singleton instance

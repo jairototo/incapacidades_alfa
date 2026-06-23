@@ -196,9 +196,9 @@ class EmpleadoRepository(BaseRepository[Empleado]):
         # estados_activos = [
         #     EstadoIncapacidad.RADICADA,
         #     EstadoIncapacidad.EN_AUDITORIA,
-        #     EstadoIncapacidad.OBSERVADA,
-        #     EstadoIncapacidad.APROBADA,
-        #     EstadoIncapacidad.EN_PAGO
+        #     EstadoIncapacidad.PENDIENTE,
+        #     EstadoIncapacidad.LIQUIDACION,
+        #     EstadoIncapacidad.LIQUIDACION_PARCIAL,
         # ]
         # 
         # query = select(Incapacidad).where(

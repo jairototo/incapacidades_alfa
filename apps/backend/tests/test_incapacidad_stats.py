@@ -107,14 +107,14 @@ async def test_get_stats_rechazadas_observadas(
     test_empresa,
     test_empleado,
 ):
-    """Debe contar incapacidades en estado RECHAZADA u OBSERVADA."""
+    """Debe contar incapacidades en estado GLOSADA o PENDIENTE."""
     from app.models.incapacidad import Incapacidad
-    
-    # Crear incapacidad RECHAZADA
+
+    # Crear incapacidad GLOSADA
     incapacidad1 = Incapacidad(
         numero="ARL-20260129-0003",
         tipo=TipoIncapacidad.ARL,
-        estado=EstadoIncapacidad.RECHAZADA,
+        estado=EstadoIncapacidad.GLOSADA,
         empresa_id=test_empresa.id,
         empleado_id=test_empleado.id,
         fecha_inicio=date.today(),
@@ -124,12 +124,12 @@ async def test_get_stats_rechazadas_observadas(
         valor_dia=50000,
         valor_total=100000,
     )
-    
-    # Crear incapacidad OBSERVADA
+
+    # Crear incapacidad PENDIENTE
     incapacidad2 = Incapacidad(
         numero="ARL-20260129-0004",
         tipo=TipoIncapacidad.ARL,
-        estado=EstadoIncapacidad.OBSERVADA,
+        estado=EstadoIncapacidad.PENDIENTE,
         empresa_id=test_empresa.id,
         empleado_id=test_empleado.id,
         fecha_inicio=date.today(),
@@ -156,15 +156,15 @@ async def test_get_stats_auditadas_hoy(
     test_empleado,
     test_user_auditor,
 ):
-    """Debe contar incapacidades auditadas hoy (cambio a APROBADA/RECHAZADA/OBSERVADA)."""
+    """Debe contar incapacidades auditadas hoy (cambio a LIQUIDACION/GLOSADA/PENDIENTE)."""
     from app.models.incapacidad import Incapacidad
     from app.models.historial_estado import HistorialEstado
-    
+
     # Crear incapacidad
     incapacidad = Incapacidad(
         numero="ARL-20260129-0005",
         tipo=TipoIncapacidad.ARL,
-        estado=EstadoIncapacidad.APROBADA,
+        estado=EstadoIncapacidad.LIQUIDACION,
         empresa_id=test_empresa.id,
         empleado_id=test_empleado.id,
         fecha_inicio=date.today(),
@@ -177,14 +177,14 @@ async def test_get_stats_auditadas_hoy(
     db_session.add(incapacidad)
     await db_session.commit()
     await db_session.refresh(incapacidad)
-    
-    # Crear historial de cambio a APROBADA HOY
+
+    # Crear historial de cambio a LIQUIDACION HOY
     historial = HistorialEstado(
         entity_type="incapacidad",
         entity_id=incapacidad.id,
         estado_anterior=EstadoIncapacidad.EN_AUDITORIA,
-        estado_nuevo=EstadoIncapacidad.APROBADA,
-        observacion="Aprobada hoy",
+        estado_nuevo=EstadoIncapacidad.LIQUIDACION,
+        observacion="Liquidada hoy",
         cambiado_por_id=test_user_auditor.id,
         created_at=datetime.utcnow(),  # HOY
     )

@@ -246,7 +246,11 @@ class PromotePreIncapacidadService:
             overlap_query = select(Incapacidad).where(
                 Incapacidad.empleado_id == empleado_id,
                 Incapacidad.id != incapacidad_id,
-                Incapacidad.estado != EstadoIncapacidad.CANCELADA,
+                Incapacidad.estado.notin_([
+                    EstadoIncapacidad.GLOSADA,
+                    EstadoIncapacidad.PAGADA,
+                    EstadoIncapacidad.PAGADA_PARCIAL,
+                ]),
                 Incapacidad.fecha_inicio <= pre_inc.fecha_fin,
                 Incapacidad.fecha_fin >= pre_inc.fecha_inicio,
             )

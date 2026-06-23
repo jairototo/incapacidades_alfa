@@ -51,9 +51,8 @@ async def db_engine():
         await conn.execute(sa.text("""
             DO $b$ BEGIN
                 CREATE TYPE estadoincapacidad AS ENUM (
-                    'RADICADA', 'EN_AUDITORIA', 'OBSERVADA', 'APROBADA',
-                    'APROBADA_PARCIALMENTE', 'RECHAZADA', 'EN_PAGO',
-                    'EN_PAGO_PARCIAL', 'PAGADA', 'PAGADA_PARCIALMENTE', 'CANCELADA'
+                    'RADICADA', 'EN_AUDITORIA', 'PENDIENTE', 'CREACION_SINIESTRO',
+                    'LIQUIDACION', 'LIQUIDACION_PARCIAL', 'GLOSADA', 'PAGADA', 'PAGADA_PARCIAL'
                 );
             EXCEPTION WHEN duplicate_object THEN null;
             END $b$;

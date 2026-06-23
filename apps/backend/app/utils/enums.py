@@ -14,15 +14,13 @@ class EstadoIncapacidad(str, Enum):
     """Estado de la incapacidad en el workflow."""
     RADICADA = "RADICADA"
     EN_AUDITORIA = "EN_AUDITORIA"
-    OBSERVADA = "OBSERVADA"
-    APROBADA = "APROBADA"
-    APROBADA_PARCIALMENTE = "APROBADA_PARCIALMENTE"  # Estado para aprobación parcial
-    RECHAZADA = "RECHAZADA"
-    EN_PAGO = "EN_PAGO"
-    EN_PAGO_PARCIAL = "EN_PAGO_PARCIAL"  # Estado para pago parcial
+    PENDIENTE = "PENDIENTE"
+    CREACION_SINIESTRO = "CREACION_SINIESTRO"
+    LIQUIDACION = "LIQUIDACION"
+    LIQUIDACION_PARCIAL = "LIQUIDACION_PARCIAL"
+    GLOSADA = "GLOSADA"
     PAGADA = "PAGADA"
-    PAGADA_PARCIALMENTE = "PAGADA_PARCIALMENTE"  # Estado para pago parcial completado
-    CANCELADA = "CANCELADA"
+    PAGADA_PARCIAL = "PAGADA_PARCIAL"
 
 
 class Prioridad(str, Enum):
