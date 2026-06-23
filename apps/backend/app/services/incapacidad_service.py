@@ -9,7 +9,7 @@ from app.core.logging import logger
 from app.tasks.incapacidad_tasks import send_incapacidad_radicada_email_task
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, null as sa_null
 
 from app.core.exceptions import (
     NotFoundException,
@@ -566,18 +566,25 @@ class IncapacidadService:
                 f"Solo se pueden auditar incapacidades en estado EN_AUDITORIA. "
                 f"Estado actual: {incapacidad.estado}"
             )
-        
+
+        # Mandatory observation for ALL audit actions
+        if not observaciones or not observaciones.strip():
+            raise BadRequestException(
+                "La observación es obligatoria para todas las transiciones de auditoría"
+            )
+
         nuevo_estado = None
         update_data = {
             'observaciones': observaciones,
             'fecha_auditoria': datetime.utcnow()
         }
-        
+
         if usuario_id:
             update_data['auditado_por_id'] = usuario_id
-        
+
         if accion == "SOLICITAR_INFORMACION":
             nuevo_estado = EstadoIncapacidad.PENDIENTE
+            update_data['pendiente_desde'] = datetime.utcnow()
         elif accion == "CREACION_SINIESTRO":
             nuevo_estado = EstadoIncapacidad.CREACION_SINIESTRO
         elif accion == "APROBAR_PARA_PAGO":
@@ -643,6 +650,73 @@ class IncapacidadService:
             cambiado_por_id=usuario_id
         )
         
+        return incapacidad_actualizada
+
+    async def retornar_a_auditoria(
+        self,
+        db: AsyncSession,
+        incapacidad_id: UUID,
+        observaciones: str,
+        usuario_id: Optional[UUID] = None
+    ) -> Incapacidad:
+        """
+        Retorna una incapacidad desde PENDIENTE a EN_AUDITORIA.
+
+        Clears pendiente_desde and transitions back to EN_AUDITORIA.
+
+        Args:
+            db: Sesión de base de datos
+            incapacidad_id: ID de la incapacidad
+            observaciones: Observaciones del retorno (obligatorias)
+            usuario_id: ID del auditor
+
+        Returns:
+            Incapacidad en estado EN_AUDITORIA con pendiente_desde = None
+
+        Raises:
+            InvalidStateException: Si la incapacidad no está en PENDIENTE
+            BadRequestException: Si observaciones está vacío
+        """
+        incapacidad = await self.get_incapacidad(db, incapacidad_id)
+
+        if incapacidad.estado != EstadoIncapacidad.PENDIENTE:
+            raise InvalidStateException(
+                f"Solo se pueden retornar a auditoría incapacidades en estado PENDIENTE. "
+                f"Estado actual: {incapacidad.estado}"
+            )
+
+        if not observaciones or not observaciones.strip():
+            raise BadRequestException(
+                "La observación es obligatoria para retornar a auditoría"
+            )
+
+        await self._validate_state_transition(
+            incapacidad.estado,
+            EstadoIncapacidad.EN_AUDITORIA
+        )
+
+        update_data = {
+            'estado': EstadoIncapacidad.EN_AUDITORIA,
+            'observaciones': observaciones,
+            'pendiente_desde': sa_null(),  # Explicitly set to NULL (bypasses None-filter in base repo)
+        }
+
+        if usuario_id:
+            update_data['auditado_por_id'] = usuario_id
+
+        estado_anterior = incapacidad.estado
+        incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
+
+        await historial_estado_service.create_historial_entry(
+            db=db,
+            entity_type="incapacidad",
+            entity_id=incapacidad_id,
+            estado_anterior=estado_anterior.value,
+            estado_nuevo=EstadoIncapacidad.EN_AUDITORIA.value,
+            observacion=f"Retorno a auditoría: {observaciones}",
+            cambiado_por_id=usuario_id
+        )
+
         return incapacidad_actualizada
 
     async def aprobar_incapacidad(

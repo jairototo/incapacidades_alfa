@@ -120,6 +120,12 @@ class Incapacidad(BaseModel):
     fecha_aprobacion: Mapped[Optional[datetime]]
     fecha_rechazo: Mapped[Optional[datetime]]
     
+    # PENDIENTE tracking
+    pendiente_desde: Mapped[Optional[datetime]] = mapped_column(
+        nullable=True,
+        comment="Timestamp de cuando la incapacidad entró en estado PENDIENTE (para cálculo de alerta de 8 días)"
+    )
+
     # Prioridad
     prioridad: Mapped[Prioridad] = mapped_column(
         PGEnum(Prioridad, name='prioridad', create_type=False),
