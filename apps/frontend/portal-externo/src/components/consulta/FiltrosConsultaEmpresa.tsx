@@ -2,7 +2,7 @@ import type { FiltrosConsulta } from '@/services/consultaEmpresaService';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 
-const ESTADOS = ['', 'RADICADA', 'EN_AUDITORIA', 'OBSERVADA', 'APROBADA', 'RECHAZADA', 'EN_PAGO', 'PAGADA'];
+const ESTADOS = ['', 'RADICADA', 'EN_AUDITORIA', 'PENDIENTE', 'CREACION_SINIESTRO', 'LIQUIDACION', 'LIQUIDACION_PARCIAL', 'GLOSADA', 'PAGADA', 'PAGADA_PARCIAL'];
 
 interface Props { value: FiltrosConsulta; onChange: (f: FiltrosConsulta) => void; }
 

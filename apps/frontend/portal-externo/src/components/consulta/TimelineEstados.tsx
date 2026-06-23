@@ -13,15 +13,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import type { HistorialEstadoSimple, EstadoIncapacidad } from '@/types/consulta';
-import { formatearFechaHora } from '@/utils/formatters';
+import { formatearFechaHora, formatearEstado } from '@/utils/formatters';
 import {
-  CheckCircle2,
   Clock,
   AlertTriangle,
   XCircle,
   CreditCard,
   DollarSign,
-  Ban,
   FileText,
   Info,
 } from 'lucide-react';
@@ -45,12 +43,13 @@ interface TimelineEstadosProps {
 const ESTADO_COLORS: Record<EstadoIncapacidad, string> = {
   RADICADA: 'bg-blue-100 text-blue-800',
   EN_AUDITORIA: 'bg-yellow-100 text-yellow-800',
-  OBSERVADA: 'bg-orange-100 text-orange-800',
-  APROBADA: 'bg-green-100 text-green-800',
-  RECHAZADA: 'bg-red-100 text-red-800',
-  EN_PAGO: 'bg-indigo-100 text-indigo-800',
+  PENDIENTE: 'bg-orange-100 text-orange-800',
+  CREACION_SINIESTRO: 'bg-purple-100 text-purple-800',
+  LIQUIDACION: 'bg-indigo-100 text-indigo-800',
+  LIQUIDACION_PARCIAL: 'bg-indigo-100 text-indigo-800',
+  GLOSADA: 'bg-red-100 text-red-800',
   PAGADA: 'bg-emerald-100 text-emerald-800',
-  CANCELADA: 'bg-gray-100 text-gray-800',
+  PAGADA_PARCIAL: 'bg-emerald-100 text-emerald-800',
 };
 
 /**
@@ -59,12 +58,13 @@ const ESTADO_COLORS: Record<EstadoIncapacidad, string> = {
 const ESTADO_ICONS: Record<EstadoIncapacidad, React.ElementType> = {
   RADICADA: FileText,
   EN_AUDITORIA: Clock,
-  OBSERVADA: AlertTriangle,
-  APROBADA: CheckCircle2,
-  RECHAZADA: XCircle,
-  EN_PAGO: CreditCard,
+  PENDIENTE: AlertTriangle,
+  CREACION_SINIESTRO: FileText,
+  LIQUIDACION: CreditCard,
+  LIQUIDACION_PARCIAL: CreditCard,
+  GLOSADA: XCircle,
   PAGADA: DollarSign,
-  CANCELADA: Ban,
+  PAGADA_PARCIAL: DollarSign,
 };
 
 /**
@@ -73,12 +73,13 @@ const ESTADO_ICONS: Record<EstadoIncapacidad, React.ElementType> = {
 const ESTADO_DESCRIPTIONS: Record<EstadoIncapacidad, string> = {
   RADICADA: 'Incapacidad recibida y en cola para revisión',
   EN_AUDITORIA: 'En proceso de auditoría médica',
-  OBSERVADA: 'Requiere correcciones o información adicional',
-  APROBADA: 'Incapacidad aprobada, lista para procesamiento',
-  RECHAZADA: 'Incapacidad rechazada',
-  EN_PAGO: 'En proceso de generación de pago',
+  PENDIENTE: 'Requiere correcciones o información adicional',
+  CREACION_SINIESTRO: 'En creación de siniestro (ARL)',
+  LIQUIDACION: 'En proceso de liquidación',
+  LIQUIDACION_PARCIAL: 'En liquidación parcial',
+  GLOSADA: 'Incapacidad glosada',
   PAGADA: 'Pago efectuado exitosamente',
-  CANCELADA: 'Incapacidad anulada',
+  PAGADA_PARCIAL: 'Pagada parcialmente',
 };
 
 // ========== SUB-COMPONENTES ==========
@@ -117,7 +118,7 @@ function TimelineItem({ estado, isLast }: TimelineItemProps) {
           {/* Header con badge y fecha */}
           <div className="flex items-center gap-3 flex-wrap">
             <Badge className={colorClass}>
-              {estado.estado.replace(/_/g, ' ')}
+              {formatearEstado(estado.estado)}
             </Badge>
             <span className="text-sm text-gray-500">
               {formatearFechaHora(estado.fecha_cambio)}
@@ -129,8 +130,8 @@ function TimelineItem({ estado, isLast }: TimelineItemProps) {
             {description}
           </p>
 
-          {/* Observaciones (solo para estado OBSERVADA) */}
-          {estado.estado === 'OBSERVADA' && estado.observaciones && (
+          {/* Observaciones (solo para estado PENDIENTE) */}
+          {estado.estado === 'PENDIENTE' && estado.observaciones && (
             <div className="mt-2 rounded-lg bg-orange-50 p-3 border border-orange-200">
               <p className="text-xs font-semibold text-orange-800 mb-1">
                 Observaciones del auditor:

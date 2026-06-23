@@ -125,7 +125,7 @@ describe('consultaService', () => {
       const mockResponse: ConsultaIncapacidadResponse = {
         numero: 'INC-SALUD-20260115-0042',
         tipo: 'SALUD',
-        estado: 'APROBADA',
+        estado: 'PAGADA',
         fecha_inicio: '2026-01-08',
         fecha_fin: '2026-01-14',
         dias_totales: 6,
@@ -149,7 +149,7 @@ describe('consultaService', () => {
             observaciones: null,
           },
           {
-            estado: 'APROBADA',
+            estado: 'LIQUIDACION',
             fecha_cambio: '2026-01-16T15:45:00Z',
             observaciones: 'Documentación completa',
           },

@@ -3,8 +3,13 @@ import type { IncapacidadListItem } from '@/services/consultaEmpresaService';
 const ESTADO_COLOR: Record<string, string> = {
   RADICADA: 'bg-[#0094B3]/10 text-[#0094B3]',
   EN_AUDITORIA: 'bg-[#FECB00]/15 text-[#8a6d00]',
-  APROBADA: 'bg-[#009B76]/10 text-[#009B76]',
-  RECHAZADA: 'bg-[#D92D20]/10 text-[#D92D20]',
+  PENDIENTE: 'bg-[#F97316]/10 text-[#D97706]',
+  CREACION_SINIESTRO: 'bg-[#9333EA]/10 text-[#7E22CE]',
+  LIQUIDACION: 'bg-[#6366F1]/10 text-[#4F46E5]',
+  LIQUIDACION_PARCIAL: 'bg-[#6366F1]/10 text-[#4F46E5]',
+  GLOSADA: 'bg-[#D92D20]/10 text-[#D92D20]',
+  PAGADA: 'bg-[#009B76]/10 text-[#009B76]',
+  PAGADA_PARCIAL: 'bg-[#009B76]/10 text-[#009B76]',
 };
 
 interface Props {

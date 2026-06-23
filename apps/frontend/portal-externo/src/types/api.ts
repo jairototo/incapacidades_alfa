@@ -11,12 +11,13 @@ export type TipoIncapacidad = typeof TipoIncapacidad[keyof typeof TipoIncapacida
 export const EstadoIncapacidad = {
   RADICADA: 'RADICADA',
   EN_AUDITORIA: 'EN_AUDITORIA',
-  OBSERVADA: 'OBSERVADA',
-  APROBADA: 'APROBADA',
-  RECHAZADA: 'RECHAZADA',
-  EN_PAGO: 'EN_PAGO',
+  PENDIENTE: 'PENDIENTE',
+  CREACION_SINIESTRO: 'CREACION_SINIESTRO',
+  LIQUIDACION: 'LIQUIDACION',
+  LIQUIDACION_PARCIAL: 'LIQUIDACION_PARCIAL',
+  GLOSADA: 'GLOSADA',
   PAGADA: 'PAGADA',
-  ANULADA: 'ANULADA',
+  PAGADA_PARCIAL: 'PAGADA_PARCIAL',
 } as const;
 export type EstadoIncapacidad = typeof EstadoIncapacidad[keyof typeof EstadoIncapacidad];
 

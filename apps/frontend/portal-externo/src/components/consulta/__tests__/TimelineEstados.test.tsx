@@ -1,13 +1,13 @@
 /**
  * Tests para el componente TimelineEstados.
- * 
+ *
  * Cobertura:
  * - Renderizado básico con historial
  * - Renderizado sin historial (vacío)
  * - Ordenamiento cronológico (más reciente primero)
  * - Iconos y badges por estado
  * - Formato de fechas
- * - Observaciones en estado OBSERVADA
+ * - Observaciones en estado PENDIENTE
  * - Descripciones de estados
  * - Líneas conectoras del timeline
  */
@@ -32,17 +32,17 @@ describe('TimelineEstados', () => {
       observaciones: null,
     },
     {
-      estado: 'OBSERVADA',
+      estado: 'PENDIENTE',
       fecha_cambio: '2026-01-17T14:45:00Z',
       observaciones: 'Falta firma del médico tratante en la incapacidad',
     },
     {
-      estado: 'APROBADA',
+      estado: 'LIQUIDACION',
       fecha_cambio: '2026-01-18T11:20:00Z',
       observaciones: null,
     },
     {
-      estado: 'EN_PAGO',
+      estado: 'PAGADA',
       fecha_cambio: '2026-01-19T16:00:00Z',
       observaciones: null,
     },
@@ -116,26 +116,26 @@ describe('TimelineEstados', () => {
     it('debe mostrar todos los badges de estados del historial', () => {
       render(<TimelineEstados historial={historialCompleto} />);
 
-      expect(screen.getByText('RADICADA')).toBeInTheDocument();
-      expect(screen.getByText('EN AUDITORIA')).toBeInTheDocument();
-      expect(screen.getByText('OBSERVADA')).toBeInTheDocument();
-      expect(screen.getByText('APROBADA')).toBeInTheDocument();
-      expect(screen.getByText('EN PAGO')).toBeInTheDocument();
+      expect(screen.getByText('Radicada')).toBeInTheDocument();
+      expect(screen.getByText('En Auditoría')).toBeInTheDocument();
+      expect(screen.getByText('Pendiente de información')).toBeInTheDocument();
+      expect(screen.getByText('En Liquidación')).toBeInTheDocument();
+      expect(screen.getByText('Pagada')).toBeInTheDocument();
     });
 
     it('debe formatear correctamente los estados con guión bajo', () => {
       render(<TimelineEstados historial={historialCompleto} />);
 
-      // Los guiones bajos se reemplazan por espacios
-      expect(screen.getByText('EN AUDITORIA')).toBeInTheDocument();
-      expect(screen.getByText('EN PAGO')).toBeInTheDocument();
+      // Los estados se muestran con sus etiquetas formateadas
+      expect(screen.getByText('En Auditoría')).toBeInTheDocument();
+      expect(screen.getByText('En Liquidación')).toBeInTheDocument();
     });
 
     it('debe aplicar colores correctos a los badges', () => {
       render(<TimelineEstados historial={historialCompleto} />);
 
-      const badgeAprobada = screen.getByText('APROBADA');
-      expect(badgeAprobada).toHaveClass('bg-green-100', 'text-green-800');
+      const badgeLiquidacion = screen.getByText('En Liquidación');
+      expect(badgeLiquidacion).toHaveClass('bg-indigo-100', 'text-indigo-800');
     });
   });
 
@@ -171,22 +171,22 @@ describe('TimelineEstados', () => {
       expect(screen.getByText(/Incapacidad recibida y en cola para revisión/)).toBeInTheDocument();
       expect(screen.getByText(/En proceso de auditoría médica/)).toBeInTheDocument();
       expect(screen.getByText(/Requiere correcciones o información adicional/)).toBeInTheDocument();
-      expect(screen.getByText(/Incapacidad aprobada, lista para procesamiento/)).toBeInTheDocument();
-      expect(screen.getByText(/En proceso de generación de pago/)).toBeInTheDocument();
+      expect(screen.getByText(/En proceso de liquidación/)).toBeInTheDocument();
+      expect(screen.getByText(/Pago efectuado exitosamente/)).toBeInTheDocument();
     });
 
-    it('debe mostrar descripción correcta para estado RECHAZADA', () => {
-      const historialRechazada: HistorialEstadoSimple[] = [
+    it('debe mostrar descripción correcta para estado GLOSADA', () => {
+      const historialGlosada: HistorialEstadoSimple[] = [
         {
-          estado: 'RECHAZADA',
+          estado: 'GLOSADA',
           fecha_cambio: '2026-01-20T10:00:00Z',
           observaciones: null,
         },
       ];
 
-      render(<TimelineEstados historial={historialRechazada} />);
+      render(<TimelineEstados historial={historialGlosada} />);
 
-      expect(screen.getByText('Incapacidad rechazada')).toBeInTheDocument();
+      expect(screen.getByText('Incapacidad glosada')).toBeInTheDocument();
     });
 
     it('debe mostrar descripción correcta para estado PAGADA', () => {
@@ -203,23 +203,23 @@ describe('TimelineEstados', () => {
       expect(screen.getByText('Pago efectuado exitosamente')).toBeInTheDocument();
     });
 
-    it('debe mostrar descripción correcta para estado CANCELADA', () => {
-      const historialCancelada: HistorialEstadoSimple[] = [
+    it('debe mostrar descripción correcta para estado PAGADA_PARCIAL', () => {
+      const historialPagadaParcial: HistorialEstadoSimple[] = [
         {
-          estado: 'CANCELADA',
+          estado: 'PAGADA_PARCIAL',
           fecha_cambio: '2026-01-20T12:00:00Z',
           observaciones: null,
         },
       ];
 
-      render(<TimelineEstados historial={historialCancelada} />);
+      render(<TimelineEstados historial={historialPagadaParcial} />);
 
-      expect(screen.getByText('Incapacidad anulada')).toBeInTheDocument();
+      expect(screen.getByText('Pagada parcialmente')).toBeInTheDocument();
     });
   });
 
-  describe('Observaciones en estado OBSERVADA', () => {
-    it('debe mostrar observaciones cuando el estado es OBSERVADA', () => {
+  describe('Observaciones en estado PENDIENTE', () => {
+    it('debe mostrar observaciones cuando el estado es PENDIENTE', () => {
       render(<TimelineEstados historial={historialCompleto} />);
 
       expect(screen.getByText('Observaciones del auditor:')).toBeInTheDocument();
@@ -237,7 +237,7 @@ describe('TimelineEstados', () => {
     it('NO debe mostrar observaciones para otros estados', () => {
       const historialSinObservaciones: HistorialEstadoSimple[] = [
         {
-          estado: 'APROBADA',
+          estado: 'PAGADA',
           fecha_cambio: '2026-01-18T11:20:00Z',
           observaciones: null,
         },
@@ -248,16 +248,16 @@ describe('TimelineEstados', () => {
       expect(screen.queryByText('Observaciones del auditor:')).not.toBeInTheDocument();
     });
 
-    it('debe manejar estado OBSERVADA sin observaciones (null)', () => {
-      const historialObservadaSinTexto: HistorialEstadoSimple[] = [
+    it('debe manejar estado PENDIENTE sin observaciones (null)', () => {
+      const historialPendienteSinTexto: HistorialEstadoSimple[] = [
         {
-          estado: 'OBSERVADA',
+          estado: 'PENDIENTE',
           fecha_cambio: '2026-01-17T14:45:00Z',
           observaciones: null,
         },
       ];
 
-      render(<TimelineEstados historial={historialObservadaSinTexto} />);
+      render(<TimelineEstados historial={historialPendienteSinTexto} />);
 
       // No debe mostrar el cuadro de observaciones si es null
       expect(screen.queryByText('Observaciones del auditor:')).not.toBeInTheDocument();
@@ -268,15 +268,15 @@ describe('TimelineEstados', () => {
     it('debe ordenar el historial de más reciente a más antiguo', () => {
       render(<TimelineEstados historial={historialCompleto} />);
 
-      // El primer badge debe ser "EN PAGO" (el más reciente: 2026-01-19)
+      // El primer badge debe ser "Pagada" (el más reciente: 2026-01-19)
       const badges = screen.getAllByRole('status');
-      expect(badges[0]).toHaveTextContent('EN PAGO');
+      expect(badges[0]).toHaveTextContent('Pagada');
     });
 
     it('debe mantener el orden correcto incluso si se pasa desordenado', () => {
       const historialDesordenado: HistorialEstadoSimple[] = [
         {
-          estado: 'APROBADA',
+          estado: 'LIQUIDACION',
           fecha_cambio: '2026-01-18T11:20:00Z',
           observaciones: null,
         },
@@ -295,10 +295,10 @@ describe('TimelineEstados', () => {
       render(<TimelineEstados historial={historialDesordenado} />);
 
       const badges = screen.getAllByRole('status');
-      // Debe estar ordenado: APROBADA (más reciente) primero
-      expect(badges[0]).toHaveTextContent('APROBADA');
-      expect(badges[1]).toHaveTextContent('EN AUDITORIA');
-      expect(badges[2]).toHaveTextContent('RADICADA');
+      // Debe estar ordenado: LIQUIDACION (más reciente) primero
+      expect(badges[0]).toHaveTextContent('En Liquidación');
+      expect(badges[1]).toHaveTextContent('En Auditoría');
+      expect(badges[2]).toHaveTextContent('Radicada');
     });
   });
 
@@ -314,9 +314,9 @@ describe('TimelineEstados', () => {
     it('debe aplicar colores de fondo a los iconos circulares', () => {
       const { container } = render(<TimelineEstados historial={historialCompleto} />);
 
-      // Verificar que hay iconos con clases de color
-      const iconoVerde = container.querySelector('.bg-green-100');
-      expect(iconoVerde).toBeInTheDocument();
+      // Verificar que hay iconos con clases de color (historialCompleto tiene PAGADA que es emerald)
+      const iconoEmerald = container.querySelector('.bg-emerald-100');
+      expect(iconoEmerald).toBeInTheDocument();
     });
   });
 
@@ -366,17 +366,18 @@ describe('TimelineEstados', () => {
 
   describe('Estados completos (uno por uno)', () => {
     const estadosPrueba = [
-      { estado: 'RADICADA', colorClass: 'bg-blue-100 text-blue-800' },
-      { estado: 'EN_AUDITORIA', colorClass: 'bg-yellow-100 text-yellow-800' },
-      { estado: 'OBSERVADA', colorClass: 'bg-orange-100 text-orange-800' },
-      { estado: 'APROBADA', colorClass: 'bg-green-100 text-green-800' },
-      { estado: 'RECHAZADA', colorClass: 'bg-red-100 text-red-800' },
-      { estado: 'EN_PAGO', colorClass: 'bg-indigo-100 text-indigo-800' },
-      { estado: 'PAGADA', colorClass: 'bg-emerald-100 text-emerald-800' },
-      { estado: 'CANCELADA', colorClass: 'bg-gray-100 text-gray-800' },
+      { estado: 'RADICADA', colorClass: 'bg-blue-100 text-blue-800', label: 'Radicada' },
+      { estado: 'EN_AUDITORIA', colorClass: 'bg-yellow-100 text-yellow-800', label: 'En Auditoría' },
+      { estado: 'PENDIENTE', colorClass: 'bg-orange-100 text-orange-800', label: 'Pendiente de información' },
+      { estado: 'CREACION_SINIESTRO', colorClass: 'bg-purple-100 text-purple-800', label: 'En creación de siniestro' },
+      { estado: 'LIQUIDACION', colorClass: 'bg-indigo-100 text-indigo-800', label: 'En Liquidación' },
+      { estado: 'LIQUIDACION_PARCIAL', colorClass: 'bg-indigo-100 text-indigo-800', label: 'En Liquidación Parcial' },
+      { estado: 'GLOSADA', colorClass: 'bg-red-100 text-red-800', label: 'Glosada' },
+      { estado: 'PAGADA', colorClass: 'bg-emerald-100 text-emerald-800', label: 'Pagada' },
+      { estado: 'PAGADA_PARCIAL', colorClass: 'bg-emerald-100 text-emerald-800', label: 'Pagada Parcialmente' },
     ] as const;
 
-    estadosPrueba.forEach(({ estado, colorClass }) => {
+    estadosPrueba.forEach(({ estado, colorClass, label }) => {
       it(`debe renderizar correctamente estado ${estado}`, () => {
         const historial: HistorialEstadoSimple[] = [
           {
@@ -388,7 +389,7 @@ describe('TimelineEstados', () => {
 
         render(<TimelineEstados historial={historial} />);
 
-        const badge = screen.getByText(estado.replace(/_/g, ' '));
+        const badge = screen.getByText(label);
         expect(badge).toHaveClass(colorClass);
       });
     });

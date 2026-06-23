@@ -26,7 +26,7 @@ describe('DetalleIncapacidad', () => {
   const incapacidadSaludBase: ConsultaIncapacidadResponse = {
     numero: 'INC-SALUD-20260115-0042',
     tipo: 'SALUD',
-    estado: 'APROBADA',
+    estado: 'PAGADA',
     fecha_inicio: '2026-01-08',
     fecha_fin: '2026-01-14',
     dias_totales: 6,
@@ -78,29 +78,29 @@ describe('DetalleIncapacidad', () => {
     it('debe mostrar badge de estado EN_AUDITORIA formateado', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
 
-      const badgesEstado = screen.getAllByText('EN AUDITORIA');
+      const badgesEstado = screen.getAllByText('En Auditoría');
       expect(badgesEstado[0]).toBeInTheDocument();
       expect(badgesEstado[0]).toHaveClass('bg-yellow-100', 'text-yellow-800');
     });
 
-    it('debe mostrar badge de estado APROBADA con color verde', () => {
+    it('debe mostrar badge de estado PAGADA con color correcto', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadSaludBase} />);
 
-      const badgesEstado = screen.getAllByText('APROBADA');
+      const badgesEstado = screen.getAllByText('Pagada');
       expect(badgesEstado[0]).toBeInTheDocument();
-      expect(badgesEstado[0]).toHaveClass('bg-green-100', 'text-green-800');
+      expect(badgesEstado[0]).toHaveClass('bg-emerald-100', 'text-emerald-800');
     });
 
     it('debe formatear correctamente los estados con guión bajo', () => {
-      const incapacidadEnPago: ConsultaIncapacidadResponse = {
+      const incapacidadLiquidacion: ConsultaIncapacidadResponse = {
         ...incapacidadARLBase,
-        estado: 'EN_PAGO',
+        estado: 'LIQUIDACION',
       };
 
-      render(<DetalleIncapacidad incapacidad={incapacidadEnPago} />);
+      render(<DetalleIncapacidad incapacidad={incapacidadLiquidacion} />);
 
-      const badgesEnPago = screen.getAllByText('EN PAGO');
-      expect(badgesEnPago[0]).toBeInTheDocument();
+      const badgesLiquidacion = screen.getAllByText('En Liquidación');
+      expect(badgesLiquidacion[0]).toBeInTheDocument();
     });
   });
 
@@ -209,7 +209,7 @@ describe('DetalleIncapacidad', () => {
     it('debe mostrar estado actual formateado', () => {
       render(<DetalleIncapacidad incapacidad={incapacidadARLBase} />);
 
-      const estadosTexto = screen.getAllByText(/EN AUDITORIA/i);
+      const estadosTexto = screen.getAllByText(/En Auditoría/i);
       expect(estadosTexto.length).toBeGreaterThan(0);
     });
   });
@@ -271,18 +271,19 @@ describe('DetalleIncapacidad', () => {
   });
 
   describe('Diferentes estados de incapacidad', () => {
-    const estados: Array<{ estado: any; colorClass: string }> = [
-      { estado: 'RADICADA', colorClass: 'bg-blue-100' },
-      { estado: 'EN_AUDITORIA', colorClass: 'bg-yellow-100' },
-      { estado: 'OBSERVADA', colorClass: 'bg-orange-100' },
-      { estado: 'APROBADA', colorClass: 'bg-green-100' },
-      { estado: 'RECHAZADA', colorClass: 'bg-red-100' },
-      { estado: 'EN_PAGO', colorClass: 'bg-purple-100' },
-      { estado: 'PAGADA', colorClass: 'bg-emerald-100' },
-      { estado: 'CANCELADA', colorClass: 'bg-gray-100' },
+    const estados: Array<{ estado: any; colorClass: string; label: string }> = [
+      { estado: 'RADICADA', colorClass: 'bg-blue-100', label: 'Radicada' },
+      { estado: 'EN_AUDITORIA', colorClass: 'bg-yellow-100', label: 'En Auditoría' },
+      { estado: 'PENDIENTE', colorClass: 'bg-orange-100', label: 'Pendiente de información' },
+      { estado: 'CREACION_SINIESTRO', colorClass: 'bg-purple-100', label: 'En creación de siniestro' },
+      { estado: 'LIQUIDACION', colorClass: 'bg-indigo-100', label: 'En Liquidación' },
+      { estado: 'LIQUIDACION_PARCIAL', colorClass: 'bg-indigo-100', label: 'En Liquidación Parcial' },
+      { estado: 'GLOSADA', colorClass: 'bg-red-100', label: 'Glosada' },
+      { estado: 'PAGADA', colorClass: 'bg-emerald-100', label: 'Pagada' },
+      { estado: 'PAGADA_PARCIAL', colorClass: 'bg-emerald-100', label: 'Pagada Parcialmente' },
     ];
 
-    estados.forEach(({ estado, colorClass }) => {
+    estados.forEach(({ estado, colorClass, label }) => {
       it(`debe mostrar badge correcto para estado ${estado}`, () => {
         const incapacidad: ConsultaIncapacidadResponse = {
           ...incapacidadARLBase,
@@ -291,7 +292,7 @@ describe('DetalleIncapacidad', () => {
 
         render(<DetalleIncapacidad incapacidad={incapacidad} />);
 
-        const badges = screen.getAllByText(estado.replace(/_/g, ' '));
+        const badges = screen.getAllByText(label);
         expect(badges[0]).toHaveClass(colorClass);
       });
     });

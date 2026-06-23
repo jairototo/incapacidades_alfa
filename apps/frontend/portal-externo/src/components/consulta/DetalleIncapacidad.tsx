@@ -18,6 +18,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { ConsultaIncapacidadResponse, EstadoIncapacidad, TipoIncapacidad } from '@/types/consulta';
 import { FileText, User, Calendar, Stethoscope, ClipboardCheck, Info } from 'lucide-react';
+import { formatearEstado } from '@/utils/formatters';
 
 export interface DetalleIncapacidadProps {
   /**
@@ -37,12 +38,13 @@ export interface DetalleIncapacidadProps {
 const ESTADO_COLORS: Record<EstadoIncapacidad, string> = {
   RADICADA: 'bg-blue-100 text-blue-800 border-blue-200',
   EN_AUDITORIA: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  OBSERVADA: 'bg-orange-100 text-orange-800 border-orange-200',
-  APROBADA: 'bg-green-100 text-green-800 border-green-200',
-  RECHAZADA: 'bg-red-100 text-red-800 border-red-200',
-  EN_PAGO: 'bg-purple-100 text-purple-800 border-purple-200',
+  PENDIENTE: 'bg-orange-100 text-orange-800 border-orange-200',
+  CREACION_SINIESTRO: 'bg-purple-100 text-purple-800 border-purple-200',
+  LIQUIDACION: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  LIQUIDACION_PARCIAL: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  GLOSADA: 'bg-red-100 text-red-800 border-red-200',
   PAGADA: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  CANCELADA: 'bg-gray-100 text-gray-800 border-gray-200',
+  PAGADA_PARCIAL: 'bg-emerald-100 text-emerald-800 border-emerald-200',
 };
 
 /**
@@ -130,7 +132,7 @@ export function DetalleIncapacidad({ incapacidad, className = '' }: DetalleIncap
               {incapacidad.tipo}
             </Badge>
             <Badge className={ESTADO_COLORS[incapacidad.estado]}>
-              {incapacidad.estado.replace(/_/g, ' ')}
+              {formatearEstado(incapacidad.estado)}
             </Badge>
           </div>
         </div>
@@ -218,7 +220,7 @@ export function DetalleIncapacidad({ incapacidad, className = '' }: DetalleIncap
             />
             <CampoInfo
               label="Estado actual"
-              valor={incapacidad.estado.replace(/_/g, ' ')}
+              valor={formatearEstado(incapacidad.estado)}
             />
           </div>
         </section>

@@ -193,12 +193,13 @@ export const formatearEstado = (estado: string): string => {
   const mapaEstados: Record<string, string> = {
     RADICADA: 'Radicada',
     EN_AUDITORIA: 'En Auditoría',
-    OBSERVADA: 'Observada',
-    APROBADA: 'Aprobada',
-    RECHAZADA: 'Rechazada',
-    EN_PAGO: 'En Pago',
+    PENDIENTE: 'Pendiente de información',
+    CREACION_SINIESTRO: 'En creación de siniestro',
+    LIQUIDACION: 'En Liquidación',
+    LIQUIDACION_PARCIAL: 'En Liquidación Parcial',
+    GLOSADA: 'Glosada',
     PAGADA: 'Pagada',
-    CANCELADA: 'Cancelada',
+    PAGADA_PARCIAL: 'Pagada Parcialmente',
   };
 
   return mapaEstados[estado] || capitalizarTexto(estado);

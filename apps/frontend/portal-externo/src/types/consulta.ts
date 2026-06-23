@@ -19,12 +19,13 @@ export type TipoIncapacidad = 'ARL' | 'SALUD';
 export type EstadoIncapacidad =
   | 'RADICADA'
   | 'EN_AUDITORIA'
-  | 'OBSERVADA'
-  | 'APROBADA'
-  | 'RECHAZADA'
-  | 'EN_PAGO'
+  | 'PENDIENTE'
+  | 'CREACION_SINIESTRO'
+  | 'LIQUIDACION'
+  | 'LIQUIDACION_PARCIAL'
+  | 'GLOSADA'
   | 'PAGADA'
-  | 'CANCELADA';
+  | 'PAGADA_PARCIAL';
 
 /**
  * Tipos de documento de identidad.
@@ -54,7 +55,7 @@ export interface HistorialEstadoSimple {
   /** Fecha y hora del cambio (ISO string) */
   fecha_cambio: string;
   
-  /** Observaciones del auditor (solo visible si estado es OBSERVADA) */
+  /** Observaciones del auditor (solo visible si estado es PENDIENTE) */
   observaciones: string | null;
 }
 
@@ -123,7 +124,7 @@ export interface ConsultaIncapacidadResponse {
   /** Lista de documentos públicos descargables */
   documentos: DocumentoPublico[];
   
-  /** Observaciones públicas (solo si estado es OBSERVADA) */
+  /** Observaciones públicas (solo si estado es PENDIENTE) */
   observaciones_publicas: string | null;
   
   /** Fecha de creación del registro (ISO datetime) */
