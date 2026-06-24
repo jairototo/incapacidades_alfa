@@ -643,6 +643,18 @@ class IncapacidadService:
                     "Debe crear o vincular el siniestro antes de continuar."
                 )
 
+        # Gate: PRIMER_DIA_NO_PAGABLE — block full LIQUIDACION when fecha_inicio == fecha_siniestro
+        if accion == "APROBAR_PARA_PAGO":
+            if (
+                incapacidad.tipo == TipoIncapacidad.ARL
+                and incapacidad.siniestro
+                and incapacidad.fecha_inicio == incapacidad.siniestro.fecha_siniestro
+            ):
+                raise BadRequestException(
+                    "El primer día coincide con la fecha del siniestro: "
+                    "debe usar aprobación parcial (APROBAR_PARA_PAGO_PARCIAL)."
+                )
+
         await self._validate_state_transition(incapacidad.estado, nuevo_estado)
         update_data['estado'] = nuevo_estado
         

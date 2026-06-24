@@ -90,6 +90,19 @@ def validate_business_rules(row: dict) -> list[dict]:
             "siniestro_id"
         ))
         # TODO: route to designated auditor (Claudia) — pending queue routing feature
+    if (
+        row.get("tipo") == "ARL"
+        and row.get("siniestro_id")
+        and row.get("fecha_inicio")
+        and row.get("fecha_siniestro")
+        and row["fecha_inicio"] == row["fecha_siniestro"]
+    ):
+        issues.append(_issue(
+            "PRIMER_DIA_NO_PAGABLE", "BUSINESS_RULE", "ERROR",
+            "El primer día de incapacidad coincide con la fecha del siniestro: "
+            "ese día no es pagable. Solo se puede aprobar liquidación parcial.",
+            "fecha_inicio"
+        ))
     return issues
 
 
