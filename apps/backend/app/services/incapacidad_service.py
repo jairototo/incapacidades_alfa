@@ -60,9 +60,11 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
     ],
     EstadoIncapacidad.LIQUIDACION: [
         EstadoIncapacidad.PAGADA,
+        EstadoIncapacidad.EN_AUDITORIA,
     ],
     EstadoIncapacidad.LIQUIDACION_PARCIAL: [
         EstadoIncapacidad.PAGADA_PARCIAL,
+        EstadoIncapacidad.EN_AUDITORIA,
     ],
     EstadoIncapacidad.GLOSADA: [],
     EstadoIncapacidad.PAGADA: [],
