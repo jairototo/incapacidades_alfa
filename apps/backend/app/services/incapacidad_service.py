@@ -630,7 +630,19 @@ class IncapacidadService:
             update_data['motivo_rechazo'] = observaciones
         else:
             raise BadRequestException(f"Acción de auditoría inválida: {accion}")
-        
+
+        # Gate: block approval/rejection for ARL incapacidades without a linked siniestro
+        if nuevo_estado in (
+            EstadoIncapacidad.LIQUIDACION,
+            EstadoIncapacidad.LIQUIDACION_PARCIAL,
+            EstadoIncapacidad.GLOSADA,
+        ):
+            if incapacidad.tipo == TipoIncapacidad.ARL and not incapacidad.siniestro_id:
+                raise BadRequestException(
+                    "Esta incapacidad no tiene un siniestro asociado. "
+                    "Debe crear o vincular el siniestro antes de continuar."
+                )
+
         await self._validate_state_transition(incapacidad.estado, nuevo_estado)
         update_data['estado'] = nuevo_estado
         

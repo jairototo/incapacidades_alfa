@@ -26,6 +26,8 @@ REGLAS_ESPERADAS = [
     ("DIAS_TOTALES_MISMATCH", "BUSINESS_RULE"),
     ("RETROACTIVE_BEYOND_LIMIT", "BUSINESS_RULE"),
     ("DURATION_EXCEEDS_LIMIT", "BUSINESS_RULE"),
+    ("SINIESTRO_REQUERIDO", "BUSINESS_RULE"),
+    ("PRIMER_DIA_NO_PAGABLE", "BUSINESS_RULE"),  # added in Task 3.2
 ]
 
 
@@ -41,6 +43,8 @@ def _incapacidad_to_row(inc: Incapacidad) -> dict:
         "diagnostico_cie10": inc.diagnostico_cie10,
         "nombre_medico": inc.nombre_medico,
         "registro_medico": inc.registro_medico,
+        "siniestro_id": inc.siniestro_id,
+        "fecha_siniestro": inc.siniestro.fecha_accidente if inc.siniestro else None,
     }
 
 
@@ -53,10 +57,13 @@ async def auditar_incapacidad(db: AsyncSession, incapacidad_id: UUID) -> None:
         db: Sesión async de SQLAlchemy (el caller maneja el ciclo de vida de la sesión)
         incapacidad_id: ID de la incapacidad a auditar
     """
-    # Eager-load empleado para evitar MissingGreenlet en _incapacidad_to_row
+    # Eager-load empleado y siniestro para evitar MissingGreenlet en _incapacidad_to_row
     inc = (await db.execute(
         select(Incapacidad)
-        .options(selectinload(Incapacidad.empleado))
+        .options(
+            selectinload(Incapacidad.empleado),
+            selectinload(Incapacidad.siniestro),
+        )
         .where(Incapacidad.id == incapacidad_id)
     )).scalar_one_or_none()
 

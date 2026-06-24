@@ -82,6 +82,14 @@ def validate_business_rules(row: dict) -> list[dict]:
     if dias and dias > 180:
         issues.append(_issue("DURATION_EXCEEDS_LIMIT", "BUSINESS_RULE", "WARNING",
                              "Duración excede 180 días", "dias_totales"))
+    if row.get("tipo") == "ARL" and not row.get("siniestro_id"):
+        issues.append(_issue(
+            "SINIESTRO_REQUERIDO", "BUSINESS_RULE", "ERROR",
+            "Esta incapacidad ARL no tiene un siniestro asociado. "
+            "Debe crear o vincular el siniestro antes de aprobar o glosar.",
+            "siniestro_id"
+        ))
+        # TODO: route to designated auditor (Claudia) — pending queue routing feature
     return issues
 
 
