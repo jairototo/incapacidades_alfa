@@ -49,9 +49,10 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
                 selectinload(Incapacidad.empleado),
                 selectinload(Incapacidad.empresa),
                 selectinload(Incapacidad.afiliado),
+                selectinload(Incapacidad.siniestro),
             )
         )
-        
+
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
