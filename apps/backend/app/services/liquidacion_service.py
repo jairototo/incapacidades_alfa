@@ -22,7 +22,6 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestException, InvalidStateException, NotFoundException
-from app.db.repositories.ibl_parametros_repository import ibl_parametros_repository
 from app.db.repositories.liquidacion_repository import liquidacion_repository
 from app.db.repositories.incapacidad_repository import incapacidad_repository
 from app.models.incapacidad import Incapacidad
@@ -37,7 +36,7 @@ logger = logging.getLogger(__name__)
 # TODO(C1): Confirm all percentages with Helen before enabling formula
 # ---------------------------------------------------------------------------
 _PORCENTAJES_PLACEHOLDER: dict = {
-    "incapacidad_temporal_pct": None,        # e.g. 1.0 (100% IBC) — pending
+    "incapacidad_temporal_pct": None,        # e.g. 100.0 (100% IBC) — pending; stored as percent, divided by 100 in formula
     "aporte_patronal_pension_pct": None,     # pending
     "aporte_trabajador_pension_pct": None,   # pending
     "aporte_adicional_trabajador_pension_pct": None,  # pending
@@ -65,7 +64,7 @@ def _calcular_breakdown(ibl: Decimal, dias: int) -> dict:
 
     # When percentages are confirmed, uncomment:
     # d = Decimal(str(dias))
-    # valor_it = ibl * d * Decimal(str(_PORCENTAJES_PLACEHOLDER["incapacidad_temporal_pct"]))
+    # valor_it = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["incapacidad_temporal_pct"])) / 100)  # e.g. pct=100.0 → full IBL
     # aporte_patronal_pension = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_patronal_pension_pct"])) / 100)
     # aporte_trabajador_pension = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_trabajador_pension_pct"])) / 100)
     # aporte_adicional_trabajador_pension = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_adicional_trabajador_pension_pct"])) / 100)

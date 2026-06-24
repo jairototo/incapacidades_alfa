@@ -35,8 +35,13 @@ from app.services.liquidacion_service import liquidacion_service
 
 router = APIRouter()
 
-# Roles permitidos para liquidación: AUDITOR, APROBADOR y ADMIN
-_LIQUIDACION_PERMISSIONS = [Permissions.INCAPACIDAD_READ]
+# Permisos de sólo lectura: AUDITOR, APROBADOR, ADMIN y READONLY (ver_incapacidad)
+_LIQUIDACION_READ_PERMISSIONS = [Permissions.INCAPACIDAD_READ]
+
+# Permisos de mutación: AUDITOR, APROBADOR y ADMIN (aprobar_incapacidad).
+# READONLY no tiene este permiso, por lo que queda excluido de los endpoints
+# de escritura (guardar, devolver, completar).
+_LIQUIDACION_WRITE_PERMISSIONS = [Permissions.INCAPACIDAD_APPROVE]
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +53,7 @@ _LIQUIDACION_PERMISSIONS = [Permissions.INCAPACIDAD_READ]
     response_model=LiquidacionResponse,
     summary="Obtener liquidación de una incapacidad",
     tags=["liquidacion"],
-    dependencies=[Depends(PermissionChecker(_LIQUIDACION_PERMISSIONS))],
+    dependencies=[Depends(PermissionChecker(_LIQUIDACION_READ_PERMISSIONS))],
 )
 async def get_liquidacion(
     incapacidad_id: UUID,
@@ -77,7 +82,7 @@ async def get_liquidacion(
     status_code=status.HTTP_200_OK,
     summary="Guardar liquidación (crear o actualizar)",
     tags=["liquidacion"],
-    dependencies=[Depends(PermissionChecker(_LIQUIDACION_PERMISSIONS))],
+    dependencies=[Depends(PermissionChecker(_LIQUIDACION_WRITE_PERMISSIONS))],
 )
 async def guardar_liquidacion(
     incapacidad_id: UUID,
@@ -119,7 +124,7 @@ async def guardar_liquidacion(
     response_model=IblStubResponse,
     summary="[STUB] Calcular IBL desde Imaginex",
     tags=["liquidacion"],
-    dependencies=[Depends(PermissionChecker(_LIQUIDACION_PERMISSIONS))],
+    dependencies=[Depends(PermissionChecker(_LIQUIDACION_READ_PERMISSIONS))],
 )
 async def calcular_ibl(
     incapacidad_id: UUID,
@@ -148,7 +153,7 @@ async def calcular_ibl(
     response_model=BreakdownResponse,
     summary="Calcular desglose de liquidación (sin guardar)",
     tags=["liquidacion"],
-    dependencies=[Depends(PermissionChecker(_LIQUIDACION_PERMISSIONS))],
+    dependencies=[Depends(PermissionChecker(_LIQUIDACION_READ_PERMISSIONS))],
 )
 async def calcular_breakdown(
     incapacidad_id: UUID,
@@ -185,7 +190,7 @@ async def calcular_breakdown(
     response_model=IncapacidadInDB,
     summary="Devolver incapacidad a EN_AUDITORIA",
     tags=["liquidacion"],
-    dependencies=[Depends(PermissionChecker(_LIQUIDACION_PERMISSIONS))],
+    dependencies=[Depends(PermissionChecker(_LIQUIDACION_WRITE_PERMISSIONS))],
 )
 async def devolver_a_auditoria(
     incapacidad_id: UUID,
@@ -224,7 +229,7 @@ async def devolver_a_auditoria(
     response_model=IncapacidadInDB,
     summary="Completar liquidación (→ PAGADA / PAGADA_PARCIAL)",
     tags=["liquidacion"],
-    dependencies=[Depends(PermissionChecker(_LIQUIDACION_PERMISSIONS))],
+    dependencies=[Depends(PermissionChecker(_LIQUIDACION_WRITE_PERMISSIONS))],
 )
 async def completar_liquidacion(
     incapacidad_id: UUID,

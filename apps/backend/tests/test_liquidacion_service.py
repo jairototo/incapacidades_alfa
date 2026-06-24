@@ -107,6 +107,22 @@ async def test_devolucion_requiere_observacion(db_session):
         )
 
 
+@pytest.mark.asyncio
+async def test_devolucion_observacion_espacios_en_blanco(db_session):
+    """BadRequestException when observacion is whitespace only."""
+    from app.services.liquidacion_service import liquidacion_service
+
+    inc_id = await _make_incapacidad(db_session, "LIQUIDACION")
+
+    with pytest.raises(BadRequestException):
+        await liquidacion_service.devolver_a_auditoria(
+            db=db_session,
+            incapacidad_id=inc_id,
+            observacion="   ",
+            liquidador_id=uuid4(),
+        )
+
+
 # ---------------------------------------------------------------------------
 # 2. Devolution fails when incapacidad is not in LIQUIDACION / LIQUIDACION_PARCIAL
 # ---------------------------------------------------------------------------

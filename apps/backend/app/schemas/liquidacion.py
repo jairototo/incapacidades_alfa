@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.utils.enums import MetodoPagoLiquidacion
 
@@ -46,7 +46,7 @@ class LiquidacionGuardar(BaseModel):
 class LiquidacionDevolver(BaseModel):
     """Payload para devolver una incapacidad de LIQUIDACION a EN_AUDITORIA."""
 
-    observacion: str
+    observacion: str = Field(min_length=1)
 
 
 # ---------------------------------------------------------------------------
