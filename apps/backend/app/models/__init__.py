@@ -23,6 +23,7 @@ from app.models.validation_inconsistencia import ValidationInconsistencia
 from app.models.communication_log import CommunicationLog
 from app.models.auditoria_resultado import AuditoriaResultado
 from app.models.plantilla_auditoria import PlantillaAuditoria
+from app.models.ibl_parametros import IblParametros
 
 __all__ = [
     "Base",
@@ -47,4 +48,5 @@ __all__ = [
     "CommunicationLog",
     "AuditoriaResultado",
     "PlantillaAuditoria",
+    "IblParametros",
 ]
