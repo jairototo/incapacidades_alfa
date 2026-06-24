@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException
 from app.core.security import get_current_user
+from app.core.logging import logger
 from app.db.session import get_db
 from app.models.usuario import Usuario
 from app.schemas.incapacidad import IncapacidadInDB
@@ -83,6 +84,15 @@ async def iniciar_creacion_siniestro(
     )
 
     # Encolar tarea Celery (no bloqueante)
-    vincular_siniestro_externo_task.delay(str(incapacidad_id), body.numero_siniestro)
+    # Si el broker no está disponible, el estado ya está comprometido en CREACION_SINIESTRO.
+    # Registramos el error y retornamos éxito; la tarea de alerta diaria detectará
+    # incapacidades que permanezcan en CREACION_SINIESTRO sin procesar.
+    try:
+        vincular_siniestro_externo_task.delay(str(incapacidad_id), body.numero_siniestro)
+    except Exception as e:
+        logger.error(
+            f"[CREACION-SINIESTRO] No se pudo encolar tarea para incapacidad "
+            f"{incapacidad_id}: {e}. El estado queda en CREACION_SINIESTRO para reintento manual."
+        )
 
     return inc

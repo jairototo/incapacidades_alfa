@@ -57,8 +57,6 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
     ],
     EstadoIncapacidad.CREACION_SINIESTRO: [
         EstadoIncapacidad.EN_AUDITORIA,
-        EstadoIncapacidad.LIQUIDACION,
-        EstadoIncapacidad.GLOSADA,
     ],
     EstadoIncapacidad.LIQUIDACION: [
         EstadoIncapacidad.PAGADA,
