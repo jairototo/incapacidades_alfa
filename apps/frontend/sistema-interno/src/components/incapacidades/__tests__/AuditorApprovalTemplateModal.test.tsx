@@ -213,7 +213,7 @@ describe('AuditorApprovalTemplateModal', () => {
     });
   });
 
-  it('calls onConfirm with plantilla and observacion after successful submit', async () => {
+  it('calls onConfirm with plantilla and observacion only after clicking "Listo — cerrar"', async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
     renderModal({ onConfirm });
@@ -226,12 +226,20 @@ describe('AuditorApprovalTemplateModal', () => {
     const submitBtn = screen.getByRole('button', { name: /Generar plantilla/i });
     await user.click(submitBtn);
 
+    // onConfirm must NOT be called yet (while texto-copiable phase is shown)
     await waitFor(() => {
-      expect(onConfirm).toHaveBeenCalledWith(
-        expect.objectContaining({ canal_recepcion: 'Portal' }),
-        'Aprobado sin inconvenientes',
-      );
+      expect(screen.getByLabelText(/Texto copiable/i)).toBeInTheDocument();
     });
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    // Click "Listo — cerrar" → now onConfirm fires
+    const listoBtn = screen.getByRole('button', { name: /Listo.*cerrar/i });
+    await user.click(listoBtn);
+
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ canal_recepcion: 'Portal' }),
+      'Aprobado sin inconvenientes',
+    );
   });
 
   it('shows texto copiable textarea after successful submit', async () => {
@@ -277,7 +285,7 @@ describe('AuditorApprovalTemplateModal', () => {
     });
   });
 
-  it('calls onConfirm without observacion when not filled', async () => {
+  it('calls onConfirm without observacion when not filled, after clicking "Listo — cerrar"', async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
     renderModal({ onConfirm });
@@ -287,12 +295,19 @@ describe('AuditorApprovalTemplateModal', () => {
     const submitBtn = screen.getByRole('button', { name: /Generar plantilla/i });
     await user.click(submitBtn);
 
+    // Wait for texto-copiable phase to render
     await waitFor(() => {
-      expect(onConfirm).toHaveBeenCalledWith(
-        expect.objectContaining({ canal_recepcion: 'Portal' }),
-        '',
-      );
+      expect(screen.getByRole('button', { name: /Listo.*cerrar/i })).toBeInTheDocument();
     });
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    const listoBtn = screen.getByRole('button', { name: /Listo.*cerrar/i });
+    await user.click(listoBtn);
+
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ canal_recepcion: 'Portal' }),
+      '',
+    );
   });
 
   it('does not call createOrUpdate when form is invalid (missing canal)', async () => {

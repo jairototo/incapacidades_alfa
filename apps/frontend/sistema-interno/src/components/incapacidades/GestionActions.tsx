@@ -96,6 +96,7 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
   const handleTemplateCancel = () => {
     setPendingLiquidacion(null);
     setTemplateModalOpen(false);
+    setSelectedAction(null);  // Fix 4: also clear the action panel so it collapses
   };
 
   const needsObservation = selectedAction === 'GLOSADA' || selectedAction === 'PENDIENTE';
@@ -139,9 +140,30 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
             >
               <CheckCircle className="h-10 w-10 text-green-600" />
               <div className="text-center">
-                <p className="font-semibold">Aprobar</p>
+                <p className="font-semibold">Liquidar</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  Pasar a liquidación
+                  Pasar a liquidación completa
+                </p>
+              </div>
+            </Button>
+          )}
+
+          {/* Liquidar Parcial → LIQUIDACION_PARCIAL (solo AUDITOR/ADMIN) */}
+          {isAuditorOrAdmin && (
+            <Button
+              type="button"
+              variant={selectedAction === 'LIQUIDACION_PARCIAL' ? 'default' : 'outline'}
+              className={`h-32 flex flex-col items-center justify-center space-y-3 transition-all ${
+                selectedAction === 'LIQUIDACION_PARCIAL' ? 'ring-2 ring-teal-500 shadow-lg' : ''
+              }`}
+              onClick={() => setSelectedAction('LIQUIDACION_PARCIAL')}
+              disabled={isLoading}
+            >
+              <CheckCircle className="h-10 w-10 text-teal-600" />
+              <div className="text-center">
+                <p className="font-semibold">Liquidar Parcial</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Pasar a liquidación parcial
                 </p>
               </div>
             </Button>
@@ -240,11 +262,12 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
           </div>
         )}
 
-        {/* For LIQUIDACION, show a notice that the template modal will open */}
-        {selectedAction === 'LIQUIDACION' && (
+        {/* For LIQUIDACION / LIQUIDACION_PARCIAL, show a notice that the template modal will open */}
+        {(selectedAction === 'LIQUIDACION' || selectedAction === 'LIQUIDACION_PARCIAL') && (
           <div className="space-y-4 p-6 bg-slate-50 rounded-lg border-2 border-slate-200">
             <p className="text-sm text-slate-600">
-              Se abrirá el formulario de plantilla de auditoría para completar antes de confirmar la liquidación.
+              Se abrirá el formulario de plantilla de auditoría para completar antes de confirmar la{' '}
+              {selectedAction === 'LIQUIDACION' ? 'liquidación completa' : 'liquidación parcial'}.
             </p>
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
               <Button
@@ -267,7 +290,7 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
         )}
 
         {/* Información adicional */}
-        {selectedAction && selectedAction !== 'LIQUIDACION' && (
+        {selectedAction && selectedAction !== 'LIQUIDACION' && selectedAction !== 'LIQUIDACION_PARCIAL' && (
           <Alert className="bg-blue-50 border-blue-200">
             <AlertCircle className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-800">

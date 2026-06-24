@@ -96,6 +96,11 @@ export function AuditorApprovalTemplateModal({
   const [textoCopiable, setTextoCopiable] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Pending confirm data — held until the user clicks "Listo — cerrar" (Fix 3)
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    plantilla: PlantillaAuditoriaCreate;
+    observacion: string;
+  } | null>(null);
 
   // Computed linea_autorizacion preview (mirrors backend logic)
   const [lineaAutorizacion, setLineaAutorizacion] = useState('');
@@ -138,12 +143,15 @@ export function AuditorApprovalTemplateModal({
     }
   }, [watchedDias, watchedInicio, watchedFin]);
 
-  // Reset state when dialog closes
+  // Reset state when dialog closes.
+  // incapacidad fields are listed individually (not the whole object) to avoid
+  // identity-comparison false positives when the parent re-renders.
   useEffect(() => {
     if (!open) {
       setTextoCopiable(null);
       setIsCopied(false);
       setIsSubmitting(false);
+      setPendingConfirm(null);
       reset({
         canal_recepcion: '',
         dias_autorizados: incapacidad.dias_totales,
@@ -151,14 +159,24 @@ export function AuditorApprovalTemplateModal({
         fecha_fin_autorizada: incapacidad.fecha_fin,
         diagnostico_cie10: incapacidad.diagnostico_cie10 ?? '',
         descripcion_cie10: incapacidad.diagnostico_descripcion ?? '',
+        // nombre_medico and nombre_ips are not available on the Incapacidad
+        // payload — the backend does not return them. Auditors fill these manually.
         nombre_medico: '',
         especialidad_medico: '',
         nombre_ips: '',
         observacion: '',
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [
+    open,
+    incapacidad.id,
+    incapacidad.dias_totales,
+    incapacidad.fecha_inicio,
+    incapacidad.fecha_fin,
+    incapacidad.diagnostico_cie10,
+    incapacidad.diagnostico_descripcion,
+    reset,
+  ]);
 
   const onSubmit = async (formData: PlantillaFormData) => {
     setIsSubmitting(true);
@@ -182,8 +200,10 @@ export function AuditorApprovalTemplateModal({
       const texto = await plantillaAuditoriaService.getTextoCopiable(incapacidad.id);
       setTextoCopiable(texto);
 
-      // Notify parent so it can proceed with the state change
-      onConfirm(plantilla, formData.observacion ?? '');
+      // Store the confirm data — onConfirm is called only when the user
+      // explicitly clicks "Listo — cerrar" (Fix 3: avoid firing state transition
+      // while the user is still reading the texto-copiable phase).
+      setPendingConfirm({ plantilla, observacion: formData.observacion ?? '' });
     } catch (err: unknown) {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
@@ -211,6 +231,11 @@ export function AuditorApprovalTemplateModal({
   };
 
   const handleDone = () => {
+    // Fire the state transition only now — after the user has had a chance to
+    // copy the texto-copiable text (Fix 3).
+    if (pendingConfirm) {
+      onConfirm(pendingConfirm.plantilla, pendingConfirm.observacion);
+    }
     onOpenChange(false);
   };
 

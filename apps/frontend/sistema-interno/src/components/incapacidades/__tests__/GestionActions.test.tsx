@@ -75,10 +75,11 @@ describe('GestionActions', () => {
     vi.clearAllMocks();
   });
 
-  it('debe renderizar los 3 botones de acción (Aprobar, Poner en Pendiente, Glosar)', () => {
+  it('debe renderizar los 4 botones de acción (Liquidar, Liquidar Parcial, Poner en Pendiente, Glosar)', () => {
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockOnAction} />);
 
-    expect(screen.getByRole('button', { name: /Aprobar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Liquidar Pasar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Liquidar Parcial/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Poner en Pendiente/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Glosar/i })).toBeInTheDocument();
   });
@@ -87,7 +88,7 @@ describe('GestionActions', () => {
     const user = userEvent.setup();
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockOnAction} />);
 
-    const aprobarBtn = screen.getByRole('button', { name: /Aprobar/i });
+    const aprobarBtn = screen.getByRole('button', { name: /Liquidar Pasar/i });
     await user.click(aprobarBtn);
 
     // El botón debe cambiar de estilo (se verifica por la clase ring-2)
@@ -159,7 +160,7 @@ describe('GestionActions', () => {
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockCallback} />);
 
     // Seleccionar "Aprobar"
-    const aprobarBtn = screen.getByRole('button', { name: /Aprobar/i });
+    const aprobarBtn = screen.getByRole('button', { name: /Liquidar Pasar/i });
     await user.click(aprobarBtn);
 
     // Debe aparecer el botón "Continuar con plantilla"
@@ -178,7 +179,7 @@ describe('GestionActions', () => {
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockCallback} />);
 
     // Seleccionar "Aprobar"
-    const aprobarBtn = screen.getByRole('button', { name: /Aprobar/i });
+    const aprobarBtn = screen.getByRole('button', { name: /Liquidar Pasar/i });
     await user.click(aprobarBtn);
 
     // Continuar con plantilla
@@ -201,10 +202,35 @@ describe('GestionActions', () => {
   it('debe deshabilitar los botones mientras procesa', async () => {
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockOnAction} isLoading={true} />);
 
-    const aprobarBtn = screen.getByRole('button', { name: /Aprobar/i });
+    const aprobarBtn = screen.getByRole('button', { name: /Liquidar Pasar/i });
 
     // Todos los botones deben estar deshabilitados cuando isLoading es true
     expect(aprobarBtn).toBeDisabled();
+  });
+
+  it('debe abrir el modal de plantilla al seleccionar LIQUIDACION_PARCIAL y confirmar', async () => {
+    const user = userEvent.setup();
+    const mockCallback = vi.fn();
+    render(<GestionActions incapacidad={mockIncapacidad} onAction={mockCallback} />);
+
+    const parcialBtn = screen.getByRole('button', { name: /Liquidar Parcial/i });
+    await user.click(parcialBtn);
+
+    const continuarBtn = await screen.findByRole('button', { name: /Continuar con plantilla/i });
+    await user.click(continuarBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-template-modal')).toBeInTheDocument();
+    });
+
+    const confirmarPlantillaBtn = screen.getByRole('button', { name: /ConfirmarPlantilla/i });
+    await user.click(confirmarPlantillaBtn);
+
+    await waitFor(() => {
+      expect(mockCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ nuevoEstado: 'LIQUIDACION_PARCIAL' }),
+      );
+    });
   });
 
   it('no debe mostrar el botón Aprobar cuando el rol no es AUDITOR/ADMIN', async () => {
@@ -213,7 +239,8 @@ describe('GestionActions', () => {
 
     render(<GestionActions incapacidad={mockIncapacidad} onAction={mockOnAction} />);
 
-    expect(screen.queryByRole('button', { name: /Aprobar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Liquidar Pasar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Liquidar Parcial/i })).not.toBeInTheDocument();
     // Other buttons are still visible
     expect(screen.getByRole('button', { name: /Poner en Pendiente/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Glosar/i })).toBeInTheDocument();
