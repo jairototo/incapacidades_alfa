@@ -21,6 +21,7 @@ from app.models.usuario import Usuario
 from app.schemas.plantilla_auditoria import (
     PlantillaAuditoriaCreate,
     PlantillaAuditoriaResponse,
+    PlantillaAuditoriaTextoResponse,
 )
 from app.services.plantilla_auditoria_service import plantilla_auditoria_service
 from app.utils.enums import RolUsuario
@@ -96,7 +97,7 @@ async def get_plantilla(
 
 @router.get(
     "/{incapacidad_id}/plantilla-auditoria/texto-copiable",
-    response_model=dict,
+    response_model=PlantillaAuditoriaTextoResponse,
     status_code=status.HTTP_200_OK,
     summary="Obtener texto copiable de la plantilla",
     description=(
@@ -109,7 +110,7 @@ async def get_texto_copiable(
     incapacidad_id: UUID,
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> PlantillaAuditoriaTextoResponse:
     """Obtener texto copiable formateado para pegar en Arpis."""
     _check_role(current_user)
 
@@ -119,4 +120,4 @@ async def get_texto_copiable(
     )
 
     texto = plantilla_auditoria_service.build_texto_copiable(plantilla)
-    return {"texto": texto}
+    return PlantillaAuditoriaTextoResponse(texto=texto)

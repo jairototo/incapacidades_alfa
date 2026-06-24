@@ -87,11 +87,11 @@ class PlantillaAuditoriaCreate(BaseModel):
         description="Fin del rango efectivamente pagado (aprobación parcial)",
     )
 
-    # Computed field — populated by validator, not by the client
+    # Computed field — populated by model_validator, never sent by the client.
+    # Not excluded so model_dump() includes it for DB persistence.
     linea_autorizacion: Optional[str] = Field(
         None,
         description="Auto-generado por el servidor",
-        exclude=True,
     )
 
     @model_validator(mode="after")
@@ -103,6 +103,12 @@ class PlantillaAuditoriaCreate(BaseModel):
             f"hasta {self.fecha_fin_autorizada.isoformat()}"
         )
         return self
+
+
+class PlantillaAuditoriaTextoResponse(BaseModel):
+    """Schema de respuesta para el endpoint texto-copiable."""
+
+    texto: str
 
 
 class PlantillaAuditoriaResponse(BaseModel):

@@ -50,8 +50,6 @@ class PlantillaAuditoriaService:
             raise NotFoundException(f"Incapacidad {incapacidad_id} no encontrada")
 
         payload = data.model_dump(exclude_none=False)
-        # Aseguramos que linea_autorizacion (calculada en el validator) llegue al repo
-        payload["linea_autorizacion"] = data.linea_autorizacion
         payload["auditado_por_id"] = usuario_id
 
         return await plantilla_auditoria_repository.upsert(

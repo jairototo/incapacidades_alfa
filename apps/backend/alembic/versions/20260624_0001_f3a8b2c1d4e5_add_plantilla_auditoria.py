@@ -32,7 +32,6 @@ def upgrade() -> None:
             postgresql.UUID(as_uuid=True),
             sa.ForeignKey("incapacidad.id", ondelete="CASCADE"),
             nullable=False,
-            unique=True,
         ),
         sa.Column(
             "canal_recepcion",
@@ -81,7 +80,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             nullable=False,
         ),
-        sa.Column("metadata", sa.JSON(), nullable=True),
+        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     )
 
     # Index on incapacidad_id (already unique, but also for faster lookups)
