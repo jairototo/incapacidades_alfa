@@ -287,4 +287,13 @@ export const incapacidadService = {
     );
     return data;
   },
+
+  /**
+   * NOTIFICACIÓN: Reenviar notificación de glosa al solicitante (solo ADMIN/AUDITOR)
+   * POST /api/v1/incapacidades/{incapacidad_id}/reenviar-notificacion-glosada
+   * Solo disponible cuando estado === 'GLOSADA'
+   */
+  async reenviarNotificacionGlosada(id: string): Promise<void> {
+    await api.post(`/incapacidades/${id}/reenviar-notificacion-glosada`);
+  },
 };

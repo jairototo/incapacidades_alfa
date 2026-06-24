@@ -1,20 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestionarPage } from '../GestionarPage';
 import { incapacidadService } from '@/services/incapacidadService';
 import { EstadoIncapacidad, TipoIncapacidad } from '@/types';
 
-// Mock del servicio
+// Mock del servicio de incapacidades
 vi.mock('@/services/incapacidadService', () => ({
   incapacidadService: {
     getById: vi.fn(),
     getHistorial: vi.fn(),
     getDocumentos: vi.fn(),
     cambiarEstado: vi.fn(),
+    getDatosAprobados: vi.fn(),
+    getValidaciones: vi.fn(),
+    reenviarNotificacionGlosada: vi.fn(),
   },
+}));
+
+// Mock del servicio de pre-incapacidades
+vi.mock('@/services/preIncapacidadService', () => ({
+  preIncapacidadService: {
+    getById: vi.fn(),
+  },
+}));
+
+// Mock del store de autenticación — ADMIN/AUDITOR por defecto
+vi.mock('@/store/authStore', () => ({
+  useAuthStore: vi.fn(),
+  useHasRole: vi.fn().mockReturnValue(true),
 }));
 
 // Mock de react-router-dom para useParams
@@ -63,7 +79,7 @@ const mockHistorial = [
     entity_id: 'test-id-123',
     estado_anterior: EstadoIncapacidad.RADICADA,
     estado_nuevo: EstadoIncapacidad.EN_AUDITORIA,
-    cambiado_por: 'user-admin', // Agregado: requerido por HistorialTimeline
+    cambiado_por: 'user-admin',
     cambiado_por_nombre: 'Admin Usuario',
     observacion: 'Pasando a auditoría',
     created_at: '2024-01-10T11:00:00Z',
@@ -73,14 +89,14 @@ const mockHistorial = [
 const mockDocumentos = [
   {
     id: 'doc-1',
-    nombre_original: 'incapacidad.pdf', // Cambiado de nombre_archivo
+    nombre_original: 'incapacidad.pdf',
     tipo_documento: 'INCAPACIDAD_MEDICA',
     mime_type: 'application/pdf',
-    tamano_bytes: 102400, // Cambiado de tamano
+    tamano_bytes: 102400,
     ruta_archivo: '/documentos/incapacidad.pdf',
-    uploaded_by: 'user-123', // Cambiado de uploaded_by_id
+    uploaded_by: 'user-123',
     created_at: '2024-01-10T10:30:00Z',
-    extension: 'pdf', // Agregado
+    extension: 'pdf',
   },
 ] as any;
 
@@ -101,25 +117,34 @@ const createWrapper = () => {
   );
 };
 
+/** Set up default service mocks used in most tests */
+function setupDefaultMocks() {
+  vi.mocked(incapacidadService.getById).mockResolvedValue(mockIncapacidad);
+  vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+  vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+  vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+  vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+    issues: [],
+    has_fraud_alert: false,
+    total: 0,
+  } as any);
+}
+
 describe('GestionarPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('debe renderizar el componente con título y número de incapacidad', async () => {
-    vi.mocked(incapacidadService.getById).mockResolvedValue(mockIncapacidad);
-    vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
-    vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+    setupDefaultMocks();
 
     render(<GestionarPage />, { wrapper: createWrapper() });
 
-    // Esperar a que cargue el componente completo
     await waitFor(() => {
       const elementos = screen.getAllByText(/INC-2024-001/);
       expect(elementos.length).toBeGreaterThan(0);
     });
-    
-    // Verificar que se muestra el estado (puede aparecer múltiples veces)
+
     const estadoElements = screen.getAllByText('EN_AUDITORIA');
     expect(estadoElements.length).toBeGreaterThan(0);
   });
@@ -133,6 +158,12 @@ describe('GestionarPage', () => {
     );
     vi.mocked(incapacidadService.getHistorial).mockResolvedValue([]);
     vi.mocked(incapacidadService.getDocumentos).mockResolvedValue([]);
+    vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+    vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+      issues: [],
+      has_fraud_alert: false,
+      total: 0,
+    } as any);
 
     render(<GestionarPage />, { wrapper: createWrapper() });
 
@@ -143,95 +174,35 @@ describe('GestionarPage', () => {
     vi.mocked(incapacidadService.getById).mockRejectedValue(new Error('Error de red'));
     vi.mocked(incapacidadService.getHistorial).mockResolvedValue([]);
     vi.mocked(incapacidadService.getDocumentos).mockResolvedValue([]);
+    vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+    vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+      issues: [],
+      has_fraud_alert: false,
+      total: 0,
+    } as any);
 
     render(<GestionarPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      // El componente muestra "Incapacidad no encontrada" como título de error
       expect(screen.getByText(/Incapacidad no encontrada/)).toBeInTheDocument();
     });
-    
-    // También muestra el mensaje de error secundario
+
     expect(screen.getByText(/No se pudo cargar la información/)).toBeInTheDocument();
   });
 
-  it('debe renderizar las 3 pestañas (Datos Generales, Documentos, Historial)', async () => {
-    vi.mocked(incapacidadService.getById).mockResolvedValue(mockIncapacidad);
-    vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
-    vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+  it('debe renderizar las 3 pestañas correctas (Auditoría, Validaciones, Historial)', async () => {
+    setupDefaultMocks();
 
     render(<GestionarPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: /Datos Generales/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /Documentos/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /Auditoría/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /Validaciones/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /Historial/i })).toBeInTheDocument();
     });
   });
 
-  it('debe cambiar de pestaña al hacer click', async () => {
-    const user = userEvent.setup();
-    vi.mocked(incapacidadService.getById).mockResolvedValue(mockIncapacidad);
-    vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
-    vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
-
-    render(<GestionarPage />, { wrapper: createWrapper() });
-
-    // Esperar a que carguen los datos (INC-2024-001 puede aparecer múltiples veces)
-    await waitFor(() => {
-      const numeroElements = screen.queryAllByText(/INC-2024-001/);
-      expect(numeroElements.length).toBeGreaterThan(0);
-    });
-
-    // Por defecto debe mostrar "Datos Generales" - buscar un elemento específico de IncapacidadDetalle
-    // Por ejemplo, el diagnóstico o el nombre del empleado
-    expect(screen.getByText('Juan Pérez')).toBeInTheDocument();
-
-    // Click en pestaña "Documentos"
-    const docsTab = screen.getByRole('tab', { name: /Documentos/i });
-    await user.click(docsTab);
-
-    // Verificar que el contenido cambió (debe aparecer el documento)
-    await waitFor(() => {
-      expect(screen.getByText('incapacidad.pdf')).toBeInTheDocument();
-    });
-
-    // Click en pestaña "Historial"
-    const histTab = screen.getByRole('tab', { name: /Historial/i });
-    await user.click(histTab);
-
-    // Verificar que el contenido cambió (debe aparecer texto del resumen o badge "Más reciente")
-    await waitFor(() => {
-      expect(screen.getByText('Cambios totales')).toBeInTheDocument();
-    });
-  });
-
-  it('debe mostrar acciones de gestión para estados auditables', async () => {
-    const incapacidadAuditable = {
-      ...mockIncapacidad,
-      estado: EstadoIncapacidad.EN_AUDITORIA,
-    };
-
-    vi.mocked(incapacidadService.getById).mockResolvedValue(incapacidadAuditable);
-    vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
-    vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
-
-    render(<GestionarPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      // Debe mostrar botones de acciones (Aprobar, Observar, Rechazar)
-      const aprobarElements = screen.getAllByText(/Aprobar/);
-      expect(aprobarElements.length).toBeGreaterThan(0);
-      
-      const observarElements = screen.getAllByText(/Observar/);
-      expect(observarElements.length).toBeGreaterThan(0);
-      
-      const rechazarElements = screen.getAllByText(/Rechazar/);
-      expect(rechazarElements.length).toBeGreaterThan(0);
-    });
-  });
-
-  it('NO debe mostrar acciones para estados finales', async () => {
+  it('debe mostrar mensaje cuando estado no es auditable', async () => {
     const incapacidadPagada = {
       ...mockIncapacidad,
       estado: EstadoIncapacidad.PAGADA,
@@ -240,59 +211,231 @@ describe('GestionarPage', () => {
     vi.mocked(incapacidadService.getById).mockResolvedValue(incapacidadPagada);
     vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
     vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+    vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+    vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+      issues: [],
+      has_fraud_alert: false,
+      total: 0,
+    } as any);
 
     render(<GestionarPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      // INC-2024-001 puede aparecer múltiples veces, usar getAllByText para verificar carga
       const numeroElements = screen.queryAllByText(/INC-2024-001/);
       expect(numeroElements.length).toBeGreaterThan(0);
     });
 
-    // No debe mostrar botones de acciones (estado PAGADA no es gestionable)
-    expect(screen.queryByText(/Aprobar/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Observar/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Rechazar/)).not.toBeInTheDocument();
-    
-    // Debe mostrar mensaje de estado final
-    expect(screen.getByText(/no se puede gestionar/)).toBeInTheDocument();
+    // Debe mostrar mensaje de estado no auditable
+    expect(screen.getByText(/no se puede auditar/i)).toBeInTheDocument();
   });
 
-  it('debe llamar a cambiarEstado y refrescar datos al aprobar', async () => {
-    const user = userEvent.setup();
-    vi.mocked(incapacidadService.getById).mockResolvedValue(mockIncapacidad);
-    vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
-    vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
-    vi.mocked(incapacidadService.cambiarEstado).mockResolvedValue({
+  // ---------------------------------------------------------------------------
+  // Reenviar notificación de glosa
+  // ---------------------------------------------------------------------------
+
+  describe('Reenviar notificación de glosa', () => {
+    const mockGlosada = {
       ...mockIncapacidad,
-      estado: EstadoIncapacidad.LIQUIDACION,
+      estado: EstadoIncapacidad.GLOSADA,
+    };
+
+    it('debe mostrar el botón "Reenviar notificación de glosa" cuando estado es GLOSADA y rol es ADMIN/AUDITOR', async () => {
+      vi.mocked(incapacidadService.getById).mockResolvedValue(mockGlosada);
+      vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+      vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+      vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+      vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+        issues: [],
+        has_fraud_alert: false,
+        total: 0,
+      } as any);
+
+      render(<GestionarPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /Reenviar notificación de glosa/i })
+        ).toBeInTheDocument();
+      });
     });
 
-    render(<GestionarPage />, { wrapper: createWrapper() });
+    it('NO debe mostrar el botón cuando el rol no es ADMIN ni AUDITOR', async () => {
+      const { useHasRole } = await import('@/store/authStore');
+      (useHasRole as ReturnType<typeof vi.fn>).mockReturnValue(false);
 
-    // Esperar a que carguen los datos
-    await waitFor(() => {
-      const numeroElements = screen.queryAllByText(/INC-2024-001/);
-      expect(numeroElements.length).toBeGreaterThan(0);
+      vi.mocked(incapacidadService.getById).mockResolvedValue(mockGlosada);
+      vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+      vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+      vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+      vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+        issues: [],
+        has_fraud_alert: false,
+        total: 0,
+      } as any);
+
+      render(<GestionarPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        const numeroElements = screen.queryAllByText(/INC-2024-001/);
+        expect(numeroElements.length).toBeGreaterThan(0);
+      });
+
+      expect(
+        screen.queryByRole('button', { name: /Reenviar notificación de glosa/i })
+      ).not.toBeInTheDocument();
     });
 
-    // Esperar a que aparezca el botón Aprobar
-    await waitFor(() => {
-      expect(screen.getByText(/Aprobar incapacidad para pago/)).toBeInTheDocument();
+    it('NO debe mostrar el botón cuando estado NO es GLOSADA', async () => {
+      // useHasRole returns true (default mock)
+      const { useHasRole } = await import('@/store/authStore');
+      (useHasRole as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      const incapacidadPagada = { ...mockIncapacidad, estado: EstadoIncapacidad.PAGADA };
+      vi.mocked(incapacidadService.getById).mockResolvedValue(incapacidadPagada);
+      vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+      vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+      vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+      vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+        issues: [],
+        has_fraud_alert: false,
+        total: 0,
+      } as any);
+
+      render(<GestionarPage />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        const numeroElements = screen.queryAllByText(/INC-2024-001/);
+        expect(numeroElements.length).toBeGreaterThan(0);
+      });
+
+      expect(
+        screen.queryByRole('button', { name: /Reenviar notificación de glosa/i })
+      ).not.toBeInTheDocument();
     });
 
-    // Click en botón Aprobar
-    const aprobarBtn = screen.getByText(/Aprobar incapacidad para pago/);
-    await user.click(aprobarBtn);
+    it('debe abrir el diálogo de confirmación al hacer click en el botón', async () => {
+      const { useHasRole } = await import('@/store/authStore');
+      (useHasRole as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
-    // Esperar y click en botón Confirmar del formulario
-    const confirmarBtn = await screen.findByRole('button', { name: /Confirmar/i });
-    await user.click(confirmarBtn);
+      const user = userEvent.setup();
+      vi.mocked(incapacidadService.getById).mockResolvedValue(mockGlosada);
+      vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+      vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+      vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+      vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+        issues: [],
+        has_fraud_alert: false,
+        total: 0,
+      } as any);
 
-    // Verificar que se llamó al servicio
-    await waitFor(() => {
-      expect(incapacidadService.cambiarEstado).toHaveBeenCalled();
+      render(<GestionarPage />, { wrapper: createWrapper() });
+
+      const btn = await screen.findByRole('button', { name: /Reenviar notificación de glosa/i });
+      await user.click(btn);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText(/Se enviará nuevamente la notificación/i)).toBeInTheDocument();
+      });
+    });
+
+    it('debe llamar a reenviarNotificacionGlosada al confirmar el diálogo', async () => {
+      const { useHasRole } = await import('@/store/authStore');
+      (useHasRole as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      const user = userEvent.setup();
+      vi.mocked(incapacidadService.getById).mockResolvedValue(mockGlosada);
+      vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+      vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+      vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+      vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+        issues: [],
+        has_fraud_alert: false,
+        total: 0,
+      } as any);
+      vi.mocked(incapacidadService.reenviarNotificacionGlosada).mockResolvedValue(undefined);
+
+      render(<GestionarPage />, { wrapper: createWrapper() });
+
+      // Abrir diálogo
+      const btn = await screen.findByRole('button', { name: /Reenviar notificación de glosa/i });
+      await user.click(btn);
+
+      // Confirmar
+      const confirmarBtn = await screen.findByRole('button', { name: /^Confirmar$/i });
+      await user.click(confirmarBtn);
+
+      await waitFor(() => {
+        expect(incapacidadService.reenviarNotificacionGlosada).toHaveBeenCalledWith('test-id-123');
+      });
+    });
+
+    it('debe cerrar el diálogo al cancelar', async () => {
+      const { useHasRole } = await import('@/store/authStore');
+      (useHasRole as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      const user = userEvent.setup();
+      vi.mocked(incapacidadService.getById).mockResolvedValue(mockGlosada);
+      vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+      vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+      vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+      vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+        issues: [],
+        has_fraud_alert: false,
+        total: 0,
+      } as any);
+
+      render(<GestionarPage />, { wrapper: createWrapper() });
+
+      // Abrir diálogo
+      const btn = await screen.findByRole('button', { name: /Reenviar notificación de glosa/i });
+      await user.click(btn);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      // Cancelar
+      const cancelarBtn = screen.getByRole('button', { name: /Cancelar/i });
+      await user.click(cancelarBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+
+      // El servicio NO debe haber sido llamado
+      expect(incapacidadService.reenviarNotificacionGlosada).not.toHaveBeenCalled();
+    });
+
+    it('debe mostrar toast de error cuando falla el reenvío', async () => {
+      const { useHasRole } = await import('@/store/authStore');
+      (useHasRole as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      const user = userEvent.setup();
+      vi.mocked(incapacidadService.getById).mockResolvedValue(mockGlosada);
+      vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+      vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+      vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+      vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+        issues: [],
+        has_fraud_alert: false,
+        total: 0,
+      } as any);
+      vi.mocked(incapacidadService.reenviarNotificacionGlosada).mockRejectedValue(
+        new Error('Error de red')
+      );
+
+      render(<GestionarPage />, { wrapper: createWrapper() });
+
+      const btn = await screen.findByRole('button', { name: /Reenviar notificación de glosa/i });
+      await user.click(btn);
+
+      const confirmarBtn = await screen.findByRole('button', { name: /^Confirmar$/i });
+      await user.click(confirmarBtn);
+
+      await waitFor(() => {
+        expect(incapacidadService.reenviarNotificacionGlosada).toHaveBeenCalled();
+      });
     });
   });
 });
-

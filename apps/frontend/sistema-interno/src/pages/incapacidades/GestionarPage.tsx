@@ -1,13 +1,21 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, FileText, History, CheckCircle, XCircle, AlertCircle, Image, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, FileText, History, CheckCircle, XCircle, AlertCircle, Image, ChevronLeft, ChevronRight, AlertTriangle, Send } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 import { DocumentosViewer } from '@/components/incapacidades/DocumentosViewer';
 import { HistorialTimeline } from '@/components/incapacidades/HistorialTimeline';
@@ -18,6 +26,7 @@ import { ValidacionesPanel } from '@/components/incapacidades/ValidacionesPanel'
 
 import { incapacidadService } from '@/services/incapacidadService';
 import { preIncapacidadService } from '@/services/preIncapacidadService';
+import { useHasRole } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 
 /**
@@ -38,6 +47,9 @@ export function GestionarPage() {
   
   const [activeTab, setActiveTab] = useState('auditoria');
   const [showDocumentsSidebar, setShowDocumentsSidebar] = useState(true);
+  const [showReenviarDialog, setShowReenviarDialog] = useState(false);
+
+  const isAdminOrAuditor = useHasRole(['ADMIN', 'AUDITOR']);
 
   // Query: Obtener incapacidad
   const {
@@ -112,6 +124,26 @@ export function GestionarPage() {
       toast({
         title: '❌ Error',
         description: error.response?.data?.detail || 'No se pudo actualizar el estado',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutation: Reenviar notificación de glosa
+  const reenviarNotificacionMutation = useMutation({
+    mutationFn: () => incapacidadService.reenviarNotificacionGlosada(id!),
+    onSuccess: () => {
+      setShowReenviarDialog(false);
+      toast({
+        title: 'Notificación reenviada',
+        description: 'La notificación de glosa fue reenviada al solicitante.',
+      });
+    },
+    onError: (error: any) => {
+      setShowReenviarDialog(false);
+      toast({
+        title: 'Error al reenviar',
+        description: error.response?.data?.detail || 'No se pudo reenviar la notificación',
         variant: 'destructive',
       });
     },
@@ -303,23 +335,69 @@ export function GestionarPage() {
                   />
                 </>
               ) : (
-                <Card className="p-6 bg-slate-50">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-slate-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-slate-700">
-                        Esta incapacidad no se puede auditar en su estado actual
-                      </p>
-                      <p className="text-sm text-slate-500 mt-1">
-                        Las acciones de auditoría solo están disponibles para incapacidades en estado{' '}
-                        <strong>RADICADA</strong>, <strong>EN_AUDITORIA</strong> o <strong>PENDIENTE</strong>.
-                      </p>
-                      <p className="text-sm text-slate-600 mt-3">
-                        Estado actual: <Badge variant={getEstadoBadgeVariant(incapacidad.estado)}>{incapacidad.estado}</Badge>
-                      </p>
+                <>
+                  <Card className="p-6 bg-slate-50">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-slate-500 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-700">
+                          Esta incapacidad no se puede auditar en su estado actual
+                        </p>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Las acciones de auditoría solo están disponibles para incapacidades en estado{' '}
+                          <strong>RADICADA</strong>, <strong>EN_AUDITORIA</strong> o <strong>PENDIENTE</strong>.
+                        </p>
+                        <p className="text-sm text-slate-600 mt-3">
+                          Estado actual: <Badge variant={getEstadoBadgeVariant(incapacidad.estado)}>{incapacidad.estado}</Badge>
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+
+                  {/* Botón reenviar notificación de glosa — solo visible en estado GLOSADA para ADMIN/AUDITOR */}
+                  {incapacidad.estado === 'GLOSADA' && isAdminOrAuditor && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowReenviarDialog(true)}
+                        disabled={reenviarNotificacionMutation.isPending}
+                        className="flex items-center gap-2"
+                      >
+                        <Send className="h-4 w-4" />
+                        {reenviarNotificacionMutation.isPending
+                          ? 'Reenviando...'
+                          : 'Reenviar notificación de glosa'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Diálogo de confirmación para reenviar notificación */}
+                  <Dialog open={showReenviarDialog} onOpenChange={setShowReenviarDialog}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Reenviar notificación de glosa</DialogTitle>
+                        <DialogDescription>
+                          Se enviará nuevamente la notificación de glosa al solicitante. ¿Desea continuar?
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowReenviarDialog(false)}
+                          disabled={reenviarNotificacionMutation.isPending}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={() => reenviarNotificacionMutation.mutate()}
+                          disabled={reenviarNotificacionMutation.isPending}
+                        >
+                          {reenviarNotificacionMutation.isPending ? 'Reenviando...' : 'Confirmar'}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </>
               )}
             </TabsContent>
 
