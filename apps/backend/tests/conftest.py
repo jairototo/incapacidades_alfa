@@ -91,6 +91,12 @@ async def db_engine():
             EXCEPTION WHEN duplicate_object THEN null;
             END $b$;
         """))
+        await conn.execute(sa.text("""
+            DO $b$ BEGIN
+                CREATE TYPE metodopagoliquidacion AS ENUM ('CHEQUE', 'OXIRRE');
+            EXCEPTION WHEN duplicate_object THEN null;
+            END $b$;
+        """))
 
         # Crear todas las tablas (create_all es idempotente con checkfirst=True por defecto)
         await conn.run_sync(Base.metadata.create_all)

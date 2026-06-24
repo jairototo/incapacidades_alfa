@@ -170,6 +170,13 @@ class Incapacidad(BaseModel):
         cascade="all, delete-orphan",
     )
 
+    liquidacion: Mapped[Optional["Liquidacion"]] = relationship(
+        "Liquidacion",
+        back_populates="incapacidad",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
     radicado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[radicado_por_id])
     auditado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[auditado_por_id])
     aprobado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[aprobado_por_id])

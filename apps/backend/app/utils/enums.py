@@ -189,3 +189,18 @@ class EstadoSiniestro(str, Enum):
     EN_INVESTIGACION = "EN_INVESTIGACION"
     CERRADO = "CERRADO"
     ANULADO = "ANULADO"
+
+
+class MetodoPagoLiquidacion(str, Enum):
+    """Método de pago para liquidación de incapacidades.
+
+    CHEQUE: Pago mediante cheque físico.
+    OXIRRE: Pago mediante plataforma Oxirre (transferencia electrónica gestionada por aseguradora).
+
+    Nota (C2): La lista de entidades que pagan por CHEQUE vs OXIRRE está pendiente
+    de confirmación con el cliente. El campo se muestra en el formulario pero aún
+    no hay validación contra esa lista.
+    """
+
+    CHEQUE = "CHEQUE"
+    OXIRRE = "OXIRRE"
