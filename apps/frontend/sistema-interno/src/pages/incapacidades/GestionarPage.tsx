@@ -23,6 +23,7 @@ import { GestionActions } from '@/components/incapacidades/GestionActions';
 import { AuditoriaFormulario } from '@/components/incapacidades/AuditoriaFormulario';
 import { IncapacidadContextStrip } from '@/components/incapacidades/IncapacidadContextStrip';
 import { ValidacionesPanel } from '@/components/incapacidades/ValidacionesPanel';
+import { StateDescriptionPanel } from '@/components/incapacidades/StateDescriptionPanel';
 
 import { incapacidadService } from '@/services/incapacidadService';
 import { preIncapacidadService } from '@/services/preIncapacidadService';
@@ -241,6 +242,14 @@ export function GestionarPage() {
           </Button>
         </div>
       </div>
+
+      {/* Panel de descripción del estado actual */}
+      <StateDescriptionPanel
+        estado={incapacidad.estado}
+        auditoriaResultados={
+          incapacidad.estado === 'RADICADA' ? (validaciones?.issues ?? undefined) : undefined
+        }
+      />
 
       {/* Layout principal: Split-screen (Documentos | Tabs) */}
       <div className="flex gap-6">
