@@ -1508,3 +1508,64 @@ async def get_validaciones_incapacidad(
         has_fraud_alert=any(i.categoria == "FRAUD_ALERT" for i in issues),
         total=len(issues),
     )
+
+
+@router.post(
+    "/{incapacidad_id}/reenviar-notificacion-glosada",
+    status_code=status.HTTP_200_OK,
+    summary="Reenviar notificación de glosa",
+    description=(
+        "Regenera el PDF de glosa y reenvía el email a la empresa o afiliado. "
+        "Solo disponible para incapacidades en estado GLOSADA. "
+        "Restringido a roles ADMIN y AUDITOR."
+    ),
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_AUDIT]))],
+)
+async def reenviar_notificacion_glosada(
+    incapacidad_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """
+    Reenvía la notificación de glosa (PDF + email) para una incapacidad ya GLOSADA.
+
+    Útil cuando:
+    - El email original falló por un error transitorio de SMTP.
+    - La empresa solicita reenvío.
+    - El auditor desea confirmar que el destinatario recibió la comunicación.
+
+    Validaciones:
+    - La incapacidad debe existir.
+    - Debe estar en estado GLOSADA.
+    """
+    from app.core.exceptions import BadRequestException
+    from app.services import glosada_notification_service
+
+    incapacidad = await incapacidad_service.get_incapacidad(db, incapacidad_id)
+
+    if incapacidad.estado != EstadoIncapacidad.GLOSADA:
+        raise BadRequestException(
+            f"Solo se puede reenviar la notificación de glosa para incapacidades en estado GLOSADA. "
+            f"Estado actual: {incapacidad.estado.value}"
+        )
+
+    motivo = incapacidad.motivo_rechazo or "Sin motivo registrado"
+
+    try:
+        await glosada_notification_service.notificar_glosada(db, incapacidad, motivo)
+    except Exception as exc:
+        logger.error(
+            f"[GLOSADA] Reenvío de notificación falló para {incapacidad_id}: {exc}"
+        )
+        raise BadRequestException(f"Error al reenviar notificación: {exc}") from exc
+
+    logger.info(
+        f"[GLOSADA] Notificación reenviada para incapacidad {incapacidad_id} "
+        f"por usuario {current_user.id}"
+    )
+    return {
+        "status": "ok",
+        "incapacidad_id": str(incapacidad_id),
+        "numero": incapacidad.numero,
+        "message": "Notificación de glosa reenviada exitosamente",
+    }

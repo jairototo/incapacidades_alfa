@@ -37,6 +37,7 @@ from app.utils.enums import (
     TipoDocumentoArchivo
 )
 from app.core.storage_core import storage_backend
+from app.services import glosada_notification_service
 
 
 # Matriz de transiciones de estados permitidas
@@ -674,7 +675,22 @@ class IncapacidadService:
             observacion=f"Auditoría: {accion} - {observaciones}",
             cambiado_por_id=usuario_id
         )
-        
+
+        # Notificación best-effort para GLOSADA
+        if nuevo_estado == EstadoIncapacidad.GLOSADA:
+            try:
+                # Recargar relaciones necesarias para la notificación
+                incap_con_relaciones = await self.repository.get_by_id_with_relations(
+                    db, incapacidad_id
+                )
+                await glosada_notification_service.notificar_glosada(
+                    db, incap_con_relaciones, observaciones
+                )
+            except Exception as notif_exc:
+                logger.error(
+                    f"[GLOSADA] Notificación falló para incapacidad {incapacidad_id}: {notif_exc}"
+                )
+
         return incapacidad_actualizada
 
     async def iniciar_creacion_siniestro(
