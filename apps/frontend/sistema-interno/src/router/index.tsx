@@ -9,6 +9,7 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { ConsultaPage } from '@/pages/incapacidades/ConsultaPage';
 import { PendientesPage } from '@/pages/incapacidades/PendientesPage';
 import { GestionarPage } from '@/pages/incapacidades/GestionarPage';
+import { LiquidacionPage } from '@/pages/incapacidades/LiquidacionPage';
 import { BandejaPage } from '@/pages/pre-incapacidades/BandejaPage';
 import { GestionarPreIncapacidadPage } from '@/pages/pre-incapacidades/GestionarPreIncapacidadPage';
 import { RolUsuario } from '@/types/auth';
@@ -72,6 +73,10 @@ export const router = createBrowserRouter([
               {
                 path: ':id/gestionar',
                 element: <GestionarPage />,
+              },
+              {
+                path: ':id/liquidacion',
+                element: <LiquidacionPage />,
               },
             ],
           },
