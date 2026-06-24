@@ -35,10 +35,11 @@ async def test_audit_persists_results_and_transitions(db_session, test_empleado,
 # --- Unit tests: ALLOWED_TRANSITIONS for CREACION_SINIESTRO ---
 
 def test_creacion_siniestro_allowed_transitions():
-    """CREACION_SINIESTRO must allow transitions to LIQUIDACION and GLOSADA."""
+    """CREACION_SINIESTRO must transition only back to EN_AUDITORIA (Celery task routes it)."""
     allowed = ALLOWED_TRANSITIONS[EstadoIncapacidad.CREACION_SINIESTRO]
-    assert EstadoIncapacidad.LIQUIDACION in allowed
-    assert EstadoIncapacidad.GLOSADA in allowed
+    assert allowed == [EstadoIncapacidad.EN_AUDITORIA]
+    assert EstadoIncapacidad.LIQUIDACION not in allowed
+    assert EstadoIncapacidad.GLOSADA not in allowed
 
 
 def test_en_auditoria_allows_creacion_siniestro():
