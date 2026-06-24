@@ -17,7 +17,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { ConsultaIncapacidadResponse, EstadoIncapacidad, TipoIncapacidad } from '@/types/consulta';
-import { FileText, User, Calendar, Stethoscope, ClipboardCheck, Info } from 'lucide-react';
+import { FileText, User, Calendar, Stethoscope, ClipboardCheck, Info, AlertCircle } from 'lucide-react';
 import { formatearEstado } from '@/utils/formatters';
 
 export interface DetalleIncapacidadProps {
@@ -139,6 +139,23 @@ export function DetalleIncapacidad({ incapacidad, className = '' }: DetalleIncap
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Banner: Estado GLOSADA */}
+        {incapacidad.estado === 'GLOSADA' && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-3"
+          >
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-red-600" aria-hidden="true" />
+            <div>
+              <p className="font-semibold mb-1">Incapacidad Glosada</p>
+              <p>
+                Esta incapacidad ha sido glosada. El motivo fue comunicado por correo electrónico a la empresa.
+                Los documentos adjuntos están disponibles para consulta.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Sección: Datos del Solicitante */}
         <section>
           <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">

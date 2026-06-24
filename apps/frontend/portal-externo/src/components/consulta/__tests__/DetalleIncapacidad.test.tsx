@@ -270,6 +270,69 @@ describe('DetalleIncapacidad', () => {
     });
   });
 
+  describe('Estado GLOSADA — banner y comportamiento read-only', () => {
+    const incapacidadGlosada: ConsultaIncapacidadResponse = {
+      ...incapacidadARLBase,
+      estado: 'GLOSADA',
+    };
+
+    it('muestra el banner de glosada cuando el estado es GLOSADA', () => {
+      render(<DetalleIncapacidad incapacidad={incapacidadGlosada} />);
+
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText('Incapacidad Glosada')).toBeInTheDocument();
+      expect(
+        screen.getByText(/El motivo fue comunicado por correo electrónico a la empresa/i),
+      ).toBeInTheDocument();
+    });
+
+    it('el banner menciona que los documentos están disponibles para consulta', () => {
+      render(<DetalleIncapacidad incapacidad={incapacidadGlosada} />);
+
+      expect(
+        screen.getByText(/documentos adjuntos están disponibles para consulta/i),
+      ).toBeInTheDocument();
+    });
+
+    it('NO muestra el banner de glosada para otros estados', () => {
+      const estados: ConsultaIncapacidadResponse['estado'][] = [
+        'RADICADA',
+        'EN_AUDITORIA',
+        'PENDIENTE',
+        'LIQUIDACION',
+        'PAGADA',
+        'PAGADA_PARCIAL',
+      ];
+
+      for (const estado of estados) {
+        const { unmount } = render(
+          <DetalleIncapacidad incapacidad={{ ...incapacidadARLBase, estado }} />,
+        );
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        unmount();
+      }
+    });
+
+    it('does not render upload slots or action buttons when GLOSADA', () => {
+      render(<DetalleIncapacidad incapacidad={incapacidadGlosada} />);
+
+      expect(screen.queryByTestId('upload-slot')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /radicar|adjuntar|enviar/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('still renders all informational sections when GLOSADA', () => {
+      render(<DetalleIncapacidad incapacidad={incapacidadGlosada} />);
+
+      expect(screen.getByText('Datos del Solicitante')).toBeInTheDocument();
+      expect(screen.getByText('Información Médica')).toBeInTheDocument();
+      expect(screen.getByText('Fechas y Períodos')).toBeInTheDocument();
+      expect(screen.getByText('Información Adicional')).toBeInTheDocument();
+      expect(screen.getByText('Juan Pérez García')).toBeInTheDocument();
+    });
+  });
+
   describe('Diferentes estados de incapacidad', () => {
     const estados: Array<{ estado: any; colorClass: string; label: string }> = [
       { estado: 'RADICADA', colorClass: 'bg-blue-100', label: 'Radicada' },
