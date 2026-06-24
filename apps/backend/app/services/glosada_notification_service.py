@@ -11,18 +11,18 @@ revientan la transición de estado que los invoca.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import smtplib
 from datetime import datetime
-from email import encoders
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
-from uuid import uuid4
 
 from loguru import logger
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -246,6 +246,25 @@ async def _guardar_pdf_como_documento(
     md5 = hashlib.md5(pdf_bytes).hexdigest()
     sha256 = hashlib.sha256(pdf_bytes).hexdigest()
 
+    # Check for an existing glosa document to avoid duplicates on reenviar
+    existing_result = await db.execute(
+        select(Documento).where(
+            Documento.incapacidad_id == incapacidad.id,
+            Documento.nombre_archivo == nombre_archivo,
+        )
+    )
+    existing_doc = existing_result.scalar_one_or_none()
+
+    if existing_doc:
+        existing_doc.hash_md5 = md5
+        existing_doc.hash_sha256 = sha256
+        existing_doc.tamanio_bytes = len(pdf_bytes)
+        await db.flush()
+        logger.info(
+            f"[GLOSADA] PDF actualizado en Documento {existing_doc.id} para incapacidad {incapacidad.numero}"
+        )
+        return existing_doc
+
     documento = Documento(
         incapacidad_id=incapacidad.id,
         tipo_documento=TipoDocumentoAdjunto.OTROS,
@@ -344,12 +363,25 @@ async def _enviar_email_glosa(
     )
     msg.attach(pdf_attachment)
 
-    try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            if settings.SMTP_TLS:
+    # Capture variables for the sync closure
+    _host = settings.SMTP_HOST
+    _port = settings.SMTP_PORT
+    _tls = settings.SMTP_TLS
+    _user = settings.SMTP_USER
+    _password = settings.SMTP_PASSWORD
+    _msg_string = msg.as_string()
+    _destinatario = destinatario
+
+    def _send_sync() -> None:
+        with smtplib.SMTP(_host, _port) as server:
+            if _tls:
                 server.starttls()
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.send_message(msg)
+            server.login(_user, _password)
+            server.sendmail(_user, [_destinatario], _msg_string)
+
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _send_sync)
 
         logger.success(
             f"[GLOSADA] Email enviado a {destinatario} para incapacidad {incapacidad.numero}"

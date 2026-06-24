@@ -559,6 +559,16 @@ class TendenciaMensual(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ReenviarGlosadaResponse(BaseModel):
+    """Respuesta del endpoint de reenvío de notificación de glosa."""
+    status: str
+    message: str
+    incapacidad_id: Optional[str] = None
+    numero: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 class IncapacidadStatsExtendedResponse(BaseModel):
     """Estadísticas extendidas del dashboard con datos para gráficos."""
     # Métricas básicas (mantener compatibilidad)

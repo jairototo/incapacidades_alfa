@@ -196,6 +196,10 @@ async def test_notificar_glosada_guarda_documento_sin_smtp(mock_incapacidad_arl)
     db = AsyncMock()
     db.add = MagicMock()
     db.flush = AsyncMock()
+    # Simulate no existing glosa document (first call = new insert path)
+    execute_result = MagicMock()
+    execute_result.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(return_value=execute_result)
 
     with patch("app.services.glosada_notification_service.settings") as mock_settings:
         mock_settings.SMTP_USER = None
@@ -228,6 +232,10 @@ async def test_notificar_glosada_sin_email_disponible_no_falla(mock_incapacidad_
     db = AsyncMock()
     db.add = MagicMock()
     db.flush = AsyncMock()
+    # Simulate no existing glosa document
+    execute_result = MagicMock()
+    execute_result.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(return_value=execute_result)
 
     with patch("app.services.glosada_notification_service.settings") as mock_settings:
         mock_settings.SMTP_USER = "user@example.com"

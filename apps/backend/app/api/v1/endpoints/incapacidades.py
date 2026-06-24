@@ -28,6 +28,7 @@ from app.schemas.incapacidad import (
     IncapacidadStatsExtendedResponse,
     EmpleadoFallback,
     EmpresaFallback,
+    ReenviarGlosadaResponse,
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
@@ -41,6 +42,8 @@ from app.schemas.radicacion import RadicacionResponse
 from app.db.repositories.validation_inconsistencia_repository import ValidationInconsistenciaRepository
 from app.services.incapacidad_service import incapacidad_service
 from app.services.historial_estado_service import historial_estado_service
+from app.services import glosada_notification_service
+from app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
 from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
 from app.core.exceptions import BadRequestException
 from app.core.security import get_current_user, PermissionChecker, Permissions, require_empresa
@@ -1471,8 +1474,6 @@ async def get_datos_aprobados(
     - Generar órdenes de pago con valores correctos
     - Reportes de diferencias entre solicitado y aprobado
     """
-    from app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
-    
     # Validar que la incapacidad existe
     await incapacidad_service.get_incapacidad(db, incapacidad_id)
     
@@ -1512,6 +1513,7 @@ async def get_validaciones_incapacidad(
 
 @router.post(
     "/{incapacidad_id}/reenviar-notificacion-glosada",
+    response_model=ReenviarGlosadaResponse,
     status_code=status.HTTP_200_OK,
     summary="Reenviar notificación de glosa",
     description=(
@@ -1538,9 +1540,6 @@ async def reenviar_notificacion_glosada(
     - La incapacidad debe existir.
     - Debe estar en estado GLOSADA.
     """
-    from app.core.exceptions import BadRequestException
-    from app.services import glosada_notification_service
-
     incapacidad = await incapacidad_service.get_incapacidad(db, incapacidad_id)
 
     if incapacidad.estado != EstadoIncapacidad.GLOSADA:
