@@ -14,7 +14,7 @@
  *
  * Devolver a auditoría abre un diálogo con observación obligatoria.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -24,6 +24,9 @@ import {
   ArrowLeft,
   Calculator,
   CheckCircle,
+  ClipboardCheck,
+  FileText,
+  Image,
   RotateCcw,
   XCircle,
 } from 'lucide-react';
@@ -42,8 +45,10 @@ import { useToast } from '@/hooks/use-toast';
 
 import { IncapacidadContextStrip } from '@/components/incapacidades/IncapacidadContextStrip';
 import { HistorialTimeline } from '@/components/incapacidades/HistorialTimeline';
+import { DocumentosViewer } from '@/components/incapacidades/DocumentosViewer';
 
 import { incapacidadService } from '@/services/incapacidadService';
+import { plantillaAuditoriaService } from '@/services/plantillaAuditoria';
 import {
   liquidacionService,
   MetodoPagoLiquidacion,
@@ -186,6 +191,21 @@ export function LiquidacionPage() {
     retry: false,
   });
 
+  // Fix 1 — REQ-6: Plantilla de Auditoría (read-only)
+  const { data: plantilla } = useQuery({
+    queryKey: ['incapacidad', id, 'plantilla-auditoria'],
+    queryFn: () => plantillaAuditoriaService.getByIncapacidad(id!),
+    enabled: !!id && !!incapacidad && ALLOWED_STATES.includes(incapacidad.estado),
+    retry: false,
+  });
+
+  // Fix 2 — REQ-7: Documentos (parity with GestionarPage)
+  const { data: documentos } = useQuery({
+    queryKey: ['incapacidad', id, 'documentos'],
+    queryFn: () => incapacidadService.getDocumentos(id!),
+    enabled: !!id,
+  });
+
   // ---------------------------------------------------------------------------
   // Forms
   // ---------------------------------------------------------------------------
@@ -194,17 +214,28 @@ export function LiquidacionPage() {
     register,
     handleSubmit,
     getValues,
+    trigger,
+    reset: resetForm,
     formState: { errors, isSubmitting },
   } = useForm<LiquidacionFormValues>({
     resolver: zodResolver(liquidacionFormSchema),
     defaultValues: {
-      ibl: liquidacionExistente?.ibl != null
-        ? String(liquidacionExistente.ibl)
-        : '',
-      metodo_pago: liquidacionExistente?.metodo_pago ?? undefined,
-      notas_liquidador: liquidacionExistente?.notas_liquidador ?? '',
+      ibl: '',
+      metodo_pago: undefined,
+      notas_liquidador: '',
     },
   });
+
+  // Fix 3 — form defaultValues race condition: reset when liquidacionExistente loads
+  useEffect(() => {
+    if (liquidacionExistente) {
+      resetForm({
+        ibl: liquidacionExistente.ibl != null ? String(liquidacionExistente.ibl) : '',
+        metodo_pago: liquidacionExistente.metodo_pago ?? undefined,
+        notas_liquidador: liquidacionExistente.notas_liquidador ?? '',
+      });
+    }
+  }, [liquidacionExistente, resetForm]);
 
   const {
     register: devolucionRegister,
@@ -285,6 +316,10 @@ export function LiquidacionPage() {
   // ---------------------------------------------------------------------------
 
   const handleCalcularBreakdown = async () => {
+    // Fix 4 — validate IBL field before proceeding
+    const iblValid = await trigger('ibl');
+    if (!iblValid) return;
+
     const iblStr = getValues('ibl');
     const iblNum = iblStr ? Number(iblStr) : null;
     const dias = incapacidad?.dias_totales ?? 0;
@@ -463,6 +498,86 @@ export function LiquidacionPage() {
           </div>
         </div>
       </Card>
+
+      {/* Fix 1 — REQ-6: Plantilla de Auditoría (read-only) */}
+      {plantilla && (
+        <Card className="p-6" data-testid="plantilla-auditoria-card">
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardCheck className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-slate-800">Plantilla de Auditoría</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            {plantilla.linea_autorizacion && (
+              <div className="col-span-2">
+                <span className="text-slate-500">Línea de autorización</span>
+                <p className="font-medium text-blue-800">{plantilla.linea_autorizacion}</p>
+              </div>
+            )}
+            <div>
+              <span className="text-slate-500">Canal de recepción</span>
+              <p className="font-medium">{plantilla.canal_recepcion}</p>
+            </div>
+            <div>
+              <span className="text-slate-500">Días autorizados</span>
+              <p className="font-medium">{plantilla.dias_autorizados}</p>
+            </div>
+            <div>
+              <span className="text-slate-500">Fecha inicio autorizada</span>
+              <p className="font-medium">{formatDate(plantilla.fecha_inicio_autorizada)}</p>
+            </div>
+            <div>
+              <span className="text-slate-500">Fecha fin autorizada</span>
+              <p className="font-medium">{formatDate(plantilla.fecha_fin_autorizada)}</p>
+            </div>
+            {plantilla.diagnostico_cie10 && (
+              <div>
+                <span className="text-slate-500">CIE-10</span>
+                <p className="font-medium">{plantilla.diagnostico_cie10}</p>
+              </div>
+            )}
+            {plantilla.descripcion_cie10 && (
+              <div>
+                <span className="text-slate-500">Diagnóstico</span>
+                <p className="font-medium">{plantilla.descripcion_cie10}</p>
+              </div>
+            )}
+            {plantilla.nombre_medico && (
+              <div>
+                <span className="text-slate-500">Médico tratante</span>
+                <p className="font-medium">{plantilla.nombre_medico}</p>
+              </div>
+            )}
+            {plantilla.nombre_ips && (
+              <div>
+                <span className="text-slate-500">IPS prestadora</span>
+                <p className="font-medium">{plantilla.nombre_ips}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Fix 2 — REQ-7: Documentos adjuntos (parity with GestionarPage) */}
+      {documentos && documentos.length > 0 && (
+        <Card className="p-6" data-testid="documentos-section">
+          <div className="flex items-center gap-2 mb-4">
+            <Image className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-slate-800">Documentos Adjuntos</h2>
+            <Badge variant="secondary">{documentos.length}</Badge>
+          </div>
+          <div className="overflow-y-auto max-h-[400px]">
+            <DocumentosViewer documentos={documentos} />
+          </div>
+        </Card>
+      )}
+      {documentos && documentos.length === 0 && (
+        <Card className="p-4 bg-slate-50" data-testid="documentos-empty">
+          <div className="flex items-center gap-2 text-slate-500">
+            <FileText className="h-4 w-4" />
+            <span className="text-sm">No hay documentos adjuntos para esta incapacidad.</span>
+          </div>
+        </Card>
+      )}
 
       {/* 2. Formulario principal */}
       <form onSubmit={handleSubmit(onSave)} className="space-y-6">
