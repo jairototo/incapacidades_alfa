@@ -1285,6 +1285,11 @@ async def auditar_incapacidad(
     return _serialize_incapacidad(incap)
 
 
+class _AprobacionBody(_BM):
+    """Optional request body for aprobar_incapacidad."""
+    observacion: Optional[str] = None
+
+
 @router.post(
     "/{incapacidad_id}/aprobar",
     response_model=IncapacidadInDB,
@@ -1293,19 +1298,28 @@ async def auditar_incapacidad(
 )
 async def aprobar_incapacidad(
     incapacidad_id: UUID,
+    body: Optional[_AprobacionBody] = Body(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)  
+    current_user: Usuario = Depends(get_current_user)
 ):
     """
     Aprueba una incapacidad para pago.
-    
+
     Transición: EN_AUDITORIA → LIQUIDACION
 
     Validaciones:
     - Debe estar en estado EN_AUDITORIA
     - Registra fecha de aprobación y aprobador
+
+    Body (opcional):
+    - observacion: Razón de la aprobación registrada en historial.
+      Si se omite, se usa el texto por defecto "Incapacidad aprobada para pago".
     """
-    incap = await incapacidad_service.aprobar_incapacidad(db, incapacidad_id, current_user.id)
+    observacion = (body.observacion if body and body.observacion else None)
+    kwargs = {} if observacion is None else {"observacion": observacion}
+    incap = await incapacidad_service.aprobar_incapacidad(
+        db, incapacidad_id, current_user.id, **kwargs
+    )
     return _serialize_incapacidad(incap)
 
 

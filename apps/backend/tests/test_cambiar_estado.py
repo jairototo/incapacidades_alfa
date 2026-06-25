@@ -6,6 +6,7 @@ All state transitions must:
 2. Reject empty / whitespace-only observaciones with BadRequestException("obligatoria").
 3. Write a historial entry for every successful transition.
 """
+import uuid
 import pytest
 from datetime import date, datetime
 from decimal import Decimal
@@ -301,4 +302,181 @@ async def test_rechazar_rejects_whitespace_motivo(db_session, inc_en_auditoria):
             db=db_session,
             incapacidad_id=inc_en_auditoria.id,
             motivo="   ",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Fixtures for LIQUIDACION state (needed for enviar_a_pago / marcar_como_pagada)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def inc_liquidacion(db_session, test_empleado, test_empresa):
+    """Incapacidad in LIQUIDACION state with valor_total set."""
+    from app.models.incapacidad import Incapacidad
+
+    inc = Incapacidad(
+        numero="INC-CS-LIQUIDACION-001",
+        empleado_id=test_empleado.id,
+        empresa_id=test_empresa.id,
+        tipo=TipoIncapacidad.ARL,
+        fecha_inicio=date(2026, 2, 1),
+        fecha_fin=date(2026, 2, 10),
+        dias_totales=10,
+        diagnostico_cie10="M545",
+        descripcion_diagnostico="Prueba cambiar_estado liquidacion",
+        valor_dia=Decimal("100000.00"),
+        valor_total=Decimal("1000000.00"),
+        estado=EstadoIncapacidad.LIQUIDACION,
+        fecha_radicacion=datetime.utcnow(),
+        prioridad=Prioridad.NORMAL,
+    )
+    db_session.add(inc)
+    await db_session.commit()
+    await db_session.refresh(inc)
+    return inc
+
+
+# ---------------------------------------------------------------------------
+# Test: aprobar_incapacidad default observacion is written to historial
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_aprobar_incapacidad_default_observacion_is_written(db_session, inc_en_auditoria):
+    """aprobar_incapacidad must write a historial entry with a non-empty observation."""
+    from app.services.incapacidad_service import incapacidad_service
+    from app.services.historial_estado_service import historial_estado_service
+
+    result = await incapacidad_service.aprobar_incapacidad(
+        db=db_session,
+        incapacidad_id=inc_en_auditoria.id,
+        usuario_id=None,
+        # observacion not provided — uses default
+    )
+    assert result.estado == EstadoIncapacidad.LIQUIDACION
+
+    historial = await historial_estado_service.get_incapacidad_history(
+        db=db_session,
+        incapacidad_id=inc_en_auditoria.id,
+    )
+    liquidacion_entries = [h for h in historial if h.estado_nuevo == "LIQUIDACION"]
+    assert len(liquidacion_entries) >= 1
+    # Default observacion must be non-empty
+    assert liquidacion_entries[0].observacion
+    assert liquidacion_entries[0].observacion.strip() != ""
+
+
+# ---------------------------------------------------------------------------
+# Test: enviar_a_pago default observacion is written to historial
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_enviar_a_pago_default_observacion_is_written(db_session, inc_liquidacion):
+    """enviar_a_pago must write a historial entry with a non-empty observation."""
+    from app.services.incapacidad_service import incapacidad_service
+    from app.services.historial_estado_service import historial_estado_service
+
+    result = await incapacidad_service.enviar_a_pago(
+        db=db_session,
+        incapacidad_id=inc_liquidacion.id,
+        usuario_id=None,
+        # observacion not provided — generated from valor_total
+    )
+    assert result.estado == EstadoIncapacidad.PAGADA
+
+    historial = await historial_estado_service.get_incapacidad_history(
+        db=db_session,
+        incapacidad_id=inc_liquidacion.id,
+    )
+    pagada_entries = [h for h in historial if h.estado_nuevo == "PAGADA"]
+    assert len(pagada_entries) >= 1
+    assert pagada_entries[0].observacion
+    assert pagada_entries[0].observacion.strip() != ""
+
+
+# ---------------------------------------------------------------------------
+# Test: marcar_como_pagada default observacion is written to historial
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def inc_liquidacion_2(db_session, test_empleado, test_empresa):
+    """Second LIQUIDACION incapacidad (avoids unique number conflict with inc_liquidacion)."""
+    from app.models.incapacidad import Incapacidad
+
+    inc = Incapacidad(
+        numero="INC-CS-LIQUIDACION-002",
+        empleado_id=test_empleado.id,
+        empresa_id=test_empresa.id,
+        tipo=TipoIncapacidad.ARL,
+        fecha_inicio=date(2026, 3, 1),
+        fecha_fin=date(2026, 3, 10),
+        dias_totales=10,
+        diagnostico_cie10="M545",
+        descripcion_diagnostico="Prueba marcar_como_pagada",
+        valor_dia=Decimal("100000.00"),
+        valor_total=Decimal("1000000.00"),
+        estado=EstadoIncapacidad.LIQUIDACION,
+        fecha_radicacion=datetime.utcnow(),
+        prioridad=Prioridad.NORMAL,
+    )
+    db_session.add(inc)
+    await db_session.commit()
+    await db_session.refresh(inc)
+    return inc
+
+
+@pytest.mark.asyncio
+async def test_marcar_como_pagada_default_observacion_is_written(db_session, inc_liquidacion_2):
+    """marcar_como_pagada must write a historial entry with a non-empty observation."""
+    from app.services.incapacidad_service import incapacidad_service
+    from app.services.historial_estado_service import historial_estado_service
+
+    result = await incapacidad_service.marcar_como_pagada(
+        db=db_session,
+        incapacidad_id=inc_liquidacion_2.id,
+        usuario_id=None,
+        # observacion not provided — uses default
+    )
+    assert result.estado == EstadoIncapacidad.PAGADA
+
+    historial = await historial_estado_service.get_incapacidad_history(
+        db=db_session,
+        incapacidad_id=inc_liquidacion_2.id,
+    )
+    pagada_entries = [h for h in historial if h.estado_nuevo == "PAGADA"]
+    assert len(pagada_entries) >= 1
+    assert pagada_entries[0].observacion
+    assert pagada_entries[0].observacion.strip() != ""
+
+
+# ---------------------------------------------------------------------------
+# Test: iniciar_creacion_siniestro requires non-empty observacion
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_iniciar_creacion_siniestro_observacion_required(db_session, inc_en_auditoria):
+    """iniciar_creacion_siniestro with empty observacion must raise BadRequestException."""
+    from app.services.incapacidad_service import incapacidad_service
+
+    with pytest.raises(BadRequestException, match="obligatoria"):
+        await incapacidad_service.iniciar_creacion_siniestro(
+            db=db_session,
+            incapacidad_id=inc_en_auditoria.id,
+            numero_siniestro_externo="SIN-2026-001",
+            usuario_id=uuid.uuid4(),
+            observacion="",  # empty — _cambiar_estado must reject
+        )
+
+
+@pytest.mark.asyncio
+async def test_iniciar_creacion_siniestro_rejects_whitespace_observacion(db_session, inc_en_auditoria):
+    """iniciar_creacion_siniestro with whitespace-only observacion must raise BadRequestException."""
+    from app.services.incapacidad_service import incapacidad_service
+
+    with pytest.raises(BadRequestException, match="obligatoria"):
+        await incapacidad_service.iniciar_creacion_siniestro(
+            db=db_session,
+            incapacidad_id=inc_en_auditoria.id,
+            numero_siniestro_externo="SIN-2026-002",
+            usuario_id=uuid.uuid4(),
+            observacion="   ",  # whitespace only — must be rejected
         )
