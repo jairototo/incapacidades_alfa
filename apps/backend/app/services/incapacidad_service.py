@@ -440,55 +440,103 @@ class IncapacidadService:
         
         return await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
 
+    async def _cambiar_estado(
+        self,
+        db: AsyncSession,
+        incapacidad: "Incapacidad",
+        nuevo_estado: EstadoIncapacidad,
+        observacion: str,
+        usuario_id: Optional[UUID],
+        extra_update: Optional[Dict[str, Any]] = None,
+        flush_only: bool = False,
+    ) -> "Incapacidad":
+        """
+        Helper centralizado para todas las transiciones de estado de una incapacidad.
+
+        Garantiza que:
+        1. La observación es no-vacía (obligatoria para toda transición).
+        2. La transición está permitida por la matriz ALLOWED_TRANSITIONS.
+        3. El estado se actualiza en la base de datos.
+        4. Se escribe una entrada en historial_estado.
+
+        Args:
+            db: Sesión de base de datos
+            incapacidad: Objeto Incapacidad actual (pre-transición)
+            nuevo_estado: Estado destino
+            observacion: Texto obligatorio que describe el motivo del cambio
+            usuario_id: ID del usuario que ejecuta la transición
+            extra_update: Campos adicionales a actualizar junto con el estado
+            flush_only: Si True, usa flush en lugar de commit (para operaciones en pipeline)
+
+        Returns:
+            Incapacidad con el nuevo estado
+
+        Raises:
+            BadRequestException: Si observacion está vacía o es solo espacios
+            InvalidStateException: Si la transición no está permitida
+        """
+        if not observacion or not observacion.strip():
+            raise BadRequestException(
+                f"La observación es obligatoria para la transición a {nuevo_estado.value}"
+            )
+
+        await self._validate_state_transition(incapacidad.estado, nuevo_estado)
+
+        estado_anterior = incapacidad.estado
+        update_data: Dict[str, Any] = {"estado": nuevo_estado, **(extra_update or {})}
+
+        if flush_only:
+            updated = await self.repository.update_flushed(db, id=incapacidad.id, obj_in=update_data)
+        else:
+            updated = await self.repository.update(db, id=incapacidad.id, obj_in=update_data)
+
+        await historial_estado_service.create_historial_entry(
+            db=db,
+            entity_type="incapacidad",
+            entity_id=incapacidad.id,
+            estado_anterior=estado_anterior.value if estado_anterior else None,
+            estado_nuevo=nuevo_estado.value,
+            observacion=observacion,
+            cambiado_por_id=usuario_id,
+            flush_only=flush_only,
+        )
+
+        return updated
+
     async def radicar_incapacidad(
         self,
         db: AsyncSession,
         incapacidad_id: UUID,
         usuario_id: Optional[UUID] = None,
         flush_only: bool = False,
+        observacion: str = "Incapacidad radicada para auditoría",
     ) -> Incapacidad:
         """
         Radica una incapacidad (pasa a estado EN_AUDITORIA).
-        
+
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
             usuario_id: ID del usuario que radica
-            
+            flush_only: Si True, usa flush en lugar de commit (para pipelines)
+            observacion: Observación del cambio de estado (obligatoria, no vacía)
+
         Returns:
             Incapacidad radicada
         """
         incapacidad = await self.get_incapacidad(db, incapacidad_id)
-        
-        # Validar transición de estado
-        await self._validate_state_transition(
-            incapacidad.estado,
-            EstadoIncapacidad.EN_AUDITORIA
-        )
-        
-        update_data = {
-            'estado': EstadoIncapacidad.EN_AUDITORIA
-        }
-        
+
+        extra_update: Dict[str, Any] = {}
         if usuario_id:
-            update_data['radicado_por_id'] = usuario_id
-        
-        # Actualizar incapacidad
-        estado_anterior = incapacidad.estado
-        if flush_only:
-            incapacidad_actualizada = await self.repository.update_flushed(db, id=incapacidad_id, obj_in=update_data)
-        else:
-            incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-        
-        # Registrar en historial
-        await historial_estado_service.create_historial_entry(
+            extra_update['radicado_por_id'] = usuario_id
+
+        incapacidad_actualizada = await self._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=estado_anterior.value if estado_anterior else None,
-            estado_nuevo=EstadoIncapacidad.EN_AUDITORIA.value,
-            observacion="Incapacidad radicada para auditoría",
-            cambiado_por_id=usuario_id,
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.EN_AUDITORIA,
+            observacion=observacion,
+            usuario_id=usuario_id,
+            extra_update=extra_update,
             flush_only=flush_only,
         )
         
@@ -576,29 +624,30 @@ class IncapacidadService:
             )
 
         nuevo_estado = None
-        update_data = {
+        # extra_update holds all field changes except 'estado' — _cambiar_estado sets that
+        extra_update: Dict[str, Any] = {
             'observaciones': observaciones,
             'fecha_auditoria': datetime.utcnow()
         }
 
         if usuario_id:
-            update_data['auditado_por_id'] = usuario_id
+            extra_update['auditado_por_id'] = usuario_id
 
         if accion == "SOLICITAR_INFORMACION":
             nuevo_estado = EstadoIncapacidad.PENDIENTE
-            update_data['pendiente_desde'] = datetime.utcnow()
+            extra_update['pendiente_desde'] = datetime.utcnow()
         elif accion == "CREACION_SINIESTRO":
             nuevo_estado = EstadoIncapacidad.CREACION_SINIESTRO
         elif accion == "APROBAR_PARA_PAGO":
             nuevo_estado = EstadoIncapacidad.LIQUIDACION
-            update_data['fecha_aprobacion'] = datetime.utcnow()
+            extra_update['fecha_aprobacion'] = datetime.utcnow()
             if usuario_id:
-                update_data['aprobado_por_id'] = usuario_id
+                extra_update['aprobado_por_id'] = usuario_id
         elif accion == "APROBAR_PARA_PAGO_PARCIAL":
             nuevo_estado = EstadoIncapacidad.LIQUIDACION_PARCIAL
-            update_data['fecha_aprobacion'] = datetime.utcnow()
+            extra_update['fecha_aprobacion'] = datetime.utcnow()
             if usuario_id:
-                update_data['aprobado_por_id'] = usuario_id
+                extra_update['aprobado_por_id'] = usuario_id
 
             # Guardar datos aprobados en tabla separada
             if datos_aprobados:
@@ -629,8 +678,8 @@ class IncapacidadService:
                     await auditoria_datos_repository.create(db, obj_in=datos_to_save)
         elif accion == "RECHAZAR":
             nuevo_estado = EstadoIncapacidad.GLOSADA
-            update_data['fecha_rechazo'] = datetime.utcnow()
-            update_data['motivo_rechazo'] = observaciones
+            extra_update['fecha_rechazo'] = datetime.utcnow()
+            extra_update['motivo_rechazo'] = observaciones
         else:
             raise BadRequestException(f"Acción de auditoría inválida: {accion}")
 
@@ -658,22 +707,13 @@ class IncapacidadService:
                     "debe usar aprobación parcial (APROBAR_PARA_PAGO_PARCIAL)."
                 )
 
-        await self._validate_state_transition(incapacidad.estado, nuevo_estado)
-        update_data['estado'] = nuevo_estado
-        
-        # Actualizar incapacidad
-        estado_anterior = incapacidad.estado
-        incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-        
-        # Registrar en historial
-        await historial_estado_service.create_historial_entry(
+        incapacidad_actualizada = await self._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=estado_anterior.value,
-            estado_nuevo=nuevo_estado.value,
+            incapacidad=incapacidad,
+            nuevo_estado=nuevo_estado,
             observacion=f"Auditoría: {accion} - {observaciones}",
-            cambiado_por_id=usuario_id
+            usuario_id=usuario_id,
+            extra_update=extra_update,
         )
 
         # Notificación best-effort para GLOSADA
@@ -729,37 +769,14 @@ class IncapacidadService:
                 "CREACION_SINIESTRO solo aplica a incapacidades ARL"
             )
 
-        if not observacion or not observacion.strip():
-            raise BadRequestException(
-                "La observación es obligatoria para iniciar la creación de siniestro"
-            )
-
-        await self._validate_state_transition(
-            incapacidad.estado,
-            EstadoIncapacidad.CREACION_SINIESTRO,
-        )
-
-        update_data = {
-            "estado": EstadoIncapacidad.CREACION_SINIESTRO,
-            "numero_siniestro": numero_siniestro_externo,
-        }
-
-        estado_anterior = incapacidad.estado
-        incapacidad_actualizada = await self.repository.update(
-            db, id=incapacidad_id, obj_in=update_data
-        )
-
-        await historial_estado_service.create_historial_entry(
+        return await self._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.CREACION_SINIESTRO.value,
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.CREACION_SINIESTRO,
             observacion=observacion,
-            cambiado_por_id=usuario_id,
+            usuario_id=usuario_id,
+            extra_update={"numero_siniestro": numero_siniestro_externo},
         )
-
-        return incapacidad_actualizada
 
     async def retornar_a_auditoria(
         self,
@@ -794,88 +811,62 @@ class IncapacidadService:
                 f"Estado actual: {incapacidad.estado}"
             )
 
+        # Validate before wrapping in prefix so that _cambiar_estado gets the canonical
+        # prefixed form while the raw value is checked here.
         if not observaciones or not observaciones.strip():
             raise BadRequestException(
                 "La observación es obligatoria para retornar a auditoría"
             )
 
-        await self._validate_state_transition(
-            incapacidad.estado,
-            EstadoIncapacidad.EN_AUDITORIA
-        )
-
-        update_data = {
-            'estado': EstadoIncapacidad.EN_AUDITORIA,
+        extra_update: Dict[str, Any] = {
             'observaciones': observaciones,
             'pendiente_desde': sa_null(),  # Explicitly set to NULL (bypasses None-filter in base repo)
         }
-
         if usuario_id:
-            update_data['auditado_por_id'] = usuario_id
+            extra_update['auditado_por_id'] = usuario_id
 
-        estado_anterior = incapacidad.estado
-        incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-
-        await historial_estado_service.create_historial_entry(
+        return await self._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.EN_AUDITORIA.value,
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.EN_AUDITORIA,
             observacion=f"Retorno a auditoría: {observaciones}",
-            cambiado_por_id=usuario_id
+            usuario_id=usuario_id,
+            extra_update=extra_update,
         )
-
-        return incapacidad_actualizada
 
     async def aprobar_incapacidad(
         self,
         db: AsyncSession,
         incapacidad_id: UUID,
-        usuario_id: Optional[UUID] = None
+        usuario_id: Optional[UUID] = None,
+        observacion: str = "Incapacidad aprobada para pago",
     ) -> Incapacidad:
         """
         Aprueba una incapacidad para pago.
-        
+
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
             usuario_id: ID del aprobador
-            
+            observacion: Observación del cambio de estado (obligatoria, no vacía)
+
         Returns:
             Incapacidad aprobada
         """
         incapacidad = await self.get_incapacidad(db, incapacidad_id)
-        
-        await self._validate_state_transition(
-            incapacidad.estado,
-            EstadoIncapacidad.LIQUIDACION
-        )
 
-        update_data = {
-            'estado': EstadoIncapacidad.LIQUIDACION,
-            'fecha_aprobacion': datetime.utcnow()
-        }
-
+        extra_update: Dict[str, Any] = {'fecha_aprobacion': datetime.utcnow()}
         if usuario_id:
-            update_data['aprobado_por_id'] = usuario_id
+            extra_update['aprobado_por_id'] = usuario_id
 
-        # Actualizar incapacidad
-        estado_anterior = incapacidad.estado
-        incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-
-        # Registrar en historial
-        await historial_estado_service.create_historial_entry(
+        return await self._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.LIQUIDACION.value,
-            observacion="Incapacidad aprobada para pago",
-            cambiado_por_id=usuario_id
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.LIQUIDACION,
+            observacion=observacion,
+            usuario_id=usuario_id,
+            extra_update=extra_update,
         )
-        
-        return incapacidad_actualizada
 
     async def rechazar_incapacidad(
         self,
@@ -886,72 +877,60 @@ class IncapacidadService:
     ) -> Incapacidad:
         """
         Rechaza una incapacidad.
-        
+
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
-            motivo: Motivo del rechazo
+            motivo: Motivo del rechazo (obligatorio, no vacío)
             usuario_id: ID del usuario que rechaza
-            
+
         Returns:
             Incapacidad rechazada
         """
         incapacidad = await self.get_incapacidad(db, incapacidad_id)
-        
-        await self._validate_state_transition(
-            incapacidad.estado,
-            EstadoIncapacidad.GLOSADA
-        )
 
-        update_data = {
-            'estado': EstadoIncapacidad.GLOSADA,
+        # Validate before wrapping in prefix (the f-string prefix would hide an empty value).
+        if not motivo or not motivo.strip():
+            raise BadRequestException(
+                "La observación es obligatoria para la transición a GLOSADA"
+            )
+
+        extra_update: Dict[str, Any] = {
             'motivo_rechazo': motivo,
-            'fecha_rechazo': datetime.utcnow()
+            'fecha_rechazo': datetime.utcnow(),
         }
-
         if usuario_id:
-            update_data['auditado_por_id'] = usuario_id
+            extra_update['auditado_por_id'] = usuario_id
 
-        # Actualizar incapacidad
-        estado_anterior = incapacidad.estado
-        incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-
-        # Registrar en historial
-        await historial_estado_service.create_historial_entry(
+        return await self._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.GLOSADA.value,
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.GLOSADA,
             observacion=f"Incapacidad glosada: {motivo}",
-            cambiado_por_id=usuario_id
+            usuario_id=usuario_id,
+            extra_update=extra_update,
         )
-        
-        return incapacidad_actualizada
 
     async def enviar_a_pago(
         self,
         db: AsyncSession,
         incapacidad_id: UUID,
-        usuario_id: Optional[UUID] = None
+        usuario_id: Optional[UUID] = None,
+        observacion: Optional[str] = None,
     ) -> Incapacidad:
         """
         Envía una incapacidad aprobada a pago.
-        
+
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
             usuario_id: ID del usuario
-            
+            observacion: Observación del cambio (si omitida, se genera a partir de valor_total)
+
         Returns:
             Incapacidad en estado PAGADA
         """
         incapacidad = await self.get_incapacidad(db, incapacidad_id)
-        
-        await self._validate_state_transition(
-            incapacidad.estado,
-            EstadoIncapacidad.PAGADA
-        )
 
         # Validar que tenga valor calculado
         if not incapacidad.valor_total or incapacidad.valor_total <= 0:
@@ -959,71 +938,44 @@ class IncapacidadService:
                 "La incapacidad debe tener un valor_total calculado antes de enviar a pago"
             )
 
-        update_data = {
-            'estado': EstadoIncapacidad.PAGADA
-        }
+        obs = observacion or f"Incapacidad pagada por valor de ${incapacidad.valor_total}"
 
-        # Actualizar incapacidad
-        estado_anterior = incapacidad.estado
-        incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-
-        # Registrar en historial
-        await historial_estado_service.create_historial_entry(
+        return await self._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.PAGADA.value,
-            observacion=f"Incapacidad pagada por valor de ${incapacidad.valor_total}",
-            cambiado_por_id=usuario_id
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.PAGADA,
+            observacion=obs,
+            usuario_id=usuario_id,
         )
-        
-        return incapacidad_actualizada
 
     async def marcar_como_pagada(
         self,
         db: AsyncSession,
         incapacidad_id: UUID,
-        usuario_id: Optional[UUID] = None
+        usuario_id: Optional[UUID] = None,
+        observacion: str = "Incapacidad marcada como pagada",
     ) -> Incapacidad:
         """
         Marca una incapacidad como pagada.
-        
+
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
             usuario_id: ID del usuario
-            
+            observacion: Observación del cambio de estado (obligatoria, no vacía)
+
         Returns:
             Incapacidad pagada
         """
         incapacidad = await self.get_incapacidad(db, incapacidad_id)
-        
-        await self._validate_state_transition(
-            incapacidad.estado,
-            EstadoIncapacidad.PAGADA
-        )
-        
-        update_data = {
-            'estado': EstadoIncapacidad.PAGADA
-        }
-        
-        # Actualizar incapacidad
-        estado_anterior = incapacidad.estado
-        incapacidad_actualizada = await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
-        
-        # Registrar en historial
-        await historial_estado_service.create_historial_entry(
+
+        return await self._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=estado_anterior.value,
-            estado_nuevo=EstadoIncapacidad.PAGADA.value,
-            observacion="Incapacidad marcada como pagada",
-            cambiado_por_id=usuario_id
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.PAGADA,
+            observacion=observacion,
+            usuario_id=usuario_id,
         )
-        
-        return incapacidad_actualizada
 
     async def get_historial_estados(
         self,
