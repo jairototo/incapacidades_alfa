@@ -1,11 +1,12 @@
-"""Tests for SINIESTRO_REQUERIDO business rule in validate_business_rules.
+"""Tests for SINIESTRO_REQUERIDO business rule in validate_audit_only_rules.
 
 Task 3.1: ARL incapacidades without a linked siniestro must be flagged as an ERROR.
+These rules apply during auditing only (not bulk filing).
 """
 from datetime import date
 import uuid
 
-from app.services.incapacidad_validation_rules import validate_business_rules
+from app.services.incapacidad_validation_rules import validate_audit_only_rules as validate_business_rules
 
 
 def test_siniestro_requerido_fires_when_no_siniestro():

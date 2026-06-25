@@ -12,7 +12,7 @@ from loguru import logger
 
 from app.models.incapacidad import Incapacidad
 from app.models.auditoria_resultado import AuditoriaResultado
-from app.services.incapacidad_validation_rules import validate_field_level, validate_business_rules
+from app.services.incapacidad_validation_rules import validate_field_level, validate_business_rules, validate_audit_only_rules
 from app.utils.enums import EstadoIncapacidad
 
 # Reglas que SIEMPRE se evalúan (para registrar también las que pasan).
@@ -73,7 +73,7 @@ async def auditar_incapacidad(db: AsyncSession, incapacidad_id: UUID) -> None:
 
     # Evaluar reglas y construir mapa {codigo: issue}
     row = _incapacidad_to_row(inc)
-    issues = validate_field_level(row) + validate_business_rules(row)
+    issues = validate_field_level(row) + validate_business_rules(row) + validate_audit_only_rules(row)
     failed_by_code = {i["codigo"]: i for i in issues}
 
     # Persistir un AuditoriaResultado por cada regla esperada

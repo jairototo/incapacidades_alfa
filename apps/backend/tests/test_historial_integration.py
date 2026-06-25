@@ -48,26 +48,27 @@ class TestHistorialIntegration:
             incapacidad_id=incapacidad.id
         )
         
-        assert len(historial) == 1
+        # Task 8.1 records None→RADICADA on creation, so after radicar there are 2 entries
+        assert len(historial) == 2
         assert historial[0].entity_type == "incapacidad"
         assert historial[0].estado_anterior == "RADICADA"
         assert historial[0].estado_nuevo == "EN_AUDITORIA"
         assert "radicada" in historial[0].observacion.lower()
-        
-        # Aprobar (EN_AUDITORIA → APROBADA)
+
+        # Aprobar (EN_AUDITORIA → LIQUIDACION, renamed from APROBADA in Task 1.1)
         incapacidad = await incapacidad_service.aprobar_incapacidad(
             db=db_session,
             incapacidad_id=incapacidad.id
         )
-        
-        # Verificar que ahora hay 2 registros
+
+        # Now 3 entries: None→RADICADA, RADICADA→EN_AUDITORIA, EN_AUDITORIA→LIQUIDACION
         historial = await historial_estado_service.get_incapacidad_history(
             db=db_session,
             incapacidad_id=incapacidad.id
         )
-        
-        assert len(historial) == 2
-        assert historial[0].estado_nuevo == "APROBADA"
+
+        assert len(historial) == 3
+        assert historial[0].estado_nuevo == "LIQUIDACION"
         assert historial[1].estado_nuevo == "EN_AUDITORIA"
     
     async def test_siniestro_workflow_creates_history(

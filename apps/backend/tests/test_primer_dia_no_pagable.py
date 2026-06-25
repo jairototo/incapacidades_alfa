@@ -2,11 +2,12 @@
 
 Task 3.2: When fecha_inicio == fecha_siniestro (same day), the first day is NOT payable,
 so the rule fires and auditar_incapacidad() blocks LIQUIDACION (full), forcing LIQUIDACION_PARCIAL.
+These rules apply during auditing only (not bulk filing).
 """
 from datetime import date
 import uuid
 
-from app.services.incapacidad_validation_rules import validate_business_rules
+from app.services.incapacidad_validation_rules import validate_audit_only_rules as validate_business_rules
 
 
 def test_primer_dia_no_pagable_fires_when_dates_match():
