@@ -44,7 +44,7 @@ def _incapacidad_to_row(inc: Incapacidad) -> dict:
         "nombre_medico": inc.nombre_medico,
         "registro_medico": inc.registro_medico,
         "siniestro_id": inc.siniestro_id,
-        "fecha_siniestro": inc.siniestro.fecha_accidente if inc.siniestro else None,
+        "fecha_siniestro": inc.siniestro.fecha_siniestro if inc.siniestro else None,
     }
 
 

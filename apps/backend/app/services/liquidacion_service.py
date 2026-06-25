@@ -23,11 +23,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestException, InvalidStateException, NotFoundException
 from app.db.repositories.liquidacion_repository import liquidacion_repository
-from app.db.repositories.incapacidad_repository import incapacidad_repository
 from app.models.incapacidad import Incapacidad
 from app.models.liquidacion import Liquidacion
 from app.schemas.liquidacion import LiquidacionGuardar
-from app.services.historial_estado_service import historial_estado_service
 from app.utils.enums import EstadoIncapacidad
 
 logger = logging.getLogger(__name__)
@@ -319,28 +317,13 @@ class LiquidacionService:
                 "Solo se puede devolver desde LIQUIDACION o LIQUIDACION_PARCIAL"
             )
 
-        await incapacidad_service._validate_state_transition(
-            incapacidad.estado, EstadoIncapacidad.EN_AUDITORIA
-        )
-
-        await incapacidad_repository.update(
-            db,
-            id=incapacidad_id,
-            obj_in={"estado": EstadoIncapacidad.EN_AUDITORIA},
-        )
-
-        await historial_estado_service.create_historial_entry(
+        await incapacidad_service._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=incapacidad.estado.value,
-            estado_nuevo=EstadoIncapacidad.EN_AUDITORIA.value,
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.EN_AUDITORIA,
             observacion=f"Devolución por liquidador: {observacion}",
-            cambiado_por_id=liquidador_id,
-            flush_only=True,
+            usuario_id=liquidador_id,
         )
-
-        await db.commit()
 
         return await incapacidad_service.get_incapacidad(db, incapacidad_id)
 
@@ -397,24 +380,13 @@ class LiquidacionService:
             else EstadoIncapacidad.PAGADA_PARCIAL
         )
 
-        await incapacidad_repository.update(
-            db,
-            id=incapacidad_id,
-            obj_in={"estado": nuevo_estado},
-        )
-
-        await historial_estado_service.create_historial_entry(
+        await incapacidad_service._cambiar_estado(
             db=db,
-            entity_type="incapacidad",
-            entity_id=incapacidad_id,
-            estado_anterior=incapacidad.estado.value,
-            estado_nuevo=nuevo_estado.value,
-            observacion="Liquidación completada",
-            cambiado_por_id=liquidador_id,
-            flush_only=True,
+            incapacidad=incapacidad,
+            nuevo_estado=nuevo_estado,
+            observacion="Liquidación completada — transición a PAGADA",
+            usuario_id=liquidador_id,
         )
-
-        await db.commit()
 
         return await incapacidad_service.get_incapacidad(db, incapacidad_id)
 

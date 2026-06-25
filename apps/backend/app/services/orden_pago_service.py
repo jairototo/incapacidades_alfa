@@ -320,12 +320,12 @@ class OrdenPagoService:
         incapacidad = await self.incapacidad_repository.get_by_id(db, orden_pago.incapacidad_id)
         if incapacidad and incapacidad.estado in [EstadoIncapacidad.LIQUIDACION, EstadoIncapacidad.LIQUIDACION_PARCIAL]:
             from app.services.incapacidad_service import incapacidad_service
-            await incapacidad_service.cambiar_estado(
+            await incapacidad_service._cambiar_estado(
                 db=db,
-                incapacidad_id=incapacidad.id,
+                incapacidad=incapacidad,
                 nuevo_estado=EstadoIncapacidad.PAGADA,
-                observaciones=f"Pago registrado en orden {orden_pago.numero_orden}",
-                usuario_id=usuario_id
+                observacion=f"Pago registrado en orden {orden_pago.numero_orden}",
+                usuario_id=usuario_id,
             )
         
         return orden_pago

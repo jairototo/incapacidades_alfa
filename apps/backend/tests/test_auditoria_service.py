@@ -1,10 +1,11 @@
 import datetime as dt
 import pytest
 from sqlalchemy import select
-from app.services.auditoria_service import auditar_incapacidad
+from app.services.auditoria_service import auditar_incapacidad, _incapacidad_to_row
 from app.models.auditoria_resultado import AuditoriaResultado
 from app.models.incapacidad import Incapacidad
-from app.utils.enums import TipoIncapacidad, EstadoIncapacidad
+from app.models.siniestro import Siniestro
+from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, TipoSiniestro, GravedadSiniestro, EstadoSiniestro
 from app.services.incapacidad_service import ALLOWED_TRANSITIONS, incapacidad_service
 
 
@@ -71,3 +72,58 @@ async def test_auditar_accion_creacion_siniestro(db_session, test_empleado, test
     )
 
     assert result.estado == EstadoIncapacidad.CREACION_SINIESTRO
+
+
+# --- Unit test: _incapacidad_to_row with a linked Siniestro (Fix 1 regression) ---
+
+def test_incapacidad_to_row_with_siniestro():
+    """_incapacidad_to_row must read fecha_siniestro (not fecha_accidente) without AttributeError."""
+
+    class FakeSiniestro:
+        fecha_siniestro = dt.date(2026, 3, 15)
+
+    class FakeEmpleado:
+        numero_documento = "12345678"
+
+    class FakeInc:
+        tipo = TipoIncapacidad.ARL
+        empleado = FakeEmpleado()
+        subtipo = "ACCIDENTE"
+        fecha_inicio = dt.date(2026, 3, 15)
+        fecha_fin = dt.date(2026, 3, 20)
+        dias_totales = 5
+        diagnostico_cie10 = "S00.0"
+        nombre_medico = "Dr Test"
+        registro_medico = "RM-001"
+        siniestro_id = None
+        siniestro = FakeSiniestro()
+
+    row = _incapacidad_to_row(FakeInc())
+
+    assert row["fecha_siniestro"] == dt.date(2026, 3, 15), (
+        "fecha_siniestro debe leerse del modelo Siniestro.fecha_siniestro, no fecha_accidente"
+    )
+
+
+def test_incapacidad_to_row_without_siniestro():
+    """_incapacidad_to_row returns None for fecha_siniestro when inc.siniestro is None."""
+
+    class FakeEmpleado:
+        numero_documento = "87654321"
+
+    class FakeInc:
+        tipo = TipoIncapacidad.ARL
+        empleado = FakeEmpleado()
+        subtipo = None
+        fecha_inicio = dt.date(2026, 1, 1)
+        fecha_fin = dt.date(2026, 1, 5)
+        dias_totales = 4
+        diagnostico_cie10 = "A00.0"
+        nombre_medico = "Dr Otro"
+        registro_medico = "RM-002"
+        siniestro_id = None
+        siniestro = None
+
+    row = _incapacidad_to_row(FakeInc())
+
+    assert row["fecha_siniestro"] is None
