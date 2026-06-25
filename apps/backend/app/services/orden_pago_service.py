@@ -316,14 +316,19 @@ class OrdenPagoService:
             usuario_id=usuario_id
         )
         
-        # 6. Actualizar estado de la incapacidad a PAGADA
+        # 6. Actualizar estado de la incapacidad a PAGADA / PAGADA_PARCIAL
         incapacidad = await self.incapacidad_repository.get_by_id(db, orden_pago.incapacidad_id)
         if incapacidad and incapacidad.estado in [EstadoIncapacidad.LIQUIDACION, EstadoIncapacidad.LIQUIDACION_PARCIAL]:
             from app.services.incapacidad_service import incapacidad_service
+            nuevo_estado = (
+                EstadoIncapacidad.PAGADA_PARCIAL
+                if incapacidad.estado == EstadoIncapacidad.LIQUIDACION_PARCIAL
+                else EstadoIncapacidad.PAGADA
+            )
             await incapacidad_service._cambiar_estado(
                 db=db,
                 incapacidad=incapacidad,
-                nuevo_estado=EstadoIncapacidad.PAGADA,
+                nuevo_estado=nuevo_estado,
                 observacion=f"Pago registrado en orden {orden_pago.numero_orden}",
                 usuario_id=usuario_id,
             )
