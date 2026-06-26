@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   descargarPlantilla, validarExcel, mapearZip, radicarMasiva, type ValidacionFila,
 } from '@/services/bulkRadicacionService';
+import { ResumenRadicacionModal, type ResultadoRadicacionItem } from './ResumenRadicacionModal';
 
 const PASOS = [
   { icon: Download, title: 'Descargue la plantilla', desc: 'Con o sin empleados pre-diligenciados desde su empresa.' },
@@ -45,6 +46,7 @@ export function RadicacionMasivaPage() {
   const [documentos, setDocumentos] = useState<DocMap>({});
   const [submitting, setSubmitting] = useState(false);
   const [mostrarBloqueos, setMostrarBloqueos] = useState(false);
+  const [resultadoModal, setResultadoModal] = useState<ResultadoRadicacionItem[] | null>(null);
 
   const handleDownload = async (ids: string[]) => {
     const blob = await descargarPlantilla(ids);
@@ -161,10 +163,18 @@ export function RadicacionMasivaPage() {
         });
       });
       const res = await radicarMasiva(payload, docs);
-      const ignorados = res.documentos_ignorados?.length
-        ? ` (${res.documentos_ignorados.length} documento(s) no almacenado(s))` : '';
-      toast({ title: 'Radicación masiva completa', description: `${res.total_radicadas} incapacidad(es) radicada(s)${ignorados}` });
-      navigate('/consulta');
+      const enriched: ResultadoRadicacionItem[] = res.items.map((item) => {
+        const fila = filas.find((f) => f.empleado_id === item.empleado_id);
+        return {
+          empleado_id: item.empleado_id,
+          numero: item.numero ?? null,
+          numero_documento: String(fila?.datos.numero_documento ?? ''),
+          dias_totales: Number(fila?.datos.dias_totales ?? 0),
+          success: item.success,
+          error: item.error,
+        };
+      });
+      setResultadoModal(enriched);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: unknown } } };
       const detail = err?.response?.data?.detail;
@@ -277,6 +287,11 @@ export function RadicacionMasivaPage() {
       )}
 
       <SeleccionEmpleadosModal open={modalOpen} onClose={() => setModalOpen(false)} onDownload={handleDownload} />
+      <ResumenRadicacionModal
+        open={resultadoModal !== null}
+        items={resultadoModal ?? []}
+        onIrAConsulta={() => navigate('/consulta')}
+      />
     </div>
   );
 }

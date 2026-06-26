@@ -7,6 +7,38 @@ import { RadicacionMasivaPage } from '@/components/radicacion/masiva/RadicacionM
 const toastMock = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: toastMock }) }));
 
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
+vi.mock('@/components/radicacion/masiva/TablaValidacion', () => ({
+  TablaValidacion: ({
+    filas,
+    onAddDoc,
+  }: {
+    filas: { fila: number; empleado_id: string | null; datos: Record<string, unknown> }[];
+    onAddDoc: (id: string, tipo: string, file: File) => void;
+  }) => (
+    <div data-testid="tabla-validacion">
+      {filas.map((f) => (
+        <div key={f.fila}>
+          <span>Documento {String(f.datos.numero_documento ?? '')}</span>
+          {f.empleado_id && (
+            <button
+              data-testid={`add-doc-${f.empleado_id}`}
+              onClick={() => onAddDoc(f.empleado_id!, 'INCAPACIDAD', new File(['x'], 'inc.pdf'))}
+            >
+              add doc
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  ),
+}));
+
 vi.mock('@/services/empresaEmpleadoService', () => ({ useEmpleadosDeMiEmpresa: () => ({ data: [], isLoading: false }) }));
 vi.mock('@/services/bulkRadicacionService', () => ({
   descargarPlantilla: vi.fn(),
@@ -27,6 +59,10 @@ const wrap = () => render(
 );
 
 describe('RadicacionMasivaPage', () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+  });
+
   it('renders the template download, the 3-step intro, and no submit button before rows', () => {
     wrap();
     expect(screen.getByRole('button', { name: /descargar plantilla/i })).toBeInTheDocument();
@@ -105,5 +141,60 @@ describe('RadicacionMasivaPage', () => {
       ),
     );
     expect(screen.queryByRole('button', { name: /radicar incapacidades/i })).not.toBeInTheDocument();
+  });
+
+  it('shows summary modal after successful submit; "Ir a consulta" navigates to /consulta', async () => {
+    const { radicarMasiva, validarExcel } = await import('@/services/bulkRadicacionService');
+    (validarExcel as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      filas: [
+        {
+          fila: 2,
+          empleado_id: 'emp-001',
+          datos: { numero_documento: '10000001', dias_totales: 7 },
+          errores: [],
+          valida: true,
+        },
+      ],
+      total: 1,
+      validas: 1,
+    });
+    (radicarMasiva as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      total_radicadas: 1,
+      items: [
+        {
+          empleado_id: 'emp-001',
+          incapacidad_id: 'inc-uuid-001',
+          numero: 'ARL-2026-001',
+          success: true,
+        },
+      ],
+      documentos_ignorados: [],
+    });
+
+    wrap();
+
+    // Seed filas via mocked Excel upload
+    fireEvent.change(screen.getByLabelText(/subir excel/i), {
+      target: { files: [new File([new Uint8Array(10)], 'a.xlsx')] },
+    });
+    await screen.findByTestId('tabla-validacion');
+
+    // Add required INCAPACIDAD document via the TablaValidacion mock's trigger button
+    fireEvent.click(screen.getByTestId('add-doc-emp-001'));
+
+    // Submit
+    fireEvent.click(await screen.findByRole('button', { name: /radicar incapacidades/i }));
+
+    // Summary modal appears
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText('ARL-2026-001')).toBeInTheDocument();
+    expect(screen.getByText('10000001')).toBeInTheDocument();
+    expect(screen.getByText('7')).toBeInTheDocument();
+
+    // Clicking "Ir a consulta" triggers navigation, not direct navigate on submit
+    expect(mockNavigate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /ir a consulta/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/consulta');
   });
 });
