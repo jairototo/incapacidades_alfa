@@ -1104,17 +1104,23 @@ async def radicar_masiva(
 
     # --- Fault-isolated summary email -----------------------------------------
     if result.total_radicadas and current_user.empresa.email_contacto:
-        from app.tasks.email_tasks import send_email_task
-        numeros = [i.numero for i in result.items if i.success]
-        cuerpo = (
-            "Se radicaron las siguientes incapacidades:<br>"
-            + "<br>".join(f"- {n}" for n in numeros)
-        )
+        from app.tasks.email_tasks import send_resumen_radicacion_masiva_task
+        row_by_empleado: dict = {str(r["empleado_id"]): r for r in raw_rows if isinstance(r, dict)}
+        email_items = [
+            {
+                "numero": i.numero,
+                "numero_documento": str(row_by_empleado.get(str(i.empleado_id), {}).get("numero_documento", "N/A")),
+                "dias_totales": int(row_by_empleado.get(str(i.empleado_id), {}).get("dias_totales") or 0),
+            }
+            for i in result.items
+            if i.success and i.numero
+        ]
         try:
-            send_email_task.delay(
+            send_resumen_radicacion_masiva_task.delay(
                 to=current_user.empresa.email_contacto,
-                subject="Confirmación de radicación masiva de incapacidades",
-                html_body=cuerpo,
+                empresa_nombre=current_user.empresa.razon_social,
+                fecha=date.today().strftime("%d/%m/%Y"),
+                items=email_items,
             )
         except Exception as exc:
             logger.error(f"No se pudo encolar el correo de resumen masivo: {exc}")

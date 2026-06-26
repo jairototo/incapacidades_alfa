@@ -178,3 +178,91 @@ def send_devolucion_pre_incapacidad_email_task(
     except Exception as e:
         logger.error(f"[EMAIL] Error al enviar devolución: {e}")
         return {"status": "error", "error": str(e)}
+
+
+def _build_bulk_email_html(empresa_nombre: str, fecha: str, items: list[dict]) -> str:
+    """Build a branded HTML email body for bulk filing confirmation.
+
+    items: list of {numero, numero_documento, dias_totales}
+    """
+    rows_html = ""
+    for item in items:
+        rows_html += (
+            f'<tr style="border-bottom:1px solid #CEDFDC;">'
+            f'<td style="padding:10px 14px;color:#004953;">{item["numero_documento"]}</td>'
+            f'<td style="padding:10px 14px;font-family:monospace;color:#004953;">{item["numero"]}</td>'
+            f'<td style="padding:10px 14px;text-align:right;color:#004953;">{item["dias_totales"]}</td>'
+            f'</tr>'
+        )
+    year = datetime.utcnow().year
+    count = len(items)
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F0FAF8;font-family:Roboto,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0FAF8;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,73,83,0.08);">
+        <tr>
+          <td style="background:#004953;padding:24px 32px;">
+            <h1 style="margin:0;font-size:20px;color:#FFFFFF;font-weight:700;">Seguros Alfa</h1>
+            <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">Confirmación de Radicación de Incapacidades</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 8px;font-size:15px;color:#004953;">Empresa: <strong>{empresa_nombre}</strong></p>
+            <p style="margin:0 0 24px;font-size:14px;color:#52706F;">
+              Se radicaron exitosamente <strong>{count}</strong> incapacidad(es) el {fecha}.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #CEDFDC;">
+              <thead>
+                <tr style="background:#EBF7F5;">
+                  <th style="padding:10px 14px;text-align:left;font-size:12px;color:#52706F;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Nº Documento</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:12px;color:#52706F;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Número de Radicado</th>
+                  <th style="padding:10px 14px;text-align:right;font-size:12px;color:#52706F;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Días</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows_html}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#F0FAF8;padding:20px 32px;border-top:1px solid #CEDFDC;">
+            <p style="margin:0;font-size:12px;color:#8AA8A6;text-align:center;">
+              © {year} Seguros Alfa — Este correo es generado automáticamente.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+@celery_app.task(name="send_resumen_radicacion_masiva")
+def send_resumen_radicacion_masiva_task(
+    to: str,
+    empresa_nombre: str,
+    fecha: str,
+    items: list[dict],
+) -> dict:
+    """Send a formatted bulk filing summary email.
+
+    items: list of {numero, numero_documento, dias_totales}
+    """
+    logger.info(f"[EMAIL] Enviando resumen masivo ({len(items)} items) a {to}")
+    try:
+        html_body = _build_bulk_email_html(empresa_nombre, fecha, items)
+        success = email_service.send_email(
+            to=to,
+            subject="Confirmación de radicación masiva de incapacidades",
+            html_body=html_body,
+        )
+        return {"status": "sent" if success else "failed", "to": to}
+    except Exception as exc:
+        logger.error(f"[EMAIL] Error al enviar resumen masivo: {exc}")
+        return {"status": "error", "to": to, "error": str(exc)}
