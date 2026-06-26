@@ -2,6 +2,7 @@
 Email tasks for Celery.
 """
 from datetime import datetime
+from html import escape
 from typing import Dict, Any
 from loguru import logger
 
@@ -189,8 +190,8 @@ def _build_bulk_email_html(empresa_nombre: str, fecha: str, items: list[dict]) -
     for item in items:
         rows_html += (
             f'<tr style="border-bottom:1px solid #CEDFDC;">'
-            f'<td style="padding:10px 14px;color:#004953;">{item["numero_documento"]}</td>'
-            f'<td style="padding:10px 14px;font-family:monospace;color:#004953;">{item["numero"]}</td>'
+            f'<td style="padding:10px 14px;color:#004953;">{escape(str(item["numero_documento"]))}</td>'
+            f'<td style="padding:10px 14px;font-family:monospace;color:#004953;">{escape(str(item["numero"]))}</td>'
             f'<td style="padding:10px 14px;text-align:right;color:#004953;">{item["dias_totales"]}</td>'
             f'</tr>'
         )
@@ -202,18 +203,18 @@ def _build_bulk_email_html(empresa_nombre: str, fecha: str, items: list[dict]) -
 <body style="margin:0;padding:0;background:#F0FAF8;font-family:Roboto,Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0FAF8;padding:32px 0;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,73,83,0.08);">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,73,83,0.08);border-top:4px solid #009966;">
         <tr>
           <td style="background:#004953;padding:24px 32px;">
-            <h1 style="margin:0;font-size:20px;color:#009966;font-weight:700;">Seguros Alfa</h1>
+            <h1 style="margin:0;font-size:20px;color:#FFFFFF;font-weight:700;">Seguros Alfa</h1>
             <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">Confirmación de Radicación de Incapacidades</p>
           </td>
         </tr>
         <tr>
           <td style="padding:32px;">
-            <p style="margin:0 0 8px;font-size:15px;color:#004953;">Empresa: <strong>{empresa_nombre}</strong></p>
+            <p style="margin:0 0 8px;font-size:15px;color:#004953;">Empresa: <strong>{escape(empresa_nombre)}</strong></p>
             <p style="margin:0 0 24px;font-size:14px;color:#52706F;">
-              Se radicaron exitosamente <strong>{count}</strong> incapacidad(es) el {fecha}.
+              Se radicaron exitosamente <strong>{count}</strong> incapacidad(es) el {escape(fecha)}.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #CEDFDC;">
               <thead>
