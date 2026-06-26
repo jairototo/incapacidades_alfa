@@ -205,7 +205,7 @@ def _build_bulk_email_html(empresa_nombre: str, fecha: str, items: list[dict]) -
       <table width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,73,83,0.08);">
         <tr>
           <td style="background:#004953;padding:24px 32px;">
-            <h1 style="margin:0;font-size:20px;color:#FFFFFF;font-weight:700;">Seguros Alfa</h1>
+            <h1 style="margin:0;font-size:20px;color:#009966;font-weight:700;">Seguros Alfa</h1>
             <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">Confirmación de Radicación de Incapacidades</p>
           </td>
         </tr>
@@ -231,7 +231,7 @@ def _build_bulk_email_html(empresa_nombre: str, fecha: str, items: list[dict]) -
         </tr>
         <tr>
           <td style="background:#F0FAF8;padding:20px 32px;border-top:1px solid #CEDFDC;">
-            <p style="margin:0;font-size:12px;color:#8AA8A6;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#52706F;text-align:center;">
               © {year} Seguros Alfa — Este correo es generado automáticamente.
             </p>
           </td>
