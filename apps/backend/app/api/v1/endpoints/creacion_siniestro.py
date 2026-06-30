@@ -70,9 +70,9 @@ async def iniciar_creacion_siniestro(
     4. Encola tarea Celery `vincular_siniestro_externo_task`.
     5. Retorna la incapacidad actualizada.
     """
-    if current_user.rol != RolUsuario.ADMIN:
+    if current_user.rol not in (RolUsuario.ADMIN, RolUsuario.AUDITOR):
         raise ForbiddenException(
-            "Solo usuarios con rol ADMINISTRADOR pueden vincular siniestros externos"
+            "Solo usuarios con rol ADMINISTRADOR o AUDITOR pueden iniciar la creación de siniestro"
         )
 
     inc = await incapacidad_service.iniciar_creacion_siniestro(
