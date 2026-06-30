@@ -125,12 +125,15 @@ interface StateDescriptionPanelProps {
   auditoriaResultados?: ValidationIssue[];
   /** Pass auditoria_resultado list to show inline when estado === EN_AUDITORIA */
   auditoriaResultadosList?: AuditoriaResultado[];
+  /** Whether auditoriaResultadosList is still loading */
+  auditoriaResultadosListLoading?: boolean;
 }
 
 export function StateDescriptionPanel({
   estado,
   auditoriaResultados,
   auditoriaResultadosList,
+  auditoriaResultadosListLoading = false,
 }: StateDescriptionPanelProps) {
   const info = STATE_INFO[estado];
   if (!info) return null;
@@ -183,7 +186,7 @@ export function StateDescriptionPanel({
       {/* Resultados de auditoría automática (solo EN_AUDITORIA cuando se proveen) */}
       {estado === 'EN_AUDITORIA' && auditoriaResultadosList && auditoriaResultadosList.length > 0 && (
         <div className="border-t border-blue-200 pt-3">
-          <AuditoriaResultadosPanel resultados={auditoriaResultadosList} isLoading={false} />
+          <AuditoriaResultadosPanel resultados={auditoriaResultadosList} isLoading={auditoriaResultadosListLoading} />
         </div>
       )}
 

@@ -2,7 +2,7 @@
 Endpoint para el flujo CREACION_SINIESTRO.
 
 POST /incapacidades/{incapacidad_id}/creacion-siniestro
-  — Solo ADMINISTRADOR.
+  — Solo ADMINISTRADOR o AUDITOR.
   — Guarda numero_siniestro, cambia estado a CREACION_SINIESTRO y encola
     la tarea Celery que vincula el siniestro externo.
 """
@@ -13,14 +13,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException
-from app.core.security import get_current_user
+from app.core.security import get_current_user, PermissionChecker, Permissions
 from app.core.logging import logger
 from app.db.session import get_db
 from app.models.usuario import Usuario
 from app.schemas.incapacidad import IncapacidadInDB
 from app.services.incapacidad_service import incapacidad_service
 from app.tasks.siniestro_tasks import vincular_siniestro_externo_task
-from app.utils.enums import RolUsuario
 
 router = APIRouter()
 
@@ -48,11 +47,12 @@ class CreacionSiniestroRequest(BaseModel):
     status_code=status.HTTP_200_OK,
     summary="Iniciar vinculación de siniestro externo",
     description=(
-        "Solo ADMINISTRADOR. "
+        "Solo ADMINISTRADOR o AUDITOR. "
         "Cambia la incapacidad ARL a estado CREACION_SINIESTRO y encola la tarea "
         "Celery que consulta el sistema externo, crea el siniestro local y retorna "
         "la incapacidad a EN_AUDITORIA automáticamente."
     ),
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_AUDIT]))],
 )
 async def iniciar_creacion_siniestro(
     incapacidad_id: UUID,
@@ -64,13 +64,13 @@ async def iniciar_creacion_siniestro(
     Inicia la vinculación de un siniestro externo con una incapacidad ARL.
 
     Flujo:
-    1. Valida que el usuario sea ADMINISTRADOR.
+    1. Valida que el usuario sea ADMINISTRADOR o AUDITOR.
     2. Valida que la incapacidad sea ARL y esté en EN_AUDITORIA.
     3. Guarda numero_siniestro y cambia estado a CREACION_SINIESTRO.
     4. Encola tarea Celery `vincular_siniestro_externo_task`.
     5. Retorna la incapacidad actualizada.
     """
-    if current_user.rol not in (RolUsuario.ADMIN, RolUsuario.AUDITOR):
+    if not PermissionChecker.has_permission(current_user.rol, Permissions.INCAPACIDAD_AUDIT):
         raise ForbiddenException(
             "Solo usuarios con rol ADMINISTRADOR o AUDITOR pueden iniciar la creación de siniestro"
         )

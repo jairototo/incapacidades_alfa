@@ -259,6 +259,7 @@ export function GestionarPage() {
         auditoriaResultadosList={
           incapacidad.estado === 'EN_AUDITORIA' ? (auditoriaResultados ?? undefined) : undefined
         }
+        auditoriaResultadosListLoading={auditoriaResultadosLoading}
       />
 
       {/* Layout principal: Split-screen (Documentos | Tabs) */}
