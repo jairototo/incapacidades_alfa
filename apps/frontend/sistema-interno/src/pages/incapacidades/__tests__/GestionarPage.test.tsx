@@ -17,6 +17,7 @@ vi.mock('@/services/incapacidadService', () => ({
     getDatosAprobados: vi.fn(),
     getValidaciones: vi.fn(),
     reenviarNotificacionGlosada: vi.fn(),
+    getSiniestrosCandidatos: vi.fn().mockResolvedValue([]),
   },
 }));
 

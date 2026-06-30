@@ -1,6 +1,19 @@
 import { TipoIncapacidad, EstadoIncapacidad, TipoDocumento, EstadoOrdenPago, Prioridad } from './enums';
 
 /**
+ * Siniestro básico (vinculado a incapacidad ARL)
+ */
+export interface SiniestroBasic {
+  id: string;
+  numero_siniestro: string;
+  fecha_siniestro: string;
+  tipo_siniestro: string;
+  descripcion: string;
+  gravedad: string;
+  estado: string;
+}
+
+/**
  * Incapacidad (Response del API)
  */
 export interface Incapacidad {
@@ -16,6 +29,9 @@ export interface Incapacidad {
   diagnostico_descripcion: string;
   valor_total: number;
   observaciones?: string;
+  siniestro_id?: string | null;
+  numero_siniestro?: string | null;
+  siniestro?: SiniestroBasic | null;
   empleado?: Empleado;
   afiliado?: Afiliado;
   empresa?: Empresa;

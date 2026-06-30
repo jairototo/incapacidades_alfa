@@ -24,6 +24,7 @@ import { AuditoriaFormulario } from '@/components/incapacidades/AuditoriaFormula
 import { IncapacidadContextStrip } from '@/components/incapacidades/IncapacidadContextStrip';
 import { ValidacionesPanel } from '@/components/incapacidades/ValidacionesPanel';
 import { StateDescriptionPanel } from '@/components/incapacidades/StateDescriptionPanel';
+import { SiniestroPanel } from '@/components/incapacidades/SiniestroPanel';
 
 import { incapacidadService } from '@/services/incapacidadService';
 import { preIncapacidadService } from '@/services/preIncapacidadService';
@@ -300,6 +301,16 @@ export function GestionarPage() {
               )}
               {canManage ? (
                 <>
+                  {/* Panel de siniestro (solo ARL) */}
+                  {incapacidad.tipo === 'ARL' && (
+                    <SiniestroPanel
+                      incapacidad={incapacidad}
+                      onVinculated={() => {
+                        queryClient.invalidateQueries({ queryKey: ['incapacidad', id] });
+                      }}
+                    />
+                  )}
+
                   {/* Datos aprobados previos (si existen) */}
                   {datosAprobados && (
                     <Card className="p-6 bg-yellow-50 border-yellow-400">

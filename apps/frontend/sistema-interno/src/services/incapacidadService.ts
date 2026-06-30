@@ -9,6 +9,7 @@ import type {
   AuditoriaDatosAprobados,
   IncapacidadAuditarRequest,
   ValidacionesResponse,
+  SiniestroBasic,
 } from '@/types/incapacidad';
 
 /**
@@ -295,5 +296,31 @@ export const incapacidadService = {
    */
   async reenviarNotificacionGlosada(id: string): Promise<void> {
     await api.post(`/incapacidades/${id}/reenviar-notificacion-glosada`);
+  },
+
+  /**
+   * Obtener siniestros candidatos para vincular a una incapacidad ARL
+   * GET /api/v1/incapacidades/{id}/siniestros-candidatos
+   * Returns: SiniestroBasic[] (vacío si ya tiene siniestro o es SALUD)
+   */
+  async getSiniestrosCandidatos(id: string): Promise<SiniestroBasic[]> {
+    const { data } = await api.get<SiniestroBasic[]>(
+      `/incapacidades/${id}/siniestros-candidatos`
+    );
+    return data;
+  },
+
+  /**
+   * Vincular siniestro a incapacidad ARL (solo AUDITOR o ADMIN)
+   * POST /api/v1/incapacidades/{id}/vincular-siniestro
+   * Body: { siniestro_id: string }
+   * Returns: Incapacidad actualizada
+   */
+  async vincularSiniestro(id: string, siniestro_id: string): Promise<Incapacidad> {
+    const { data } = await api.post<Incapacidad>(
+      `/incapacidades/${id}/vincular-siniestro`,
+      { siniestro_id }
+    );
+    return data;
   },
 };
