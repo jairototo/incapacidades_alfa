@@ -78,6 +78,10 @@ async def test_get_candidatos_excludes_other_employees():
 
     assert candidatos == []
     db.execute.assert_called_once()
+    # Verificar que la query incluye el filtro por empleado_id
+    call_args = db.execute.call_args
+    query_str = str(call_args[0][0])
+    assert "empleado_id" in query_str
 
 
 @pytest.mark.asyncio
@@ -98,8 +102,11 @@ async def test_get_candidatos_excludes_future_siniestros():
     candidatos = await repo.get_candidatos(db, empleado_id, fecha_inicio, fecha_fin)
 
     assert candidatos == []
-    # Verificar que se realizó una consulta (el WHERE fecha_siniestro <= fecha_fin lo aplica el DB)
+    # Verificar que la query incluye el filtro por fecha_siniestro
     db.execute.assert_called_once()
+    call_args = db.execute.call_args
+    query_str = str(call_args[0][0])
+    assert "fecha_siniestro" in query_str
 
 
 # ---------------------------------------------------------------------------
@@ -171,9 +178,9 @@ async def test_vincular_siniestro_links_and_creates_historial():
         )
         mock_sin_repo.get_by_id = AsyncMock(return_value=mock_siniestro)
 
-        # Patch the inline import of incapacidad_repository
+        # Patch incapacidad_repository at usage site (module-level import)
         with patch(
-            "app.db.repositories.incapacidad_repository.incapacidad_repository"
+            "app.api.v1.endpoints.incapacidades.incapacidad_repository"
         ) as mock_inc_repo:
             mock_inc_repo.update_flushed = AsyncMock()
             mock_serialize.return_value = {

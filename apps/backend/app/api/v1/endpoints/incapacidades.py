@@ -52,7 +52,7 @@ from app.models.usuario import Usuario
 from app.models.historial_estado import HistorialEstado
 from app.schemas.historial_estado import HistorialEstadoCreate
 from app.db.repositories.siniestro_repository import siniestro_repository
-from app.utils.enums import RolUsuario
+from app.db.repositories.incapacidad_repository import incapacidad_repository
 from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
 from app.core.logging import logger
 from app.services.bulk_radicacion_service import generar_plantilla, parsear_y_validar, mapear_zip
@@ -1653,6 +1653,7 @@ class _VincularSiniestroBody(_BM):
         "Solo disponible para roles AUDITOR y ADMIN."
     ),
     tags=["incapacidades-auditoria"],
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_AUDIT]))],
 )
 async def vincular_siniestro(
     incapacidad_id: UUID = Path(..., description="ID de la incapacidad"),
@@ -1675,11 +1676,6 @@ async def vincular_siniestro(
     - Crea entrada en el historial de estados.
     - Commit atómico.
     """
-    if current_user.rol not in (RolUsuario.ADMIN, RolUsuario.AUDITOR):
-        raise ForbiddenException(
-            "Solo usuarios con rol AUDITOR o ADMIN pueden vincular siniestros"
-        )
-
     # Obtener incapacidad
     incapacidad = await incapacidad_service.get_incapacidad(db, incapacidad_id, with_relations=False)
 
@@ -1704,10 +1700,7 @@ async def vincular_siniestro(
         )
 
     # Actualizar incapacidad — flush only (sin commit)
-    from app.db.repositories.incapacidad_repository import (
-        incapacidad_repository as inc_repo,
-    )
-    await inc_repo.update_flushed(
+    await incapacidad_repository.update_flushed(
         db,
         id=incapacidad_id,
         obj_in={
