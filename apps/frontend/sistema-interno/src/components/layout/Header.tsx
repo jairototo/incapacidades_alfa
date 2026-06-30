@@ -53,8 +53,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
-      <div className="flex items-center space-x-4">
+    <header className="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4">
+      <div className="flex items-center space-x-3">
         <Button
           variant="ghost"
           size="icon"
@@ -66,13 +66,13 @@ export function Header({ onMenuClick }: HeaderProps) {
         </Button>
 
         <div className="hidden md:block">
-          <h1 className="text-xl font-semibold text-slate-800">
+          <h1 className="text-sm font-semibold text-slate-800">
             Sistema de Gestión de Incapacidades
           </h1>
         </div>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2">
         {/* Rol Badge */}
         {user && (
           <Badge className={getRoleBadgeColor(user.rol)} variant="secondary">
