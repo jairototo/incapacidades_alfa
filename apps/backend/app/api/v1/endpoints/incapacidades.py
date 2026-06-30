@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.pre_incapacidad import PreIncapacidad
+from app.models.auditoria_resultado import AuditoriaResultado
 from app.schemas.incapacidad import (
     IncapacidadCreate,
     IncapacidadUpdate,
@@ -34,6 +35,7 @@ from app.schemas.incapacidad import (
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
 from app.schemas.auditoria_datos import AuditoriaDatosAprobadosResponse
+from app.schemas.auditoria_resultado import AuditoriaResultadoSchema
 from app.schemas.empleado import EmpleadoResponse
 from app.schemas.empresa import EmpresaResponse
 from app.schemas.afiliado import AfiliadoResponse
@@ -1742,3 +1744,36 @@ async def vincular_siniestro(
     )
 
     return result
+
+
+@router.get(
+    "/{incapacidad_id}/auditoria-resultados",
+    response_model=List[AuditoriaResultadoSchema],
+    summary="Obtener resultados de auditoría automática",
+    description=(
+        "Devuelve los resultados de cada regla evaluada cuando la incapacidad "
+        "pasó a EN_AUDITORIA. Incluye reglas aprobadas y no aprobadas."
+    ),
+    tags=["incapacidades-auditoria"],
+)
+async def get_auditoria_resultados(
+    incapacidad_id: UUID = Path(..., description="ID de la incapacidad"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+) -> List[AuditoriaResultadoSchema]:
+    """
+    Devuelve todos los resultados de reglas de auditoría para una incapacidad.
+
+    - Requiere autenticación (cualquier rol).
+    - Ordenado por nombre de regla (alfabético).
+    """
+    await incapacidad_service.get_incapacidad(db, incapacidad_id, with_relations=False)
+
+    stmt = (
+        sa_select(AuditoriaResultado)
+        .where(AuditoriaResultado.incapacidad_id == incapacidad_id)
+        .order_by(AuditoriaResultado.regla)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    return [AuditoriaResultadoSchema.model_validate(r) for r in rows]
