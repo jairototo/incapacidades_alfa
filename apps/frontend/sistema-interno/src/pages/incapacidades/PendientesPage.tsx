@@ -227,11 +227,11 @@ export function PendientesPage() {
   const totalPendientes = data?.length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-3">
             Incapacidades Pendientes
             <Badge variant="destructive" className="text-base">
               {totalPendientes}
@@ -269,7 +269,7 @@ export function PendientesPage() {
 
       {/* Tabla de pendientes */}
       <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
+        <div className="p-4">
           {!isLoading && totalPendientes === 0 ? (
             // Empty state
             <div className="text-center py-12">

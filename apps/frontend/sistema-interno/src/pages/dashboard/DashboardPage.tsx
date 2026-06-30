@@ -92,11 +92,11 @@ export function DashboardPage() {
   const error = statsError || incapacidadesError;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Dashboard de Auditoría</h1>
-        <p className="text-slate-500 mt-2">
+        <h1 className="text-xl font-bold text-slate-900">Dashboard de Auditoría</h1>
+        <p className="text-slate-500 mt-1">
           Gestión y auditoría de incapacidades
         </p>
       </div>
@@ -118,10 +118,10 @@ export function DashboardPage() {
       />
 
       {/* Gráficos y Análisis */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-primary" />
-          <h2 className="text-2xl font-bold">Análisis y Tendencias</h2>
+          <h2 className="text-base font-bold">Análisis y Tendencias</h2>
         </div>
 
         {/* Error State para gráficos */}
@@ -136,21 +136,21 @@ export function DashboardPage() {
 
         {/* Loading State para gráficos */}
         {isLoadingExtended ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-[400px]" />
+              <Skeleton key={i} className="h-[300px]" />
             ))}
           </div>
         ) : extendedStats ? (
           <>
             {/* Grid de gráficos - Primera fila */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <TopEmpresasChart data={extendedStats.top_empresas} />
               <TopDiagnosticosChart data={extendedStats.top_diagnosticos} />
             </div>
 
             {/* Grid de gráficos - Segunda fila */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <DistribucionEstadosPieChart data={extendedStats.distribucion_estados} />
               <DistribucionTiposDonut data={extendedStats.distribucion_tipos} />
             </div>

@@ -14,7 +14,7 @@ interface IncapacidadDetalleProps {
  */
 export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
       {/* Información General */}
       <Card>
         <CardHeader>
@@ -26,10 +26,10 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium text-slate-500">N° Radicación</label>
-            <p className="text-lg font-mono font-semibold">{incapacidad.numero}</p>
+            <p className="text-base font-mono font-semibold">{incapacidad.numero}</p>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-slate-500">Tipo</label>
               <div className="mt-1">
@@ -82,12 +82,12 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
             <>
               <div>
                 <label className="text-sm font-medium text-slate-500">Nombre Completo</label>
-                <p className="text-lg font-medium">
+                <p className="text-base font-medium">
                   {incapacidad.empleado.nombres} {incapacidad.empleado.apellidos}
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-slate-500">Tipo Documento</label>
                   <p className="text-sm text-slate-700">{incapacidad.empleado.tipo_documento}</p>
@@ -120,12 +120,12 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
             <>
               <div>
                 <label className="text-sm font-medium text-slate-500">Nombre Completo</label>
-                <p className="text-lg font-medium">
+                <p className="text-base font-medium">
                   {incapacidad.afiliado.nombres} {incapacidad.afiliado.apellidos}
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-slate-500">Tipo Documento</label>
                   <p className="text-sm text-slate-700">{incapacidad.afiliado.tipo_documento}</p>
@@ -154,7 +154,7 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium text-slate-500">Razón Social</label>
-              <p className="text-lg font-medium">{incapacidad.empresa.razon_social}</p>
+              <p className="text-base font-medium">{incapacidad.empresa.razon_social}</p>
             </div>
             
             <div>
@@ -181,7 +181,7 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium text-slate-500">Código CIE-10</label>
-            <p className="text-lg font-mono font-semibold">{incapacidad.diagnostico_cie10}</p>
+            <p className="text-base font-mono font-semibold">{incapacidad.diagnostico_cie10}</p>
           </div>
           
           <div>
@@ -200,7 +200,7 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-slate-500">Fecha Inicio</label>
               <p className="text-sm text-slate-700">{formatDate(incapacidad.fecha_inicio)}</p>
@@ -213,7 +213,7 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
 
           <div>
             <label className="text-sm font-medium text-slate-500">Total Días</label>
-            <p className="text-2xl font-bold text-blue-600">{incapacidad.dias_totales} días</p>
+            <p className="text-xl font-bold text-blue-600">{incapacidad.dias_totales} días</p>
           </div>
         </CardContent>
       </Card>
@@ -229,7 +229,7 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium text-slate-500">Valor Total</label>
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-xl font-bold text-green-600">
               {formatCurrency(incapacidad.valor_total)}
             </p>
           </div>
@@ -253,7 +253,7 @@ export function IncapacidadDetalle({ incapacidad }: IncapacidadDetalleProps) {
           <CardTitle>Información de Sistema</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
               <label className="text-sm font-medium text-slate-500">Fecha de Creación</label>
               <p className="text-slate-700">{formatDate(incapacidad.created_at)}</p>

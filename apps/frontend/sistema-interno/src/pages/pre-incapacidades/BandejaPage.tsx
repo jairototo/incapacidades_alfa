@@ -172,11 +172,11 @@ export function BandejaPage() {
   const totalErrores = data?.reduce((s, i) => s + i.total_errores, 0) ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-3">
             <Inbox className="h-8 w-8 text-blue-600" />
             Bandeja Pre-Incapacidades
             {total > 0 && (
@@ -227,7 +227,7 @@ export function BandejaPage() {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
+        <div className="p-4">
           {!isLoading && total === 0 ? (
             <div className="text-center py-12">
               <CheckCircle className="mx-auto h-16 w-16 text-green-500" />

@@ -74,7 +74,7 @@ export function ValidationInconsistenciasList({ issues }: Props) {
 
   if (issues.length === 0) {
     return (
-      <Card className="p-6 text-center bg-green-50 border-green-200">
+      <Card className="p-4 text-center bg-green-50 border-green-200">
         <AlertCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
         <p className="font-medium text-green-800">Sin inconsistencias detectadas</p>
         <p className="text-sm text-green-600 mt-1">Esta pre-incapacidad puede ser promovida.</p>

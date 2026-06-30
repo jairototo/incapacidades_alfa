@@ -184,7 +184,7 @@ export function GestionarPage() {
         <Card className="p-8 max-w-md">
           <div className="text-center space-y-4">
             <XCircle className="h-16 w-16 text-red-500 mx-auto" />
-            <h2 className="text-2xl font-bold text-slate-900">Incapacidad no encontrada</h2>
+            <h2 className="text-lg font-bold text-slate-900">Incapacidad no encontrada</h2>
             <p className="text-slate-500">
               No se pudo cargar la información de la incapacidad solicitada.
             </p>
@@ -201,7 +201,7 @@ export function GestionarPage() {
   const canManage = ['RADICADA', 'EN_AUDITORIA', 'PENDIENTE'].includes(incapacidad.estado);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -214,7 +214,7 @@ export function GestionarPage() {
             Volver
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-3">
               Gestión de Incapacidad
               <Badge variant={getEstadoBadgeVariant(incapacidad.estado)}>
                 {incapacidad.estado}
@@ -263,19 +263,19 @@ export function GestionarPage() {
       />
 
       {/* Layout principal: Split-screen (Documentos | Tabs) */}
-      <div className="flex gap-6">
+      <div className="flex gap-4">
         {/* Sidebar de documentos (collapsible) */}
         {showDocumentsSidebar && (
           <div className="w-1/2 flex-shrink-0">
-            <Card className="h-full sticky top-6">
-              <div className="p-6 border-b flex items-center justify-between">
+            <Card className="h-full sticky top-4">
+              <div className="p-4 border-b flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Image className="h-5 w-5 text-blue-600" />
                   <h3 className="text-lg font-semibold">Documentos Adjuntos</h3>
                   <Badge variant="secondary">{documentos?.length || 0}</Badge>
                 </div>
               </div>
-              <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]">
+              <div className="p-4 overflow-y-auto max-h-[calc(100vh-200px)]">
                 <DocumentosViewer documentos={documentos || []} />
               </div>
             </Card>
@@ -284,7 +284,7 @@ export function GestionarPage() {
 
         {/* Panel principal de tabs */}
         <div className={cn('flex-1', showDocumentsSidebar ? 'w-1/2' : 'w-full')}>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="auditoria" className="space-x-2">
                 <AlertTriangle className="h-4 w-4" />
@@ -301,7 +301,7 @@ export function GestionarPage() {
             </TabsList>
 
             {/* Tab: Auditoría (NUEVO) */}
-            <TabsContent value="auditoria" className="space-y-6">
+            <TabsContent value="auditoria" className="space-y-4">
               {incapacidad && (
                 <IncapacidadContextStrip
                   incapacidad={incapacidad}
@@ -323,7 +323,7 @@ export function GestionarPage() {
 
                   {/* Datos aprobados previos (si existen) */}
                   {datosAprobados && (
-                    <Card className="p-6 bg-yellow-50 border-yellow-400">
+                    <Card className="p-4 bg-yellow-50 border-yellow-400">
                       <div className="flex items-start gap-3">
                         <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
                         <div className="flex-1">
@@ -366,7 +366,7 @@ export function GestionarPage() {
                 </>
               ) : (
                 <>
-                  <Card className="p-6 bg-slate-50">
+                  <Card className="p-4 bg-slate-50">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="h-5 w-5 text-slate-500 mt-0.5" />
                       <div className="flex-1">

@@ -395,7 +395,7 @@ export function LiquidacionPage() {
         <Card className="p-8 max-w-md">
           <div className="text-center space-y-4">
             <XCircle className="h-16 w-16 text-red-500 mx-auto" />
-            <h2 className="text-2xl font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-slate-900">
               Incapacidad no encontrada
             </h2>
             <p className="text-slate-500">
@@ -417,7 +417,7 @@ export function LiquidacionPage() {
         <Card className="p-8 max-w-md">
           <div className="text-center space-y-4">
             <XCircle className="h-16 w-16 text-amber-500 mx-auto" />
-            <h2 className="text-2xl font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-slate-900">
               Estado no válido para liquidación
             </h2>
             <p className="text-slate-500">
@@ -443,7 +443,7 @@ export function LiquidacionPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto px-4 py-6">
+    <div className="space-y-4 max-w-4xl mx-auto px-4 py-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -455,7 +455,7 @@ export function LiquidacionPage() {
             Volver
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+            <h1 className="text-lg font-bold text-slate-900 flex items-center gap-3">
               Liquidación de Incapacidad
               <Badge variant={getEstadoBadgeVariant(incapacidad.estado)}>
                 {incapacidad.estado}
@@ -501,7 +501,7 @@ export function LiquidacionPage() {
 
       {/* Fix 1 — REQ-6: Plantilla de Auditoría (read-only) */}
       {plantilla && (
-        <Card className="p-6" data-testid="plantilla-auditoria-card">
+        <Card className="p-4" data-testid="plantilla-auditoria-card">
           <div className="flex items-center gap-2 mb-4">
             <ClipboardCheck className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-slate-800">Plantilla de Auditoría</h2>
@@ -559,7 +559,7 @@ export function LiquidacionPage() {
 
       {/* Fix 2 — REQ-7: Documentos adjuntos (parity with GestionarPage) */}
       {documentos && documentos.length > 0 && (
-        <Card className="p-6" data-testid="documentos-section">
+        <Card className="p-4" data-testid="documentos-section">
           <div className="flex items-center gap-2 mb-4">
             <Image className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-slate-800">Documentos Adjuntos</h2>
@@ -580,9 +580,9 @@ export function LiquidacionPage() {
       )}
 
       {/* 2. Formulario principal */}
-      <form onSubmit={handleSubmit(onSave)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSave)} className="space-y-4">
         {/* IBL Section */}
-        <Card className="p-6 space-y-4">
+        <Card className="p-4 space-y-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold text-slate-800">
               Ingreso Base de Liquidación (IBL)
@@ -619,7 +619,7 @@ export function LiquidacionPage() {
                 <p className="text-xs text-destructive">{errors.ibl.message}</p>
               )}
             </div>
-            <div className="pt-6">
+            <div className="pt-4">
               <Button
                 type="button"
                 variant="outline"
@@ -635,7 +635,7 @@ export function LiquidacionPage() {
         </Card>
 
         {/* 3. Tabla de desglose */}
-        <Card className="p-6">
+        <Card className="p-4">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">
             Desglose de liquidación
           </h2>
@@ -685,7 +685,7 @@ export function LiquidacionPage() {
         </Card>
 
         {/* 4. Método de pago */}
-        <Card className="p-6 space-y-4">
+        <Card className="p-4 space-y-4">
           <h2 className="text-lg font-semibold text-slate-800">
             Método de pago
           </h2>
@@ -720,7 +720,7 @@ export function LiquidacionPage() {
         </Card>
 
         {/* 5. Notas del liquidador */}
-        <Card className="p-6 space-y-4">
+        <Card className="p-4 space-y-4">
           <h2 className="text-lg font-semibold text-slate-800">
             Notas del liquidador
           </h2>
@@ -754,7 +754,7 @@ export function LiquidacionPage() {
         </Card>
 
         {/* 6. Botones de acción */}
-        <Card className="p-6">
+        <Card className="p-4">
           <div className="flex flex-col sm:flex-row gap-3 justify-between">
             {/* Devolver a auditoría */}
             <Button
@@ -796,7 +796,7 @@ export function LiquidacionPage() {
 
       {/* Historial */}
       {historial && historial.length > 0 && (
-        <Card className="p-6">
+        <Card className="p-4">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">
             Historial de estados
           </h2>

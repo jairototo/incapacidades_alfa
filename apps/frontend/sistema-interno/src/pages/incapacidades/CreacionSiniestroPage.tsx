@@ -146,9 +146,9 @@ export function CreacionSiniestroPage() {
   // ------------------------------------------------------------------
   if (submitted) {
     return (
-      <div className="max-w-xl mx-auto mt-16 flex flex-col items-center gap-6 text-center px-4">
+      <div className="max-w-xl mx-auto mt-16 flex flex-col items-center gap-4 text-center px-4">
         <CheckCircle className="h-16 w-16 text-green-500" />
-        <h2 className="text-2xl font-bold">Siniestro en proceso de vinculación</h2>
+        <h2 className="text-lg font-bold">Siniestro en proceso de vinculación</h2>
         <p className="text-muted-foreground">
           La incapacidad <span className="font-mono font-medium">{incapacidad.numero}</span> ha
           sido cambiada a estado{' '}
@@ -176,7 +176,7 @@ export function CreacionSiniestroPage() {
   // Render
   // ------------------------------------------------------------------
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
       {/* Back button */}
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -187,7 +187,7 @@ export function CreacionSiniestroPage() {
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Link2 className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Vincular siniestro externo</h1>
+          <h1 className="text-lg font-bold">Vincular siniestro externo</h1>
         </div>
         <p className="text-sm text-muted-foreground">
           Ingresa el número de siniestro del sistema externo (RRHH/ARL) para vincularlo
@@ -248,7 +248,7 @@ export function CreacionSiniestroPage() {
       )}
 
       {/* Vinculación form */}
-      <Card className="p-6">
+      <Card className="p-4">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Número de siniestro */}
           <div className="space-y-1.5">

@@ -128,26 +128,26 @@ export function HistorialTimeline({ historial }: HistorialTimelineProps) {
         <CardContent className="pt-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold text-slate-900">{historial.length}</p>
+              <p className="text-lg font-bold text-slate-900">{historial.length}</p>
               <p className="text-sm text-slate-500">Cambios totales</p>
             </div>
             
             <div>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-lg font-bold text-blue-600">
                 {historial.filter((h) => h.cambiado_por).length}
               </p>
               <p className="text-sm text-slate-500">Con responsable</p>
             </div>
             
             <div>
-              <p className="text-2xl font-bold text-orange-600">
+              <p className="text-lg font-bold text-orange-600">
                 {historial.filter((h) => h.observacion).length}
               </p>
               <p className="text-sm text-slate-500">Con observaciones</p>
             </div>
             
             <div>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-lg font-bold text-green-600">
                 {calculateDaysInProcess(historial)}
               </p>
               <p className="text-sm text-slate-500">Días en proceso</p>

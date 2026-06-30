@@ -115,7 +115,7 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
         />
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Información del estado actual */}
         <Alert>
           <AlertCircle className="h-4 w-4" />
@@ -210,7 +210,7 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
 
         {/* Formulario de observaciones */}
         {selectedAction && selectedAction !== 'LIQUIDACION' && selectedAction !== 'LIQUIDACION_PARCIAL' && (
-          <div className="space-y-4 p-6 bg-slate-50 rounded-lg border-2 border-slate-200">
+          <div className="space-y-4 p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
             <div className="space-y-2">
               <Label htmlFor="observacion" className="text-base">
                 Observaciones {needsObservation && <span className="text-red-500">*</span>}
@@ -264,7 +264,7 @@ export function GestionActions({ incapacidad, onAction, isLoading }: GestionActi
 
         {/* For LIQUIDACION / LIQUIDACION_PARCIAL, show a notice that the template modal will open */}
         {(selectedAction === 'LIQUIDACION' || selectedAction === 'LIQUIDACION_PARCIAL') && (
-          <div className="space-y-4 p-6 bg-slate-50 rounded-lg border-2 border-slate-200">
+          <div className="space-y-4 p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
             <p className="text-sm text-slate-600">
               Se abrirá el formulario de plantilla de auditoría para completar antes de confirmar la{' '}
               {selectedAction === 'LIQUIDACION' ? 'liquidación completa' : 'liquidación parcial'}.

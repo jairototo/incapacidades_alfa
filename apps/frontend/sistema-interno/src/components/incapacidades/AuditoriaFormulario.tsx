@@ -206,7 +206,7 @@ export function AuditoriaFormulario({ incapacidad, onSuccess }: AuditoriaFormula
       </CardHeader>
 
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Datos originales de la incapacidad */}
           <div className="rounded-lg bg-slate-50 p-4 space-y-2">
             <h3 className="font-semibold text-sm text-slate-700">Datos Solicitados</h3>

@@ -162,7 +162,7 @@ export function DocumentosViewer({ documentos, viewUrlPrefix = 'documentos', dow
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
 
         <Tabs value={selectedDocId || ''} onValueChange={setSelectedDocId} className="w-full">

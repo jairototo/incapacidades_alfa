@@ -26,7 +26,7 @@ export function NotFoundPage() {
               <FileQuestion className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">
+          <CardTitle className="text-lg font-bold">
             Página No Encontrada
           </CardTitle>
           <CardDescription>

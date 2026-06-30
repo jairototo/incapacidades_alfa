@@ -206,11 +206,11 @@ export function ConsultaPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Consulta de Incapacidades</h1>
+          <h1 className="text-xl font-bold text-slate-900">Consulta de Incapacidades</h1>
           <p className="text-slate-500 mt-1">
             Busque incapacidades por número, documento, empresa o rango de fechas
           </p>
@@ -229,12 +229,12 @@ export function ConsultaPage() {
 
       {/* Tabla */}
       <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
+        <div className="p-4 border-b">
           <h2 className="text-lg font-semibold">
             Resultados ({incapacidades?.length || 0})
           </h2>
         </div>
-        <div className="p-6">
+        <div className="p-4">
           <DataTable
             columns={columns}
             data={incapacidades || []}

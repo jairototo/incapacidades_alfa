@@ -146,7 +146,7 @@ export function GestionarPreIncapacidadPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -155,7 +155,7 @@ export function GestionarPreIncapacidadPage() {
             Bandeja
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+            <h1 className="text-lg font-bold text-slate-900 flex items-center gap-3">
               Pre-Incapacidad
               <Badge variant={estadoBadgeVariant(preInc.estado)}>{preInc.estado}</Badge>
               {errorCount > 0 && (
@@ -236,11 +236,11 @@ export function GestionarPreIncapacidadPage() {
       )}
 
       {/* Split-screen */}
-      <div className="flex gap-6">
+      <div className="flex gap-4">
         {/* Document sidebar */}
         {showDocs && (
           <div className="w-1/2 flex-shrink-0">
-            <Card className="sticky top-6 overflow-y-auto max-h-[calc(100vh-180px)]">
+            <Card className="sticky top-4 overflow-y-auto max-h-[calc(100vh-180px)]">
               <div className="p-4">
                 <DocumentosViewer
                   documentos={preInc.documentos.map(toDocumento)}

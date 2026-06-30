@@ -75,7 +75,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-xl font-bold">
                 {card.value.toLocaleString('es-CO')}
               </div>
             </CardContent>
