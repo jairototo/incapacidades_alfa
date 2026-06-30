@@ -86,7 +86,7 @@ class AuthService:
         
         if not user:
             logger.warning(f"Intento de login fallido: usuario '{username}' no encontrado")
-            raise UnauthorizedException("Credenciales inválidas")
+            raise UnauthorizedException("Credenciales inválidas 1")
         
         # Verificar contraseña
         if not verify_password(password, user.password_hash):
@@ -98,7 +98,7 @@ class AuthService:
                 f"Intento de login fallido para usuario '{username}' "
                 f"(intentos: {user.intentos_fallidos})"
             )
-            raise UnauthorizedException("Credenciales inválidas")
+            raise UnauthorizedException("Credenciales inválidas 2")
         
         # Verificar que el usuario esté activo
         if not user.is_active:
