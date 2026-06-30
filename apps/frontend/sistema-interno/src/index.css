@@ -62,7 +62,7 @@
   /* ── Tipografía — Brand Book Alfa (ratio 2:1) ──────────────────────────── */
   html {
     font-family: 'Roboto', Verdana, system-ui, -apple-system, sans-serif;
-    font-size: 16px;
+    font-size: 14px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -76,13 +76,13 @@
     @apply border-border;
   }
 
-  /* ── Jerarquía tipográfica (ratio 2:1) ─────────────────────────────────── */
-  h1 { @apply text-3xl font-bold leading-tight; }    /* 30–32px bold */
-  h2 { @apply text-2xl font-bold leading-snug; }     /* 24px bold */
-  h3 { @apply text-xl  font-bold leading-snug; }     /* 20px bold */
-  h4 { @apply text-lg  font-medium; }                /* 18px medium */
-  h5, h6 { @apply text-base font-medium; }           /* 16px medium */
-  p  { @apply text-base font-normal leading-relaxed; }/* 16px regular */
+  /* ── Jerarquía tipográfica — compact mode (14px base) ──────────────────── */
+  h1 { @apply text-2xl font-bold leading-tight; }    /* ~21px bold */
+  h2 { @apply text-xl  font-bold leading-snug; }     /* ~17.5px bold */
+  h3 { @apply text-lg  font-bold leading-snug; }     /* ~15.75px bold */
+  h4 { @apply text-base font-medium; }               /* ~14px medium */
+  h5, h6 { @apply text-sm font-medium; }             /* ~12.25px medium */
+  p  { @apply text-sm font-normal leading-relaxed; } /* ~12.25px regular */
   a  { @apply text-primary hover:text-primary/80 transition-colors; }
 
   /* ── Clases especiales de alineación (Brand Book) ──────────────────────── */
