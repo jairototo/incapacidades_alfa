@@ -26,6 +26,7 @@ vi.mock('@/services/incapacidadService', () => ({
   incapacidadService: {
     getSiniestrosCandidatos: vi.fn(),
     vincularSiniestro: vi.fn(),
+    iniciarCreacionSiniestro: vi.fn(),
   },
 }));
 
@@ -161,5 +162,59 @@ describe('SiniestroPanel', () => {
     );
 
     expect(container.firstChild).toBeNull();
+  });
+
+  it('5. renders "Ninguno corresponde / Crear siniestro" button when no candidates', async () => {
+    const { incapacidadService } = await import('@/services/incapacidadService');
+    (incapacidadService.getSiniestrosCandidatos as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    const incapacidad: Incapacidad = {
+      ...mockIncapacidadARL,
+      siniestro_id: null,
+      siniestro: null,
+    };
+
+    render(<SiniestroPanel incapacidad={incapacidad} />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('siniestro-empty')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole('button', { name: /Ninguno corresponde \/ Crear siniestro/i })
+    ).toBeInTheDocument();
+  });
+
+  it('6. clicking "Ninguno corresponde" button calls iniciarCreacionSiniestro', async () => {
+    const { incapacidadService } = await import('@/services/incapacidadService');
+    (incapacidadService.getSiniestrosCandidatos as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (incapacidadService.iniciarCreacionSiniestro as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...mockIncapacidadARL,
+      estado: 'CREACION_SINIESTRO',
+    });
+
+    const incapacidad: Incapacidad = {
+      ...mockIncapacidadARL,
+      siniestro_id: null,
+      siniestro: null,
+    };
+
+    render(<SiniestroPanel incapacidad={incapacidad} />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('siniestro-empty')).toBeInTheDocument();
+    });
+
+    const btn = screen.getByRole('button', {
+      name: /Ninguno corresponde \/ Crear siniestro/i,
+    });
+    btn.click();
+
+    await waitFor(() => {
+      expect(incapacidadService.iniciarCreacionSiniestro).toHaveBeenCalledWith(
+        mockIncapacidadARL.id,
+        expect.objectContaining({ numero_siniestro: 'PENDIENTE' })
+      );
+    });
   });
 });

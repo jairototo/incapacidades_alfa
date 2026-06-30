@@ -122,6 +122,32 @@ function SiniestrosCandidatos({
     },
   });
 
+  // Must be declared before any early returns to satisfy Rules of Hooks
+  const iniciarCreacionMutation = useMutation({
+    mutationFn: () =>
+      incapacidadService.iniciarCreacionSiniestro(incapacidad.id, {
+        numero_siniestro: 'PENDIENTE',
+        observacion: 'Auditor solicitó creación de siniestro: no se encontraron candidatos locales',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incapacidad', incapacidad.id] });
+      toast({
+        title: 'Siniestro en creación',
+        description:
+          'La incapacidad pasó a CREACION_SINIESTRO. Un administrador la completará.',
+      });
+      onVinculated?.();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description:
+          error?.response?.data?.detail ?? 'No se pudo iniciar la creación',
+        variant: 'destructive',
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <Card className="p-5" data-testid="siniestro-loading">
@@ -143,7 +169,16 @@ function SiniestrosCandidatos({
             <p className="text-sm text-slate-500 mt-1">
               No se encontraron siniestros candidatos.
             </p>
-            {/* CREACION_SINIESTRO button goes here — Task 4 */}
+            <Button
+              variant="outline"
+              onClick={() => iniciarCreacionMutation.mutate()}
+              disabled={iniciarCreacionMutation.isPending}
+              className="mt-3"
+            >
+              {iniciarCreacionMutation.isPending
+                ? 'Solicitando...'
+                : 'Ninguno corresponde / Crear siniestro'}
+            </Button>
           </div>
         </div>
       </Card>
