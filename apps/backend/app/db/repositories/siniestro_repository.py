@@ -212,6 +212,40 @@ class SiniestroRepository(BaseRepository[Siniestro]):
         result = await db.execute(query)
         return list(result.scalars().all())
     
+    async def get_candidatos(
+        self,
+        db: AsyncSession,
+        empleado_id: UUID,
+        fecha_inicio: date,
+        fecha_fin: date,
+    ) -> List[Siniestro]:
+        """
+        Obtener siniestros candidatos para vincular a una incapacidad.
+
+        Devuelve siniestros del empleado cuya fecha_siniestro sea anterior
+        o igual a fecha_fin (criterio de overlap relevante dado que
+        fecha_siniestro es un punto en el tiempo).
+
+        Args:
+            db: Sesión de base de datos
+            empleado_id: ID del empleado
+            fecha_inicio: Fecha de inicio de la incapacidad (no usado en filtro,
+                          reservado para extensiones futuras)
+            fecha_fin: Fecha de fin de la incapacidad
+
+        Returns:
+            Lista de siniestros candidatos ordenados por fecha_siniestro DESC
+        """
+        query = select(Siniestro).where(
+            and_(
+                Siniestro.empleado_id == empleado_id,
+                Siniestro.fecha_siniestro <= fecha_fin,
+            )
+        ).order_by(Siniestro.fecha_siniestro.desc())
+
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
     async def get_by_external_id(
         self,
         db: AsyncSession,

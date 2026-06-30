@@ -29,6 +29,7 @@ from app.schemas.incapacidad import (
     EmpleadoFallback,
     EmpresaFallback,
     ReenviarGlosadaResponse,
+    SiniestroBasic,
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
@@ -45,9 +46,13 @@ from app.services.historial_estado_service import historial_estado_service
 from app.services import glosada_notification_service
 from app.db.repositories.auditoria_datos_repository import auditoria_datos_repository
 from app.utils.enums import EstadoIncapacidad, TipoIncapacidad, Prioridad
-from app.core.exceptions import BadRequestException
+from app.core.exceptions import BadRequestException, ForbiddenException, NotFoundException
 from app.core.security import get_current_user, PermissionChecker, Permissions, require_empresa
 from app.models.usuario import Usuario
+from app.models.historial_estado import HistorialEstado
+from app.schemas.historial_estado import HistorialEstadoCreate
+from app.db.repositories.siniestro_repository import siniestro_repository
+from app.utils.enums import RolUsuario
 from app.tasks.incapacidad_tasks import radicar_incapacidad_automatica_task
 from app.core.logging import logger
 from app.services.bulk_radicacion_service import generar_plantilla, parsear_y_validar, mapear_zip
@@ -1588,3 +1593,159 @@ async def reenviar_notificacion_glosada(
         "numero": incapacidad.numero,
         "message": "Notificación de glosa reenviada exitosamente",
     }
+
+
+# ========== ENDPOINTS SINIESTRO CANDIDATOS Y VINCULACIÓN ==========
+
+
+@router.get(
+    "/{incapacidad_id}/siniestros-candidatos",
+    response_model=List[SiniestroBasic],
+    summary="Obtener siniestros candidatos para vincular",
+    description=(
+        "Para incapacidades ARL sin siniestro vinculado, devuelve la lista de "
+        "siniestros del empleado que pueden vincularse (fecha_siniestro <= fecha_fin)."
+    ),
+    tags=["incapacidades-auditoria"],
+)
+async def get_siniestros_candidatos(
+    incapacidad_id: UUID = Path(..., description="ID de la incapacidad"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+) -> List[SiniestroBasic]:
+    """
+    Devuelve siniestros candidatos para vincular a una incapacidad ARL.
+
+    - Si la incapacidad ya tiene siniestro vinculado, retorna lista vacía.
+    - Si la incapacidad es SALUD, retorna lista vacía.
+    - Requiere autenticación (cualquier rol autenticado).
+    """
+    incapacidad = await incapacidad_service.get_incapacidad(db, incapacidad_id, with_relations=False)
+
+    if incapacidad.tipo != TipoIncapacidad.ARL or incapacidad.siniestro_id is not None:
+        return []
+
+    if not incapacidad.empleado_id:
+        return []
+
+    candidatos = await siniestro_repository.get_candidatos(
+        db,
+        empleado_id=incapacidad.empleado_id,
+        fecha_inicio=incapacidad.fecha_inicio,
+        fecha_fin=incapacidad.fecha_fin,
+    )
+
+    return [SiniestroBasic.model_validate(s) for s in candidatos]
+
+
+class _VincularSiniestroBody(_BM):
+    """Body para vincular siniestro a una incapacidad."""
+    siniestro_id: UUID
+
+
+@router.post(
+    "/{incapacidad_id}/vincular-siniestro",
+    response_model=IncapacidadInDB,
+    status_code=status.HTTP_200_OK,
+    summary="Vincular siniestro a incapacidad",
+    description=(
+        "Vincula un siniestro existente a una incapacidad ARL en estado EN_AUDITORIA. "
+        "Solo disponible para roles AUDITOR y ADMIN."
+    ),
+    tags=["incapacidades-auditoria"],
+)
+async def vincular_siniestro(
+    incapacidad_id: UUID = Path(..., description="ID de la incapacidad"),
+    body: _VincularSiniestroBody = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+) -> IncapacidadInDB:
+    """
+    Vincula un siniestro a una incapacidad ARL.
+
+    Validaciones:
+    - Usuario debe ser AUDITOR o ADMIN.
+    - La incapacidad debe estar en estado EN_AUDITORIA.
+    - La incapacidad debe ser de tipo ARL.
+    - El siniestro debe existir.
+    - El siniestro debe pertenecer al mismo empleado que la incapacidad.
+
+    Efectos:
+    - Actualiza siniestro_id y numero_siniestro en la incapacidad.
+    - Crea entrada en el historial de estados.
+    - Commit atómico.
+    """
+    if current_user.rol not in (RolUsuario.ADMIN, RolUsuario.AUDITOR):
+        raise ForbiddenException(
+            "Solo usuarios con rol AUDITOR o ADMIN pueden vincular siniestros"
+        )
+
+    # Obtener incapacidad
+    incapacidad = await incapacidad_service.get_incapacidad(db, incapacidad_id, with_relations=False)
+
+    if incapacidad.tipo != TipoIncapacidad.ARL:
+        raise BadRequestException("Solo se pueden vincular siniestros a incapacidades de tipo ARL")
+
+    if incapacidad.estado != EstadoIncapacidad.EN_AUDITORIA:
+        raise BadRequestException(
+            f"La incapacidad debe estar en estado EN_AUDITORIA para vincular un siniestro. "
+            f"Estado actual: {incapacidad.estado.value}"
+        )
+
+    # Obtener siniestro
+    siniestro = await siniestro_repository.get_by_id(db, body.siniestro_id)
+    if not siniestro:
+        raise NotFoundException(f"Siniestro {body.siniestro_id} no encontrado")
+
+    # Validar que el siniestro pertenece al mismo empleado
+    if siniestro.empleado_id != incapacidad.empleado_id:
+        raise BadRequestException(
+            "El siniestro no pertenece al empleado de esta incapacidad"
+        )
+
+    # Actualizar incapacidad — flush only (sin commit)
+    from app.db.repositories.incapacidad_repository import (
+        incapacidad_repository as inc_repo,
+    )
+    await inc_repo.update_flushed(
+        db,
+        id=incapacidad_id,
+        obj_in={
+            "siniestro_id": siniestro.id,
+            "numero_siniestro": siniestro.numero_siniestro,
+        },
+    )
+
+    # Crear entrada de historial — flush only
+    historial_data = HistorialEstadoCreate(
+        entity_type="incapacidad",
+        entity_id=incapacidad_id,
+        estado_anterior=incapacidad.estado.value,
+        estado_nuevo=incapacidad.estado.value,
+        observacion=(
+            f"Siniestro {siniestro.numero_siniestro} vinculado por "
+            f"{current_user.nombre_completo or str(current_user.id)}"
+        ),
+        cambiado_por_id=current_user.id,
+    )
+    historial = HistorialEstado(**historial_data.model_dump())
+    db.add(historial)
+    await db.flush()
+
+    # Commit atómico
+    await db.commit()
+
+    # Refrescar el objeto incapacidad y retornar
+    updated = await incapacidad_service.get_incapacidad(db, incapacidad_id, with_relations=True)
+    result = _serialize_incapacidad(updated)
+
+    # Incluir siniestro en el resultado
+    if updated.siniestro:
+        result["siniestro"] = SiniestroBasic.model_validate(updated.siniestro).model_dump()
+
+    logger.info(
+        f"[VINCULAR-SINIESTRO] Siniestro {siniestro.numero_siniestro} vinculado a "
+        f"incapacidad {incapacidad_id} por usuario {current_user.id}"
+    )
+
+    return result

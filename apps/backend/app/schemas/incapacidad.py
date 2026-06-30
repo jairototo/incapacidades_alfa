@@ -16,6 +16,19 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
 
 
+class SiniestroBasic(BaseModel):
+    """Schema básico de siniestro para incluir en IncapacidadInDB."""
+    id: UUID
+    numero_siniestro: str
+    fecha_siniestro: date
+    tipo_siniestro: str
+    descripcion: str
+    gravedad: str
+    estado: str
+
+    model_config = {"from_attributes": True}
+
+
 class IncapacidadBase(BaseModel):
     """Schema base de Incapacidad."""
     tipo: TipoIncapacidad
@@ -262,7 +275,8 @@ class IncapacidadInDB(IncapacidadBase):
     empleado: Optional[Any] = None
     empresa: Optional[Any] = None
     afiliado: Optional[Any] = None
-    
+    siniestro: Optional["SiniestroBasic"] = None
+
     model_config = {"from_attributes": True}
 
 
