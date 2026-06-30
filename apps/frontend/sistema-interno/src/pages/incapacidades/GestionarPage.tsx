@@ -91,6 +91,12 @@ export function GestionarPage() {
     enabled: !!id,
   });
 
+  const { data: auditoriaResultados, isLoading: auditoriaResultadosLoading } = useQuery({
+    queryKey: ['incapacidad', id, 'auditoria-resultados'],
+    queryFn: () => incapacidadService.getAuditoriaResultados(id!),
+    enabled: !!id && incapacidad?.estado === 'EN_AUDITORIA',
+  });
+
   const hasFraudAlert = validaciones?.has_fraud_alert ?? false;
 
   // Query: Pre-incapacidad para fallback de empleado (solo cuando empleado no está en BD)
@@ -249,6 +255,9 @@ export function GestionarPage() {
         estado={incapacidad.estado}
         auditoriaResultados={
           incapacidad.estado === 'RADICADA' ? (validaciones?.issues ?? undefined) : undefined
+        }
+        auditoriaResultadosList={
+          incapacidad.estado === 'EN_AUDITORIA' ? (auditoriaResultados ?? undefined) : undefined
         }
       />
 

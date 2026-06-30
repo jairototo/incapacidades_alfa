@@ -10,6 +10,7 @@ import type {
   IncapacidadAuditarRequest,
   ValidacionesResponse,
   SiniestroBasic,
+  AuditoriaResultado,
 } from '@/types/incapacidad';
 
 /**
@@ -320,6 +321,18 @@ export const incapacidadService = {
     const { data } = await api.post<Incapacidad>(
       `/incapacidades/${id}/vincular-siniestro`,
       { siniestro_id }
+    );
+    return data;
+  },
+
+  /**
+   * Obtener resultados de auditoría automática
+   * GET /api/v1/incapacidades/{id}/auditoria-resultados
+   * Returns: AuditoriaResultado[] ordenados por regla (alfabético)
+   */
+  async getAuditoriaResultados(id: string): Promise<AuditoriaResultado[]> {
+    const { data } = await api.get<AuditoriaResultado[]>(
+      `/incapacidades/${id}/auditoria-resultados`
     );
     return data;
   },

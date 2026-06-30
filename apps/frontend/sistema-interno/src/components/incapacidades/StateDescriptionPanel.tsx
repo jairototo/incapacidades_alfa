@@ -10,8 +10,9 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import type { EstadoIncapacidad } from '@/types/enums';
-import type { ValidationIssue } from '@/types/incapacidad';
+import type { ValidationIssue, AuditoriaResultado } from '@/types/incapacidad';
 import { ValidacionesPanel } from './ValidacionesPanel';
+import { AuditoriaResultadosPanel } from './AuditoriaResultadosPanel';
 
 interface StateInfo {
   descripcion: string;
@@ -122,11 +123,14 @@ interface StateDescriptionPanelProps {
   estado: EstadoIncapacidad | string;
   /** Pass auditoria validation issues to show inline when estado === RADICADA */
   auditoriaResultados?: ValidationIssue[];
+  /** Pass auditoria_resultado list to show inline when estado === EN_AUDITORIA */
+  auditoriaResultadosList?: AuditoriaResultado[];
 }
 
 export function StateDescriptionPanel({
   estado,
   auditoriaResultados,
+  auditoriaResultadosList,
 }: StateDescriptionPanelProps) {
   const info = STATE_INFO[estado];
   if (!info) return null;
@@ -173,6 +177,13 @@ export function StateDescriptionPanel({
       {estado === 'RADICADA' && auditoriaResultados && auditoriaResultados.length > 0 && (
         <div className="border-t border-slate-200 pt-3">
           <ValidacionesPanel issues={auditoriaResultados} isLoading={false} />
+        </div>
+      )}
+
+      {/* Resultados de auditoría automática (solo EN_AUDITORIA cuando se proveen) */}
+      {estado === 'EN_AUDITORIA' && auditoriaResultadosList && auditoriaResultadosList.length > 0 && (
+        <div className="border-t border-blue-200 pt-3">
+          <AuditoriaResultadosPanel resultados={auditoriaResultadosList} isLoading={false} />
         </div>
       )}
 

@@ -125,6 +125,20 @@ export interface Documento {
 }
 
 /**
+ * Resultado de cada regla evaluada en la auditoría automática
+ * GET /api/v1/incapacidades/{id}/auditoria-resultados
+ */
+export interface AuditoriaResultado {
+  id: string;
+  incapacidad_id: string;
+  regla: string;
+  categoria: string;
+  aprobado: boolean;
+  severidad: string;
+  detalle?: string | null;
+}
+
+/**
  * Filtros de búsqueda de incapacidades
  */
 export interface IncapacidadFiltros {
