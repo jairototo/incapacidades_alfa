@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuditoriaResultadosPanel } from '../AuditoriaResultadosPanel';
 import type { AuditoriaResultado } from '@/types/incapacidad';
+import { REGLAS_AUDITORIA_LABELS } from '../reglasAuditoriaLabels';
 
 const makeResultado = (overrides: Partial<AuditoriaResultado>): AuditoriaResultado => ({
   id: `id-${Math.random()}`,
@@ -16,17 +17,52 @@ const makeResultado = (overrides: Partial<AuditoriaResultado>): AuditoriaResulta
 });
 
 describe('AuditoriaResultadosPanel', () => {
-  it('renders all result rule names', () => {
+  it('shows Spanish nombre for known rules instead of raw key', () => {
     const resultados = [
-      makeResultado({ regla: 'DIAS_TOTALES', aprobado: true }),
-      makeResultado({ id: 'id-2', regla: 'EMPLEADO_ACTIVO', aprobado: false }),
-      makeResultado({ id: 'id-3', regla: 'CODIGO_CIE10', aprobado: true }),
+      makeResultado({ regla: 'DIAS_TOTALES_MISMATCH', aprobado: true }),
+      makeResultado({ id: 'id-2', regla: 'SINIESTRO_REQUERIDO', aprobado: false, detalle: 'Siniestro no vinculado' }),
+      makeResultado({ id: 'id-3', regla: 'EMPTY_NOMBRE_MEDICO', aprobado: true }),
     ];
     render(<AuditoriaResultadosPanel resultados={resultados} isLoading={false} />);
 
-    expect(screen.getByText('DIAS_TOTALES')).toBeInTheDocument();
-    expect(screen.getByText('EMPLEADO_ACTIVO')).toBeInTheDocument();
-    expect(screen.getByText('CODIGO_CIE10')).toBeInTheDocument();
+    expect(screen.getByText(REGLAS_AUDITORIA_LABELS.DIAS_TOTALES_MISMATCH.nombre)).toBeInTheDocument();
+    expect(screen.getByText(REGLAS_AUDITORIA_LABELS.SINIESTRO_REQUERIDO.nombre)).toBeInTheDocument();
+    expect(screen.getByText(REGLAS_AUDITORIA_LABELS.EMPTY_NOMBRE_MEDICO.nombre)).toBeInTheDocument();
+    expect(screen.queryByText('DIAS_TOTALES_MISMATCH')).not.toBeInTheDocument();
+    expect(screen.queryByText('SINIESTRO_REQUERIDO')).not.toBeInTheDocument();
+  });
+
+  it('shows label descripcion for passing rules, not generic "Regla cumplida"', () => {
+    render(
+      <AuditoriaResultadosPanel
+        resultados={[makeResultado({ regla: 'DURATION_EXCEEDS_LIMIT', aprobado: true, detalle: 'Regla cumplida' })]}
+        isLoading={false}
+      />
+    );
+    expect(screen.getByText(REGLAS_AUDITORIA_LABELS.DURATION_EXCEEDS_LIMIT.descripcion)).toBeInTheDocument();
+    expect(screen.queryByText('Regla cumplida')).not.toBeInTheDocument();
+  });
+
+  it('shows backend detalle for failing rules, not the descripcion', () => {
+    const failDetalle = 'Días totales (5) no coincide con el rango (37)';
+    render(
+      <AuditoriaResultadosPanel
+        resultados={[makeResultado({ regla: 'DIAS_TOTALES_MISMATCH', aprobado: false, detalle: failDetalle })]}
+        isLoading={false}
+      />
+    );
+    expect(screen.getByText(failDetalle)).toBeInTheDocument();
+    expect(screen.queryByText(REGLAS_AUDITORIA_LABELS.DIAS_TOTALES_MISMATCH.descripcion)).not.toBeInTheDocument();
+  });
+
+  it('falls back to raw key for unmapped rules', () => {
+    render(
+      <AuditoriaResultadosPanel
+        resultados={[makeResultado({ regla: 'REGLA_DESCONOCIDA', aprobado: true })]}
+        isLoading={false}
+      />
+    );
+    expect(screen.getByText('REGLA_DESCONOCIDA')).toBeInTheDocument();
   });
 
   it('failed results appear before passed results', () => {

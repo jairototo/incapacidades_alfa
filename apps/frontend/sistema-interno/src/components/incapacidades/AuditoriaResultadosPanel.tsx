@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import type { AuditoriaResultado } from '@/types/incapacidad';
+import { REGLAS_AUDITORIA_LABELS } from './reglasAuditoriaLabels';
 
 interface AuditoriaResultadosPanelProps {
   resultados: AuditoriaResultado[];
@@ -57,7 +58,9 @@ export function AuditoriaResultadosPanel({ resultados, isLoading }: AuditoriaRes
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold font-mono text-xs">{r.regla}</span>
+                  <span className="font-semibold text-xs" data-testid={`nombre-regla-${r.regla}`}>
+                    {REGLAS_AUDITORIA_LABELS[r.regla]?.nombre ?? r.regla}
+                  </span>
                   <span
                     className={`border rounded px-1.5 py-0.5 text-xs leading-none font-medium ${badgeCls}`}
                     data-testid={`severidad-badge-${r.regla}`}
@@ -68,9 +71,11 @@ export function AuditoriaResultadosPanel({ resultados, isLoading }: AuditoriaRes
                     {r.categoria}
                   </Badge>
                 </div>
-                {r.detalle && (
-                  <p className="mt-0.5 text-slate-600 leading-snug">{r.detalle}</p>
-                )}
+                <p className="mt-0.5 text-slate-600 leading-snug" data-testid={`descripcion-regla-${r.regla}`}>
+                  {r.aprobado
+                    ? (REGLAS_AUDITORIA_LABELS[r.regla]?.descripcion ?? r.detalle ?? '')
+                    : (r.detalle ?? '')}
+                </p>
               </div>
             </li>
           );
