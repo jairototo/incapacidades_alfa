@@ -26,7 +26,7 @@ vi.mock('@/services/incapacidadService', () => ({
   incapacidadService: {
     getSiniestrosCandidatos: vi.fn(),
     vincularSiniestro: vi.fn(),
-    iniciarCreacionSiniestro: vi.fn(),
+    auditarSolicitarCreacionSiniestro: vi.fn(),
   },
 }));
 
@@ -185,10 +185,10 @@ describe('SiniestroPanel', () => {
     ).toBeInTheDocument();
   });
 
-  it('6. clicking "Ninguno corresponde" button calls iniciarCreacionSiniestro', async () => {
+  it('6. clicking "Ninguno corresponde" button calls auditarSolicitarCreacionSiniestro', async () => {
     const { incapacidadService } = await import('@/services/incapacidadService');
     (incapacidadService.getSiniestrosCandidatos as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    (incapacidadService.iniciarCreacionSiniestro as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (incapacidadService.auditarSolicitarCreacionSiniestro as ReturnType<typeof vi.fn>).mockResolvedValue({
       ...mockIncapacidadARL,
       estado: 'CREACION_SINIESTRO',
     });
@@ -211,9 +211,9 @@ describe('SiniestroPanel', () => {
     btn.click();
 
     await waitFor(() => {
-      expect(incapacidadService.iniciarCreacionSiniestro).toHaveBeenCalledWith(
+      expect(incapacidadService.auditarSolicitarCreacionSiniestro).toHaveBeenCalledWith(
         mockIncapacidadARL.id,
-        expect.objectContaining({ numero_siniestro: 'PENDIENTE' })
+        expect.stringContaining('candidatos')
       );
     });
   });

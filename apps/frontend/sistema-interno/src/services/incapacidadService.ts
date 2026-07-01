@@ -295,6 +295,22 @@ export const incapacidadService = {
   },
 
   /**
+   * AUDITOR solicita creación de siniestro cuando no hay candidatos.
+   * Transición: EN_AUDITORIA → CREACION_SINIESTRO
+   * POST /api/v1/incapacidades/{id}/auditar-creacion-siniestro
+   */
+  async auditarSolicitarCreacionSiniestro(
+    id: string,
+    observacion: string
+  ): Promise<Incapacidad> {
+    const { data } = await api.post<Incapacidad>(
+      `/incapacidades/${id}/auditar-creacion-siniestro`,
+      { observacion }
+    );
+    return data;
+  },
+
+  /**
    * BANDEJA: Incapacidades en CREACION_SINIESTRO (solo ADMIN)
    * GET /api/v1/incapacidades/bandeja/creacion-siniestro
    */

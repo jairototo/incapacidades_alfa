@@ -252,3 +252,57 @@ async def test_vincular_siniestro_reuses_existing_siniestro(
 
     await db_session.refresh(incapacidad_creacion_siniestro)
     assert incapacidad_creacion_siniestro.siniestro_id == existing.id
+
+
+# ---------------------------------------------------------------------------
+# solicitar_creacion_siniestro service tests (AUDITOR-initiated transition)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_solicitar_creacion_siniestro_transiciona_correctamente(
+    db_session, incapacidad_en_auditoria, test_usuario
+):
+    """solicitar_creacion_siniestro must transition ARL EN_AUDITORIA → CREACION_SINIESTRO."""
+    from app.services.incapacidad_service import incapacidad_service
+
+    result = await incapacidad_service.solicitar_creacion_siniestro(
+        db=db_session,
+        incapacidad_id=incapacidad_en_auditoria.id,
+        observacion="No se encontraron siniestros candidatos",
+        usuario_id=test_usuario.id,
+    )
+
+    assert result.estado == EstadoIncapacidad.CREACION_SINIESTRO
+
+
+@pytest.mark.asyncio
+async def test_solicitar_creacion_siniestro_rejects_salud(
+    db_session, incapacidad_salud_en_auditoria, test_usuario
+):
+    """solicitar_creacion_siniestro must raise BadRequestException for SALUD incapacidades."""
+    from app.services.incapacidad_service import incapacidad_service
+
+    with pytest.raises(BadRequestException, match="ARL"):
+        await incapacidad_service.solicitar_creacion_siniestro(
+            db=db_session,
+            incapacidad_id=incapacidad_salud_en_auditoria.id,
+            observacion="Intentando solicitar siniestro en incapacidad SALUD",
+            usuario_id=test_usuario.id,
+        )
+
+
+@pytest.mark.asyncio
+async def test_solicitar_creacion_siniestro_wrong_state(
+    db_session, incapacidad_creacion_siniestro, test_usuario
+):
+    """solicitar_creacion_siniestro must raise InvalidStateException when not in EN_AUDITORIA."""
+    from app.services.incapacidad_service import incapacidad_service
+
+    with pytest.raises(InvalidStateException, match="EN_AUDITORIA"):
+        await incapacidad_service.solicitar_creacion_siniestro(
+            db=db_session,
+            incapacidad_id=incapacidad_creacion_siniestro.id,
+            observacion="Estado incorrecto",
+            usuario_id=test_usuario.id,
+        )

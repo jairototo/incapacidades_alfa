@@ -125,10 +125,10 @@ function SiniestrosCandidatos({
   // Must be declared before any early returns to satisfy Rules of Hooks
   const iniciarCreacionMutation = useMutation({
     mutationFn: () =>
-      incapacidadService.iniciarCreacionSiniestro(incapacidad.id, {
-        numero_siniestro: 'PENDIENTE',
-        observacion: 'Auditor solicitó creación de siniestro: no se encontraron candidatos locales',
-      }),
+      incapacidadService.auditarSolicitarCreacionSiniestro(
+        incapacidad.id,
+        'Auditor solicitó creación de siniestro: no se encontraron candidatos locales'
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incapacidad', incapacidad.id] });
       toast({
@@ -140,9 +140,9 @@ function SiniestrosCandidatos({
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
+        title: 'Error al solicitar creación de siniestro',
         description:
-          error?.response?.data?.detail ?? 'No se pudo iniciar la creación',
+          error?.response?.data?.detail ?? 'No se pudo solicitar la creación del siniestro',
         variant: 'destructive',
       });
     },

@@ -734,6 +734,43 @@ class IncapacidadService:
 
         return incapacidad_actualizada
 
+    async def solicitar_creacion_siniestro(
+        self,
+        db: AsyncSession,
+        incapacidad_id: UUID,
+        observacion: str,
+        usuario_id: UUID,
+    ) -> "Incapacidad":
+        """
+        El AUDITOR solicita la creación de siniestro cuando no hay candidatos.
+
+        Transición: EN_AUDITORIA → CREACION_SINIESTRO
+
+        Raises:
+            BadRequestException: Si la incapacidad no es ARL o la observación está vacía
+            InvalidStateException: Si no está en EN_AUDITORIA
+        """
+        incapacidad = await self.get_incapacidad(db, incapacidad_id)
+
+        if incapacidad.tipo != TipoIncapacidad.ARL:
+            raise BadRequestException(
+                "Solo las incapacidades ARL pueden pasar a CREACION_SINIESTRO"
+            )
+
+        if incapacidad.estado != EstadoIncapacidad.EN_AUDITORIA:
+            raise InvalidStateException(
+                f"La incapacidad debe estar en EN_AUDITORIA; "
+                f"estado actual: {incapacidad.estado.value}"
+            )
+
+        return await self._cambiar_estado(
+            db=db,
+            incapacidad=incapacidad,
+            nuevo_estado=EstadoIncapacidad.CREACION_SINIESTRO,
+            observacion=observacion,
+            usuario_id=usuario_id,
+        )
+
     async def iniciar_creacion_siniestro(
         self,
         db: AsyncSession,
