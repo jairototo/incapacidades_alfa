@@ -13,6 +13,9 @@ import { LiquidacionPage } from '@/pages/incapacidades/LiquidacionPage';
 import { BandejaPage } from '@/pages/pre-incapacidades/BandejaPage';
 import { GestionarPreIncapacidadPage } from '@/pages/pre-incapacidades/GestionarPreIncapacidadPage';
 import { RolUsuario } from '@/types/auth';
+import { CreacionSiniestroPage } from '@/pages/incapacidades/CreacionSiniestroPage';
+import { BandejaSiniestroPage } from '@/pages/incapacidades/BandejaSiniestroPage';
+import { BandejaLiquidacionPage } from '@/pages/incapacidades/BandejaLiquidacionPage';
 
 /**
  * Configuración de rutas del sistema
@@ -77,6 +80,18 @@ export const router = createBrowserRouter([
               {
                 path: ':id/liquidacion',
                 element: <LiquidacionPage />,
+              },
+              {
+                path: ':id/creacion-siniestro',
+                element: <CreacionSiniestroPage />,
+              },
+              {
+                path: 'creacion-siniestro',
+                element: <BandejaSiniestroPage />,
+              },
+              {
+                path: 'liquidacion',
+                element: <BandejaLiquidacionPage />,
               },
             ],
           },

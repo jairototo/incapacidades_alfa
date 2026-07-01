@@ -274,19 +274,65 @@ export const incapacidadService = {
   },
 
   /**
-   * WORKFLOW: Iniciar vinculación de siniestro externo (solo ADMIN)
+   * WORKFLOW: Crear siniestro y retornar incapacidad a EN_AUDITORIA (solo ADMIN)
    * POST /api/v1/incapacidades/{incapacidad_id}/creacion-siniestro
-   * Transición: EN_AUDITORIA → CREACION_SINIESTRO
-   * Encola tarea Celery que retorna a EN_AUDITORIA automáticamente
+   * Transición: CREACION_SINIESTRO → EN_AUDITORIA
    */
   async iniciarCreacionSiniestro(
     id: string,
-    payload: { numero_siniestro: string; observacion: string }
+    payload: {
+      fecha_siniestro: string;
+      tipo_siniestro: string;
+      descripcion: string;
+      observacion: string;
+    }
   ): Promise<Incapacidad> {
     const { data } = await api.post<Incapacidad>(
       `/incapacidades/${id}/creacion-siniestro`,
       payload
     );
+    return data;
+  },
+
+  /**
+   * BANDEJA: Incapacidades en CREACION_SINIESTRO (solo ADMIN)
+   * GET /api/v1/incapacidades/bandeja/creacion-siniestro
+   */
+  async listarBandejaCreacionSiniestro(filtros: FiltrosPendientes = {}): Promise<IncapacidadPendiente[]> {
+    const paramsLimpios = Object.fromEntries(
+      Object.entries({
+        tipo: filtros.tipo,
+        prioridad: filtros.prioridad,
+        empresa_nit: filtros.empresa_nit,
+        dias_antiguedad_min: filtros.dias_antiguedad_min,
+        skip: filtros.skip ?? 0,
+        limit: filtros.limit ?? 100,
+      }).filter(([_, value]) => value !== undefined && value !== null && value !== '')
+    );
+    const { data } = await api.get<IncapacidadPendiente[]>('/incapacidades/bandeja/creacion-siniestro', {
+      params: paramsLimpios,
+    });
+    return data;
+  },
+
+  /**
+   * BANDEJA: Incapacidades en LIQUIDACION o LIQUIDACION_PARCIAL
+   * GET /api/v1/incapacidades/bandeja/liquidacion
+   */
+  async listarBandejaLiquidacion(filtros: FiltrosPendientes = {}): Promise<IncapacidadPendiente[]> {
+    const paramsLimpios = Object.fromEntries(
+      Object.entries({
+        tipo: filtros.tipo,
+        prioridad: filtros.prioridad,
+        empresa_nit: filtros.empresa_nit,
+        dias_antiguedad_min: filtros.dias_antiguedad_min,
+        skip: filtros.skip ?? 0,
+        limit: filtros.limit ?? 100,
+      }).filter(([_, value]) => value !== undefined && value !== null && value !== '')
+    );
+    const { data } = await api.get<IncapacidadPendiente[]>('/incapacidades/bandeja/liquidacion', {
+      params: paramsLimpios,
+    });
     return data;
   },
 

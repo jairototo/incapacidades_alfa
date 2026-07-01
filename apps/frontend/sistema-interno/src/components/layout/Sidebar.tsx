@@ -16,6 +16,8 @@ import {
   Search,
   ClipboardList,
   Inbox,
+  Link2,
+  Calculator,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -46,6 +48,18 @@ const menuItems: MenuItem[] = [
         label: 'Pendientes',
         icon: ClipboardList,
         href: '/incapacidades/pendientes',
+        roles: ['ADMIN', 'AUDITOR'],
+      },
+      {
+        label: 'Creación Siniestro',
+        icon: Link2,
+        href: '/incapacidades/creacion-siniestro',
+        roles: ['ADMIN'],
+      },
+      {
+        label: 'Liquidación',
+        icon: Calculator,
+        href: '/incapacidades/liquidacion',
         roles: ['ADMIN', 'AUDITOR'],
       },
     ],
