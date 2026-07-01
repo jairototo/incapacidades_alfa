@@ -2,10 +2,11 @@
 Endpoint para el flujo CREACION_SINIESTRO.
 
 POST /incapacidades/{incapacidad_id}/creacion-siniestro
-  — Solo ADMINISTRADOR o AUDITOR.
-  — Guarda numero_siniestro, cambia estado a CREACION_SINIESTRO y encola
-    la tarea Celery que vincula el siniestro externo.
+  — Solo ADMINISTRADOR.
+  — Recibe los datos del siniestro, lo crea en BD, vincula a la incapacidad
+    y la retorna directamente a EN_AUDITORIA en la misma transacción.
 """
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
@@ -13,31 +14,37 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException
-from app.core.security import get_current_user, PermissionChecker, Permissions
-from app.core.logging import logger
+from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.usuario import Usuario
 from app.schemas.incapacidad import IncapacidadInDB
 from app.services.incapacidad_service import incapacidad_service
-from app.tasks.siniestro_tasks import vincular_siniestro_externo_task
+from app.utils.enums import RolUsuario, TipoSiniestro
 
 router = APIRouter()
 
 
 class CreacionSiniestroRequest(BaseModel):
-    numero_siniestro: str = Field(
+    fecha_siniestro: date = Field(
         ...,
-        min_length=1,
-        max_length=50,
-        description="Número del siniestro en el sistema externo (RRHH/ARL)",
-        examples=["SINX-2026-001"],
+        description="Fecha en que ocurrió el accidente o evento",
+    )
+    tipo_siniestro: TipoSiniestro = Field(
+        ...,
+        description="Tipo de siniestro: ACCIDENTE_TRABAJO, ENFERMEDAD_LABORAL o ACCIDENTE_TRAYECTO",
+        examples=[TipoSiniestro.ACCIDENTE_TRABAJO],
+    )
+    descripcion: str = Field(
+        ...,
+        min_length=10,
+        max_length=2000,
+        description="Descripción detallada del siniestro (mínimo 10 caracteres)",
     )
     observacion: str = Field(
         ...,
         min_length=1,
         max_length=500,
         description="Observación obligatoria para el historial de estado",
-        examples=["Vinculando siniestro externo SINX-2026-001"],
     )
 
 
@@ -45,54 +52,42 @@ class CreacionSiniestroRequest(BaseModel):
     "/{incapacidad_id}/creacion-siniestro",
     response_model=IncapacidadInDB,
     status_code=status.HTTP_200_OK,
-    summary="Iniciar vinculación de siniestro externo",
+    summary="Crear siniestro y retornar incapacidad a EN_AUDITORIA",
     description=(
-        "Solo ADMINISTRADOR o AUDITOR. "
-        "Cambia la incapacidad ARL a estado CREACION_SINIESTRO y encola la tarea "
-        "Celery que consulta el sistema externo, crea el siniestro local y retorna "
-        "la incapacidad a EN_AUDITORIA automáticamente."
+        "Solo ADMINISTRADOR. "
+        "Crea el siniestro a partir de los datos del formulario, lo vincula a la "
+        "incapacidad ARL (que debe estar en CREACION_SINIESTRO) y la retorna directamente "
+        "a EN_AUDITORIA en la misma transacción. Si la creación del siniestro falla, "
+        "el estado de la incapacidad no cambia."
     ),
-    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_AUDIT]))],
 )
-async def iniciar_creacion_siniestro(
+async def crear_siniestro(
     incapacidad_id: UUID,
     body: CreacionSiniestroRequest,
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> IncapacidadInDB:
     """
-    Inicia la vinculación de un siniestro externo con una incapacidad ARL.
+    Crea un siniestro y transiciona la incapacidad de CREACION_SINIESTRO a EN_AUDITORIA.
 
     Flujo:
-    1. Valida que el usuario sea ADMINISTRADOR o AUDITOR.
-    2. Valida que la incapacidad sea ARL y esté en EN_AUDITORIA.
-    3. Guarda numero_siniestro y cambia estado a CREACION_SINIESTRO.
-    4. Encola tarea Celery `vincular_siniestro_externo_task`.
+    1. Valida que el usuario sea ADMINISTRADOR.
+    2. Valida que la incapacidad sea ARL y esté en CREACION_SINIESTRO.
+    3. Crea el siniestro en BD con empleado_id/empresa_id de la incapacidad.
+    4. Vincula siniestro_id en la incapacidad y cambia estado a EN_AUDITORIA.
     5. Retorna la incapacidad actualizada.
     """
-    if not PermissionChecker.has_permission(current_user.rol, Permissions.INCAPACIDAD_AUDIT):
+    if current_user.rol != RolUsuario.ADMIN:
         raise ForbiddenException(
-            "Solo usuarios con rol ADMINISTRADOR o AUDITOR pueden iniciar la creación de siniestro"
+            "Solo el ADMINISTRADOR puede crear siniestros desde esta bandeja"
         )
 
-    inc = await incapacidad_service.iniciar_creacion_siniestro(
+    return await incapacidad_service.iniciar_creacion_siniestro(
         db=db,
         incapacidad_id=incapacidad_id,
-        numero_siniestro_externo=body.numero_siniestro,
+        fecha_siniestro=body.fecha_siniestro,
+        tipo_siniestro=body.tipo_siniestro,
+        descripcion=body.descripcion,
         usuario_id=current_user.id,
         observacion=body.observacion,
     )
-
-    # Encolar tarea Celery (no bloqueante)
-    # Si el broker no está disponible, el estado ya está comprometido en CREACION_SINIESTRO.
-    # Registramos el error y retornamos éxito; la tarea de alerta diaria detectará
-    # incapacidades que permanezcan en CREACION_SINIESTRO sin procesar.
-    try:
-        vincular_siniestro_externo_task.delay(str(incapacidad_id), body.numero_siniestro)
-    except Exception as e:
-        logger.error(
-            f"[CREACION-SINIESTRO] No se pudo encolar tarea para incapacidad "
-            f"{incapacidad_id}: {e}. El estado queda en CREACION_SINIESTRO para reintento manual."
-        )
-
-    return inc

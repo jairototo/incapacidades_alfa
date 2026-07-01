@@ -30,6 +30,7 @@ from app.schemas.documento import PresignedUrlResponse
 from app.utils.enums import (
     EstadoIncapacidad,
     TipoIncapacidad,
+    TipoSiniestro,
     EstadoEmpleado,
     EstadoAfiliado,
     EstadoEmpresa,
@@ -37,6 +38,7 @@ from app.utils.enums import (
     TipoDocumentoArchivo
 )
 from app.core.storage_core import storage_backend
+from app.schemas.siniestro import SiniestroCreate
 from app.services import glosada_notification_service
 
 
@@ -323,13 +325,12 @@ class IncapacidadService:
         empresa_nit: Optional[str] = None,
         dias_antiguedad_min: Optional[int] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        estados: Optional[List[EstadoIncapacidad]] = None,
     ) -> List[Dict]:
         """
-        Listar incapacidades pendientes de auditoría con cálculos.
-        
-        Estados pendientes: RADICADA, EN_AUDITORIA, PENDIENTE
-        
+        Listar incapacidades de una bandeja con cálculos de días.
+
         Args:
             db: Sesión de base de datos
             tipo: Filtro por tipo (ARL/SALUD)
@@ -338,17 +339,17 @@ class IncapacidadService:
             dias_antiguedad_min: Días mínimos desde radicación
             skip: Offset para paginación
             limit: Límite de resultados
-            
+            estados: Lista de estados a incluir; por defecto RADICADA/EN_AUDITORIA/PENDIENTE
+
         Returns:
             Lista de incapacidades con días calculados
         """
-        # Estados considerados pendientes
-        estados_pendientes = [
+        estados_pendientes = estados or [
             EstadoIncapacidad.RADICADA,
             EstadoIncapacidad.EN_AUDITORIA,
             EstadoIncapacidad.PENDIENTE,
         ]
-        
+
         # Usar repository para obtener incapacidades filtradas
         incapacidades = await self.repository.listar_pendientes(
             db=db,
@@ -737,45 +738,73 @@ class IncapacidadService:
         self,
         db: AsyncSession,
         incapacidad_id: UUID,
-        numero_siniestro_externo: str,
+        fecha_siniestro: date,
+        tipo_siniestro: TipoSiniestro,
+        descripcion: str,
         usuario_id: UUID,
         observacion: str,
     ) -> "Incapacidad":
         """
-        Inicia el proceso de creación/vinculación de siniestro externo.
+        Crea el siniestro y retorna la incapacidad a EN_AUDITORIA.
 
-        Transición: EN_AUDITORIA → CREACION_SINIESTRO
-        Solo aplica a incapacidades de tipo ARL.
-        Guarda el numero_siniestro en el campo de la incapacidad y encola la tarea Celery.
+        Transición: CREACION_SINIESTRO → EN_AUDITORIA
+        Solo aplica a incapacidades de tipo ARL que estén en CREACION_SINIESTRO.
+
+        El siniestro se crea en la misma transacción; si la creación falla, el
+        estado NO cambia y se propaga la excepción al caller.
 
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
-            numero_siniestro_externo: Número del siniestro en el sistema externo
-            usuario_id: ID del usuario ADMIN que ejecuta la acción
+            fecha_siniestro: Fecha del accidente/evento
+            tipo_siniestro: Tipo de siniestro (ACCIDENTE_TRABAJO, etc.)
+            descripcion: Descripción del siniestro (mínimo 10 caracteres)
+            usuario_id: ID del ADMIN que ejecuta la acción
             observacion: Observación obligatoria para el historial
 
         Returns:
-            Incapacidad en estado CREACION_SINIESTRO
+            Incapacidad en estado EN_AUDITORIA con siniestro_id vinculado
 
         Raises:
-            BadRequestException: Si la incapacidad no es ARL o la observación está vacía
-            InvalidStateException: Si el estado actual no permite la transición
+            BadRequestException: Si la incapacidad no es ARL
+            InvalidStateException: Si el estado actual no es CREACION_SINIESTRO
+            ValidationException: Si los datos del siniestro son inválidos
         """
+        from app.services.siniestro_service import siniestro_service
+
         incapacidad = await self.get_incapacidad(db, incapacidad_id)
 
         if incapacidad.tipo != TipoIncapacidad.ARL:
             raise BadRequestException(
-                "CREACION_SINIESTRO solo aplica a incapacidades ARL"
+                "La creación de siniestro solo aplica a incapacidades ARL"
             )
+
+        if incapacidad.estado != EstadoIncapacidad.CREACION_SINIESTRO:
+            raise InvalidStateException(
+                f"La incapacidad debe estar en CREACION_SINIESTRO; "
+                f"estado actual: {incapacidad.estado.value}"
+            )
+
+        # Crear el siniestro primero — si falla, el estado no cambia
+        siniestro_data = SiniestroCreate(
+            empleado_id=incapacidad.empleado_id,
+            empresa_id=incapacidad.empresa_id,
+            fecha_siniestro=fecha_siniestro,
+            tipo_siniestro=tipo_siniestro,
+            descripcion=descripcion,
+        )
+        siniestro = await siniestro_service.create_siniestro(db, siniestro_data)
 
         return await self._cambiar_estado(
             db=db,
             incapacidad=incapacidad,
-            nuevo_estado=EstadoIncapacidad.CREACION_SINIESTRO,
+            nuevo_estado=EstadoIncapacidad.EN_AUDITORIA,
             observacion=observacion,
             usuario_id=usuario_id,
-            extra_update={"numero_siniestro": numero_siniestro_externo},
+            extra_update={
+                "siniestro_id": siniestro.id,
+                "numero_siniestro": siniestro.numero_siniestro,
+            },
         )
 
     async def retornar_a_auditoria(

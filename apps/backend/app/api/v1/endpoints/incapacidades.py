@@ -459,6 +459,87 @@ async def listar_incapacidades_pendientes(
     return result
 
 
+@router.get(
+    "/bandeja/creacion-siniestro",
+    response_model=List[IncapacidadPendienteResponse],
+    summary="Bandeja de creación de siniestro",
+    description="Incapacidades ARL en estado CREACION_SINIESTRO — solo ADMINISTRADOR",
+    tags=["incapacidades-auditoria"],
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_READ]))],
+)
+async def listar_bandeja_creacion_siniestro(
+    db: AsyncSession = Depends(get_db),
+    tipo: Optional[TipoIncapacidad] = Query(None),
+    prioridad: Optional[Prioridad] = Query(None),
+    empresa_nit: Optional[str] = Query(None),
+    dias_antiguedad_min: Optional[int] = Query(None, ge=0),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    current_user: Usuario = Depends(get_current_user),
+) -> List[IncapacidadPendienteResponse]:
+    incapacidades = await incapacidad_service.listar_pendientes(
+        db=db,
+        tipo=tipo,
+        prioridad=prioridad,
+        empresa_nit=empresa_nit,
+        dias_antiguedad_min=dias_antiguedad_min,
+        skip=skip,
+        limit=limit,
+        estados=[EstadoIncapacidad.CREACION_SINIESTRO],
+    )
+    return _convertir_bandeja(incapacidades)
+
+
+@router.get(
+    "/bandeja/liquidacion",
+    response_model=List[IncapacidadPendienteResponse],
+    summary="Bandeja de liquidación",
+    description="Incapacidades en estado LIQUIDACION o LIQUIDACION_PARCIAL",
+    tags=["incapacidades-auditoria"],
+    dependencies=[Depends(PermissionChecker([Permissions.INCAPACIDAD_READ]))],
+)
+async def listar_bandeja_liquidacion(
+    db: AsyncSession = Depends(get_db),
+    tipo: Optional[TipoIncapacidad] = Query(None),
+    prioridad: Optional[Prioridad] = Query(None),
+    empresa_nit: Optional[str] = Query(None),
+    dias_antiguedad_min: Optional[int] = Query(None, ge=0),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    current_user: Usuario = Depends(get_current_user),
+) -> List[IncapacidadPendienteResponse]:
+    incapacidades = await incapacidad_service.listar_pendientes(
+        db=db,
+        tipo=tipo,
+        prioridad=prioridad,
+        empresa_nit=empresa_nit,
+        dias_antiguedad_min=dias_antiguedad_min,
+        skip=skip,
+        limit=limit,
+        estados=[EstadoIncapacidad.LIQUIDACION, EstadoIncapacidad.LIQUIDACION_PARCIAL],
+    )
+    return _convertir_bandeja(incapacidades)
+
+
+def _convertir_bandeja(incapacidades: list) -> list:
+    """Convierte resultados de listar_pendientes al response model de bandeja."""
+    result: list[dict] = []
+    for item in incapacidades:
+        incap = item['incapacidad']
+        incap_dict = IncapacidadInDB.model_validate(incap).model_dump()
+        incap_dict['dias_desde_radicacion'] = item['dias_desde_radicacion']
+        incap_dict['dias_en_estado_actual'] = item['dias_en_estado_actual']
+        incap_dict['empleado_fallback'] = None
+        incap_dict['empresa_fallback'] = None
+        if incap.empleado:
+            incap_dict['empleado'] = EmpleadoResponse.model_validate(incap.empleado).model_dump()
+        if incap.empresa:
+            incap_dict['empresa'] = EmpresaResponse.model_validate(incap.empresa).model_dump()
+        if incap.afiliado:
+            incap_dict['afiliado'] = AfiliadoResponse.model_validate(incap.afiliado).model_dump()
+        result.append(incap_dict)
+    return result
+
 
 @router.post(
     "/",

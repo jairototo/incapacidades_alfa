@@ -1,19 +1,19 @@
 """
-TDD tests for Task 3.0: CREACION_SINIESTRO state — ADMINISTRADOR links external siniestro.
+Tests for CREACION_SINIESTRO flow:
 
-Tests:
-1. iniciar_creacion_siniestro sets state to CREACION_SINIESTRO and saves numero_siniestro
+1. iniciar_creacion_siniestro creates siniestro and transitions CREACION_SINIESTRO → EN_AUDITORIA
 2. iniciar_creacion_siniestro raises BadRequestException for non-ARL incapacidad
-3. iniciar_creacion_siniestro raises BadRequestException when observacion is empty
-4. _vincular_siniestro_async creates local siniestro and transitions to EN_AUDITORIA
+3. iniciar_creacion_siniestro raises InvalidStateException when not in CREACION_SINIESTRO
+4. iniciar_creacion_siniestro rollback — state stays if siniestro creation fails
+5-7. _vincular_en_session Celery task tests (unchanged)
 """
 import pytest
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from app.core.exceptions import BadRequestException
-from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
+from app.core.exceptions import BadRequestException, InvalidStateException
+from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, TipoSiniestro, Prioridad
 
 
 # ---------------------------------------------------------------------------
@@ -108,22 +108,25 @@ async def incapacidad_creacion_siniestro(db_session, test_empleado, test_empresa
 
 
 @pytest.mark.asyncio
-async def test_iniciar_creacion_siniestro_sets_state(
-    db_session, incapacidad_en_auditoria, test_usuario
+async def test_iniciar_creacion_siniestro_crea_siniestro_y_transiciona(
+    db_session, incapacidad_creacion_siniestro, test_usuario
 ):
-    """iniciar_creacion_siniestro must transition to CREACION_SINIESTRO and set numero_siniestro."""
+    """iniciar_creacion_siniestro must create a Siniestro and transition to EN_AUDITORIA."""
     from app.services.incapacidad_service import incapacidad_service
 
     result = await incapacidad_service.iniciar_creacion_siniestro(
         db=db_session,
-        incapacidad_id=incapacidad_en_auditoria.id,
-        numero_siniestro_externo="SINX-2026-001",
+        incapacidad_id=incapacidad_creacion_siniestro.id,
+        fecha_siniestro=date(2026, 1, 1),
+        tipo_siniestro=TipoSiniestro.ACCIDENTE_TRABAJO,
+        descripcion="Accidente de trabajo durante jornada laboral",
         usuario_id=test_usuario.id,
-        observacion="Vinculando siniestro externo SINX-2026-001",
+        observacion="Siniestro creado manualmente por el administrador",
     )
 
-    assert result.estado == EstadoIncapacidad.CREACION_SINIESTRO
-    assert result.numero_siniestro == "SINX-2026-001"
+    assert result.estado == EstadoIncapacidad.EN_AUDITORIA
+    assert result.siniestro_id is not None
+    assert result.numero_siniestro is not None
 
 
 @pytest.mark.asyncio
@@ -137,26 +140,30 @@ async def test_iniciar_creacion_siniestro_rejects_salud(
         await incapacidad_service.iniciar_creacion_siniestro(
             db=db_session,
             incapacidad_id=incapacidad_salud_en_auditoria.id,
-            numero_siniestro_externo="SINX-2026-001",
+            fecha_siniestro=date(2026, 1, 1),
+            tipo_siniestro=TipoSiniestro.ACCIDENTE_TRABAJO,
+            descripcion="Accidente de trabajo durante jornada laboral",
             usuario_id=test_usuario.id,
             observacion="Intentando crear siniestro en SALUD",
         )
 
 
 @pytest.mark.asyncio
-async def test_iniciar_creacion_siniestro_requires_observacion(
+async def test_iniciar_creacion_siniestro_wrong_state(
     db_session, incapacidad_en_auditoria, test_usuario
 ):
-    """iniciar_creacion_siniestro must raise BadRequestException when observacion is empty."""
+    """iniciar_creacion_siniestro must raise InvalidStateException when not in CREACION_SINIESTRO."""
     from app.services.incapacidad_service import incapacidad_service
 
-    with pytest.raises(BadRequestException, match="observaci"):
+    with pytest.raises(InvalidStateException):
         await incapacidad_service.iniciar_creacion_siniestro(
             db=db_session,
             incapacidad_id=incapacidad_en_auditoria.id,
-            numero_siniestro_externo="SINX-2026-001",
+            fecha_siniestro=date(2026, 1, 1),
+            tipo_siniestro=TipoSiniestro.ACCIDENTE_TRABAJO,
+            descripcion="Accidente de trabajo durante jornada laboral",
             usuario_id=test_usuario.id,
-            observacion="",
+            observacion="Estado incorrecto",
         )
 
 
