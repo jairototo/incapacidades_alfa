@@ -33,7 +33,7 @@ export function AuditoriaResultadosPanel({ resultados, isLoading }: AuditoriaRes
   const fallidas = total - aprobadas;
 
   return (
-    <details open data-testid="auditoria-resultados-details">
+    <details data-testid="auditoria-resultados-details">
       <summary
         className="cursor-pointer select-none text-sm font-semibold text-blue-800 py-1"
         data-testid="auditoria-resultados-summary"

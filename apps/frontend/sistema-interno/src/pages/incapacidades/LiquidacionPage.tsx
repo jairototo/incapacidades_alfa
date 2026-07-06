@@ -4,15 +4,9 @@
  * Accesible únicamente para incapacidades en estado LIQUIDACION o LIQUIDACION_PARCIAL.
  * Roles requeridos: AUDITOR o ADMIN (gateado también a nivel de router).
  *
- * Secciones:
- *   1. Encabezado de la incapacidad (solo lectura)
- *   2. IBL — campo editable con botón "Calcular desglose"
- *   3. Tabla de desglose (7 filas, valores pendientes de C1)
- *   4. Método de pago (CHEQUE / OXIRRE)
- *   5. Notas del liquidador
- *   6. Botones: "Completar liquidación" + "Devolver a auditoría"
- *
- * Devolver a auditoría abre un diálogo con observación obligatoria.
+ * Layout: split-screen replicando GestionarPage.
+ *   - Sidebar izquierdo colapsable: documentos adjuntos
+ *   - Columna derecha: Tabs "Liquidación" e "Historial"
  */
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -24,8 +18,11 @@ import {
   ArrowLeft,
   Calculator,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   FileText,
+  History,
   Image,
   RotateCcw,
   XCircle,
@@ -34,6 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +40,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 import { IncapacidadContextStrip } from '@/components/incapacidades/IncapacidadContextStrip';
 import { HistorialTimeline } from '@/components/incapacidades/HistorialTimeline';
@@ -57,7 +56,6 @@ import {
   type BreakdownResponse,
 } from '@/services/liquidacion';
 import { formatCurrency, formatDate } from '@/utils/formatters';
-import type { Incapacidad } from '@/types/incapacidad';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -160,6 +158,8 @@ export function LiquidacionPage() {
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
   const [isBreakdownLoading, setIsBreakdownLoading] = useState(false);
   const [showDevolucionDialog, setShowDevolucionDialog] = useState(false);
+  const [showDocumentsSidebar, setShowDocumentsSidebar] = useState(true);
+  const [activeTab, setActiveTab] = useState('liquidacion');
 
   // ---------------------------------------------------------------------------
   // Queries
@@ -191,7 +191,6 @@ export function LiquidacionPage() {
     retry: false,
   });
 
-  // Fix 1 — REQ-6: Plantilla de Auditoría (read-only)
   const { data: plantilla } = useQuery({
     queryKey: ['incapacidad', id, 'plantilla-auditoria'],
     queryFn: () => plantillaAuditoriaService.getByIncapacidad(id!),
@@ -199,7 +198,6 @@ export function LiquidacionPage() {
     retry: false,
   });
 
-  // Fix 2 — REQ-7: Documentos (parity with GestionarPage)
   const { data: documentos } = useQuery({
     queryKey: ['incapacidad', id, 'documentos'],
     queryFn: () => incapacidadService.getDocumentos(id!),
@@ -226,7 +224,6 @@ export function LiquidacionPage() {
     },
   });
 
-  // Fix 3 — form defaultValues race condition: reset when liquidacionExistente loads
   useEffect(() => {
     if (liquidacionExistente) {
       resetForm({
@@ -316,7 +313,6 @@ export function LiquidacionPage() {
   // ---------------------------------------------------------------------------
 
   const handleCalcularBreakdown = async () => {
-    // Fix 4 — validate IBL field before proceeding
     const iblValid = await trigger('ibl');
     if (!iblValid) return;
 
@@ -410,7 +406,6 @@ export function LiquidacionPage() {
     );
   }
 
-  // Guard: estado
   if (!ALLOWED_STATES.includes(incapacidad.estado)) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -443,7 +438,7 @@ export function LiquidacionPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto px-4 py-4">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -464,345 +459,398 @@ export function LiquidacionPage() {
             <p className="text-slate-500 mt-0.5 font-mono">{incapacidad.numero}</p>
           </div>
         </div>
-        <Badge
-          variant={incapacidad.tipo === 'ARL' ? 'default' : 'secondary'}
-          className="text-sm px-3 py-1"
-        >
-          {incapacidad.tipo}
-        </Badge>
+
+        {/* Tipo + Toggle documentos */}
+        <div className="flex items-center gap-3">
+          <Badge
+            variant={incapacidad.tipo === 'ARL' ? 'default' : 'secondary'}
+            className="text-sm px-3 py-1"
+          >
+            {incapacidad.tipo}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDocumentsSidebar(!showDocumentsSidebar)}
+            className="flex items-center gap-2"
+          >
+            {showDocumentsSidebar ? (
+              <>
+                <ChevronLeft className="h-4 w-4" />
+                Ocultar Documentos
+              </>
+            ) : (
+              <>
+                <ChevronRight className="h-4 w-4" />
+                Mostrar Documentos ({documentos?.length || 0})
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
-      {/* 1. Contexto de la incapacidad (solo lectura) */}
+      {/* Contexto de la incapacidad (solo lectura) */}
       <IncapacidadContextStrip
         incapacidad={incapacidad}
         hasFraudAlert={false}
       />
 
-      {/* Resumen de fechas y días autorizados */}
-      <Card className="p-4 bg-slate-50 border-slate-200">
-        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
-          Período autorizado
-        </h3>
-        <div className="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <span className="text-slate-500">Fecha inicio</span>
-            <p className="font-medium">{formatDate(incapacidad.fecha_inicio)}</p>
-          </div>
-          <div>
-            <span className="text-slate-500">Fecha fin</span>
-            <p className="font-medium">{formatDate(incapacidad.fecha_fin)}</p>
-          </div>
-          <div>
-            <span className="text-slate-500">Días autorizados</span>
-            <p className="font-bold text-blue-700">{incapacidad.dias_totales}</p>
-          </div>
-        </div>
-      </Card>
+      {/* Split-screen: Documentos | Área de trabajo */}
+      <div className="flex flex-col lg:flex-row gap-4">
 
-      {/* Fix 1 — REQ-6: Plantilla de Auditoría (read-only) */}
-      {plantilla && (
-        <Card className="p-4" data-testid="plantilla-auditoria-card">
-          <div className="flex items-center gap-2 mb-4">
-            <ClipboardCheck className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-slate-800">Plantilla de Auditoría</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            {plantilla.linea_autorizacion && (
-              <div className="col-span-2">
-                <span className="text-slate-500">Línea de autorización</span>
-                <p className="font-medium text-blue-800">{plantilla.linea_autorizacion}</p>
+        {/* Sidebar izquierdo — Documentos (colapsable) */}
+        {showDocumentsSidebar && (
+          <div className="w-full lg:w-1/2 flex-shrink-0">
+            <Card className="h-full sticky top-4" data-testid="documentos-section">
+              <div className="p-4 border-b flex items-center gap-2">
+                <Image className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold">Documentos Adjuntos</h3>
+                <Badge variant="secondary">{documentos?.length || 0}</Badge>
               </div>
-            )}
-            <div>
-              <span className="text-slate-500">Canal de recepción</span>
-              <p className="font-medium">{plantilla.canal_recepcion}</p>
-            </div>
-            <div>
-              <span className="text-slate-500">Días autorizados</span>
-              <p className="font-medium">{plantilla.dias_autorizados}</p>
-            </div>
-            <div>
-              <span className="text-slate-500">Fecha inicio autorizada</span>
-              <p className="font-medium">{formatDate(plantilla.fecha_inicio_autorizada)}</p>
-            </div>
-            <div>
-              <span className="text-slate-500">Fecha fin autorizada</span>
-              <p className="font-medium">{formatDate(plantilla.fecha_fin_autorizada)}</p>
-            </div>
-            {plantilla.diagnostico_cie10 && (
-              <div>
-                <span className="text-slate-500">CIE-10</span>
-                <p className="font-medium">{plantilla.diagnostico_cie10}</p>
-              </div>
-            )}
-            {plantilla.descripcion_cie10 && (
-              <div>
-                <span className="text-slate-500">Diagnóstico</span>
-                <p className="font-medium">{plantilla.descripcion_cie10}</p>
-              </div>
-            )}
-            {plantilla.nombre_medico && (
-              <div>
-                <span className="text-slate-500">Médico tratante</span>
-                <p className="font-medium">{plantilla.nombre_medico}</p>
-              </div>
-            )}
-            {plantilla.nombre_ips && (
-              <div>
-                <span className="text-slate-500">IPS prestadora</span>
-                <p className="font-medium">{plantilla.nombre_ips}</p>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* Fix 2 — REQ-7: Documentos adjuntos (parity with GestionarPage) */}
-      {documentos && documentos.length > 0 && (
-        <Card className="p-4" data-testid="documentos-section">
-          <div className="flex items-center gap-2 mb-4">
-            <Image className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-slate-800">Documentos Adjuntos</h2>
-            <Badge variant="secondary">{documentos.length}</Badge>
-          </div>
-          <div className="overflow-y-auto max-h-[400px]">
-            <DocumentosViewer documentos={documentos} />
-          </div>
-        </Card>
-      )}
-      {documentos && documentos.length === 0 && (
-        <Card className="p-4 bg-slate-50" data-testid="documentos-empty">
-          <div className="flex items-center gap-2 text-slate-500">
-            <FileText className="h-4 w-4" />
-            <span className="text-sm">No hay documentos adjuntos para esta incapacidad.</span>
-          </div>
-        </Card>
-      )}
-
-      {/* 2. Formulario principal */}
-      <form onSubmit={handleSubmit(onSave)} className="space-y-4">
-        {/* IBL Section */}
-        <Card className="p-4 space-y-4">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-slate-800">
-              Ingreso Base de Liquidación (IBL)
-            </h2>
-            <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-              Integración Imaginex pendiente — ingreso manual
-            </span>
-          </div>
-
-          <div className="flex gap-3 items-start">
-            <div className="flex-1 space-y-1.5">
-              <label
-                htmlFor="ibl"
-                className="text-sm font-medium leading-none"
-              >
-                IBL (Ingreso Base de Liquidación){' '}
-                <span className="text-destructive">*</span>
-              </label>
-              <input
-                id="ibl"
-                type="text"
-                inputMode="decimal"
-                placeholder="Ej: 2500000.00"
-                data-testid="ibl-input"
-                className={[
-                  'flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm',
-                  'ring-offset-background placeholder:text-muted-foreground',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  errors.ibl ? 'border-destructive' : 'border-input',
-                ].join(' ')}
-                {...register('ibl')}
-              />
-              {errors.ibl && (
-                <p className="text-xs text-destructive">{errors.ibl.message}</p>
-              )}
-            </div>
-            <div className="pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCalcularBreakdown}
-                disabled={isBreakdownLoading}
-                data-testid="calcular-breakdown-btn"
-              >
-                <Calculator className="mr-2 h-4 w-4" />
-                {isBreakdownLoading ? 'Calculando...' : 'Calcular desglose'}
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* 3. Tabla de desglose */}
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">
-            Desglose de liquidación
-          </h2>
-          {breakdown && (
-            <p className="text-xs text-slate-500 mb-3 italic">{breakdown.nota}</p>
-          )}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="breakdown-table">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 px-3 font-medium text-slate-600">
-                    Concepto
-                  </th>
-                  <th className="text-right py-2 px-3 font-medium text-slate-600">
-                    Valor
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {BREAKDOWN_ROWS.map((row) => (
-                  <tr
-                    key={row.key}
-                    className="border-b border-slate-100 last:border-0"
+              <div className="p-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+                {documentos && documentos.length === 0 ? (
+                  <div
+                    className="flex items-center gap-2 text-slate-500"
+                    data-testid="documentos-empty"
                   >
-                    <td className="py-2 px-3 text-slate-700">{row.label}</td>
-                    <td className="py-2 px-3 text-right font-mono text-slate-700">
-                      {breakdown
-                        ? formatBreakdownValue(
-                            breakdown[row.key] as number | null
-                          )
-                        : 'Pendiente de configuración'}
-                    </td>
-                  </tr>
-                ))}
-                {/* Total */}
-                <tr className="bg-slate-50 font-semibold">
-                  <td className="py-2 px-3 text-slate-800">Total</td>
-                  <td className="py-2 px-3 text-right font-mono text-slate-800">
-                    {breakdown
-                      ? formatBreakdownValue(breakdown.valor_total)
-                      : 'Pendiente de configuración'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm">
+                      No hay documentos adjuntos para esta incapacidad.
+                    </span>
+                  </div>
+                ) : (
+                  <DocumentosViewer documentos={documentos || []} />
+                )}
+              </div>
+            </Card>
           </div>
-        </Card>
+        )}
 
-        {/* 4. Método de pago */}
-        <Card className="p-4 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-800">
-            Método de pago
-          </h2>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="metodo_pago"
-              className="text-sm font-medium leading-none"
-            >
-              Método de pago
-              <span className="text-xs text-slate-500 ml-2">
-                (Opcional — pendiente lista de entidades C2)
-              </span>
-            </label>
-            <select
-              id="metodo_pago"
-              className={[
-                'flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm',
-                'ring-offset-background',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                errors.metodo_pago ? 'border-destructive' : 'border-input',
-              ].join(' ')}
-              {...register('metodo_pago')}
-            >
-              <option value="">Seleccionar...</option>
-              {Object.entries(MetodoPagoLiquidacion).map(([key, value]) => (
-                <option key={key} value={value}>
-                  {METODO_PAGO_LABELS[value as MetodoPagoLiquidacion]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </Card>
+        {/* Columna derecha — Área de trabajo */}
+        <div className={cn('flex-1', showDocumentsSidebar ? 'lg:w-1/2' : 'w-full')}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="liquidacion" className="space-x-2">
+                <Calculator className="h-4 w-4" />
+                <span>Liquidación</span>
+              </TabsTrigger>
+              <TabsTrigger value="historial" className="space-x-2">
+                <History className="h-4 w-4" />
+                <span>Historial ({historial?.length || 0})</span>
+              </TabsTrigger>
+            </TabsList>
 
-        {/* 5. Notas del liquidador */}
-        <Card className="p-4 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-800">
-            Notas del liquidador
-          </h2>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="notas_liquidador"
-              className="text-sm font-medium leading-none"
-            >
-              Notas{' '}
-              <span className="text-xs text-slate-500">(Opcional)</span>
-            </label>
-            <textarea
-              id="notas_liquidador"
-              rows={3}
-              placeholder="Observaciones libres sobre la liquidación..."
-              className={[
-                'flex w-full rounded-md border bg-background px-3 py-2 text-sm',
-                'ring-offset-background placeholder:text-muted-foreground',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                'resize-none',
-                errors.notas_liquidador ? 'border-destructive' : 'border-input',
-              ].join(' ')}
-              {...register('notas_liquidador')}
-            />
-            {errors.notas_liquidador && (
-              <p className="text-xs text-destructive">
-                {errors.notas_liquidador.message}
-              </p>
-            )}
-          </div>
-        </Card>
+            {/* Tab: Liquidación */}
+            <TabsContent value="liquidacion" className="space-y-4">
 
-        {/* 6. Botones de acción */}
-        <Card className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3 justify-between">
-            {/* Devolver a auditoría */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowDevolucionDialog(true)}
-              className="text-amber-700 border-amber-300 hover:bg-amber-50"
-              data-testid="devolver-auditoria-btn"
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Devolver a auditoría
-            </Button>
+              {/* a. Período autorizado */}
+              <Card className="p-4 bg-slate-50 border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
+                  Período autorizado
+                </h3>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-slate-500">Fecha inicio</span>
+                    <p className="font-medium">{formatDate(incapacidad.fecha_inicio)}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Fecha fin</span>
+                    <p className="font-medium">{formatDate(incapacidad.fecha_fin)}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Días autorizados</span>
+                    <p className="font-bold text-blue-700">{incapacidad.dias_totales}</p>
+                  </div>
+                </div>
+              </Card>
 
-            {/* Guardar + Completar */}
-            <div className="flex gap-3">
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={isSubmitting || guardarMutation.isPending}
-                data-testid="guardar-borrador-btn"
-              >
-                {guardarMutation.isPending ? 'Guardando...' : 'Guardar borrador'}
-              </Button>
-              <Button
-                type="button"
-                onClick={onCompletar}
-                disabled={completarMutation.isPending}
-                data-testid="completar-liquidacion-btn"
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                {completarMutation.isPending
-                  ? 'Completando...'
-                  : 'Completar liquidación'}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </form>
+              {/* b. Plantilla de Auditoría (condicional) */}
+              {plantilla && (
+                <Card className="p-4" data-testid="plantilla-auditoria-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <ClipboardCheck className="h-5 w-5 text-blue-600" />
+                    <h2 className="text-lg font-semibold text-slate-800">
+                      Plantilla de Auditoría
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {plantilla.linea_autorizacion && (
+                      <div className="col-span-2">
+                        <span className="text-slate-500">Línea de autorización</span>
+                        <p className="font-medium text-blue-800">
+                          {plantilla.linea_autorizacion}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-slate-500">Canal de recepción</span>
+                      <p className="font-medium">{plantilla.canal_recepcion}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Días autorizados</span>
+                      <p className="font-medium">{plantilla.dias_autorizados}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Fecha inicio autorizada</span>
+                      <p className="font-medium">
+                        {formatDate(plantilla.fecha_inicio_autorizada)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Fecha fin autorizada</span>
+                      <p className="font-medium">
+                        {formatDate(plantilla.fecha_fin_autorizada)}
+                      </p>
+                    </div>
+                    {plantilla.diagnostico_cie10 && (
+                      <div>
+                        <span className="text-slate-500">CIE-10</span>
+                        <p className="font-medium">{plantilla.diagnostico_cie10}</p>
+                      </div>
+                    )}
+                    {plantilla.descripcion_cie10 && (
+                      <div>
+                        <span className="text-slate-500">Diagnóstico</span>
+                        <p className="font-medium">{plantilla.descripcion_cie10}</p>
+                      </div>
+                    )}
+                    {plantilla.nombre_medico && (
+                      <div>
+                        <span className="text-slate-500">Médico tratante</span>
+                        <p className="font-medium">{plantilla.nombre_medico}</p>
+                      </div>
+                    )}
+                    {plantilla.nombre_ips && (
+                      <div>
+                        <span className="text-slate-500">IPS prestadora</span>
+                        <p className="font-medium">{plantilla.nombre_ips}</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
 
-      {/* Historial */}
-      {historial && historial.length > 0 && (
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">
-            Historial de estados
-          </h2>
-          <HistorialTimeline historial={historial} />
-        </Card>
-      )}
+              {/* c. Formulario de liquidación */}
+              <form onSubmit={handleSubmit(onSave)} className="space-y-4">
+
+                {/* IBL + Calcular desglose */}
+                <Card className="p-4 space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-semibold text-slate-800">
+                      Ingreso Base de Liquidación (IBL)
+                    </h2>
+                    <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      Integración Imaginex pendiente — ingreso manual
+                    </span>
+                  </div>
+                  <div className="flex gap-3 items-start">
+                    <div className="flex-1 space-y-1.5">
+                      <label
+                        htmlFor="ibl"
+                        className="text-sm font-medium leading-none"
+                      >
+                        IBL (Ingreso Base de Liquidación){' '}
+                        <span className="text-destructive">*</span>
+                      </label>
+                      <input
+                        id="ibl"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="Ej: 2500000.00"
+                        data-testid="ibl-input"
+                        className={[
+                          'flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm',
+                          'ring-offset-background placeholder:text-muted-foreground',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          errors.ibl ? 'border-destructive' : 'border-input',
+                        ].join(' ')}
+                        {...register('ibl')}
+                      />
+                      {errors.ibl && (
+                        <p className="text-xs text-destructive">{errors.ibl.message}</p>
+                      )}
+                    </div>
+                    <div className="pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCalcularBreakdown}
+                        disabled={isBreakdownLoading}
+                        data-testid="calcular-breakdown-btn"
+                      >
+                        <Calculator className="mr-2 h-4 w-4" />
+                        {isBreakdownLoading ? 'Calculando...' : 'Calcular desglose'}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Tabla de desglose */}
+                <Card className="p-4">
+                  <h2 className="text-lg font-semibold text-slate-800 mb-4">
+                    Desglose de liquidación
+                  </h2>
+                  {breakdown && (
+                    <p className="text-xs text-slate-500 mb-3 italic">{breakdown.nota}</p>
+                  )}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" data-testid="breakdown-table">
+                      <thead>
+                        <tr className="border-b border-slate-200">
+                          <th className="text-left py-2 px-3 font-medium text-slate-600">
+                            Concepto
+                          </th>
+                          <th className="text-right py-2 px-3 font-medium text-slate-600">
+                            Valor
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {BREAKDOWN_ROWS.map((row) => (
+                          <tr
+                            key={row.key}
+                            className="border-b border-slate-100 last:border-0"
+                          >
+                            <td className="py-2 px-3 text-slate-700">{row.label}</td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-700">
+                              {breakdown
+                                ? formatBreakdownValue(
+                                    breakdown[row.key] as number | null
+                                  )
+                                : 'Pendiente de configuración'}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-slate-50 font-semibold">
+                          <td className="py-2 px-3 text-slate-800">Total</td>
+                          <td className="py-2 px-3 text-right font-mono text-slate-800">
+                            {breakdown
+                              ? formatBreakdownValue(breakdown.valor_total)
+                              : 'Pendiente de configuración'}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+
+                {/* Método de pago */}
+                <Card className="p-4 space-y-4">
+                  <h2 className="text-lg font-semibold text-slate-800">
+                    Método de pago
+                  </h2>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="metodo_pago"
+                      className="text-sm font-medium leading-none"
+                    >
+                      Método de pago
+                      <span className="text-xs text-slate-500 ml-2">
+                        (Opcional — pendiente lista de entidades C2)
+                      </span>
+                    </label>
+                    <select
+                      id="metodo_pago"
+                      className={[
+                        'flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm',
+                        'ring-offset-background',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        errors.metodo_pago ? 'border-destructive' : 'border-input',
+                      ].join(' ')}
+                      {...register('metodo_pago')}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {Object.entries(MetodoPagoLiquidacion).map(([key, value]) => (
+                        <option key={key} value={value}>
+                          {METODO_PAGO_LABELS[value as MetodoPagoLiquidacion]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </Card>
+
+                {/* Notas del liquidador */}
+                <Card className="p-4 space-y-4">
+                  <h2 className="text-lg font-semibold text-slate-800">
+                    Notas del liquidador
+                  </h2>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="notas_liquidador"
+                      className="text-sm font-medium leading-none"
+                    >
+                      Notas{' '}
+                      <span className="text-xs text-slate-500">(Opcional)</span>
+                    </label>
+                    <textarea
+                      id="notas_liquidador"
+                      rows={3}
+                      placeholder="Observaciones libres sobre la liquidación..."
+                      className={[
+                        'flex w-full rounded-md border bg-background px-3 py-2 text-sm',
+                        'ring-offset-background placeholder:text-muted-foreground',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'resize-none',
+                        errors.notas_liquidador ? 'border-destructive' : 'border-input',
+                      ].join(' ')}
+                      {...register('notas_liquidador')}
+                    />
+                    {errors.notas_liquidador && (
+                      <p className="text-xs text-destructive">
+                        {errors.notas_liquidador.message}
+                      </p>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Botones de acción */}
+                <Card className="p-4">
+                  <div className="flex flex-col sm:flex-row gap-3 justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowDevolucionDialog(true)}
+                      className="text-amber-700 border-amber-300 hover:bg-amber-50"
+                      data-testid="devolver-auditoria-btn"
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Devolver a auditoría
+                    </Button>
+                    <div className="flex gap-3">
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        disabled={isSubmitting || guardarMutation.isPending}
+                        data-testid="guardar-borrador-btn"
+                      >
+                        {guardarMutation.isPending ? 'Guardando...' : 'Guardar borrador'}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={onCompletar}
+                        disabled={completarMutation.isPending}
+                        data-testid="completar-liquidacion-btn"
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        {completarMutation.isPending
+                          ? 'Completando...'
+                          : 'Completar liquidación'}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </form>
+            </TabsContent>
+
+            {/* Tab: Historial */}
+            <TabsContent value="historial">
+              <Card className="p-4">
+                <HistorialTimeline historial={historial || []} />
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
 
       {/* Dialog: Devolver a auditoría */}
       <Dialog open={showDevolucionDialog} onOpenChange={setShowDevolucionDialog}>
