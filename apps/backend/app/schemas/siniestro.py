@@ -94,8 +94,8 @@ class EmpleadoSimple(BaseModel):
     """Schema simplificado de empleado."""
     id: UUID
     nombre_completo: str
-    documento: str
-    
+    numero_documento: str
+
     model_config = {"from_attributes": True}
 
 

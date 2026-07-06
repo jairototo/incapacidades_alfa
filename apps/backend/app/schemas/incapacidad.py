@@ -189,8 +189,8 @@ class EmpleadoSimple(BaseModel):
     """Schema simplificado de empleado."""
     id: UUID
     nombre_completo: str
-    documento: str
-    
+    numero_documento: str
+
     model_config = {"from_attributes": True}
 
 
@@ -199,8 +199,8 @@ class AfiliadoSimple(BaseModel):
     id: UUID
     nombre_completo: str
     numero_poliza: str
-    documento: str
-    
+    numero_documento: str
+
     model_config = {"from_attributes": True}
 
 
@@ -272,9 +272,9 @@ class IncapacidadInDB(IncapacidadBase):
     updated_at: datetime
     
     # Objetos completos (se cargan con eager loading)
-    empleado: Optional[Any] = None
-    empresa: Optional[Any] = None
-    afiliado: Optional[Any] = None
+    empleado: Optional[EmpleadoSimple] = None
+    empresa: Optional[EmpresaSimple] = None
+    afiliado: Optional[AfiliadoSimple] = None
     siniestro: Optional["SiniestroBasic"] = None
 
     model_config = {"from_attributes": True}
@@ -379,7 +379,7 @@ class IncapacidadDetalleResponse(IncapacidadInDB):
     afiliado: Optional[Any] = Field(None, description="Objeto afiliado completo (para tipo SALUD)")
     
     # Lista de siniestros del empleado (solo para ARL)
-    siniestros_empleado: List[Any] = Field(
+    siniestros_empleado: List[SiniestroBasic] = Field(
         default_factory=list,
         description="Lista de todos los siniestros del empleado (solo para tipo ARL)"
     )

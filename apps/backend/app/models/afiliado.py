@@ -65,5 +65,10 @@ class Afiliado(BaseModel):
         cascade="all, delete-orphan"
     )
     
+    @property
+    def nombre_completo(self) -> str:
+        """Retorna el nombre completo del afiliado."""
+        return f"{self.nombres} {self.apellidos}"
+
     def __repr__(self) -> str:
         return f"<Afiliado(numero_poliza='{self.numero_poliza}', nombres='{self.nombres}', apellidos='{self.apellidos}')>"
