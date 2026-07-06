@@ -51,9 +51,10 @@ async def auditar_solicitar_creacion_siniestro(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> IncapacidadInDB:
-    return await incapacidad_service.solicitar_creacion_siniestro(
+    await incapacidad_service.solicitar_creacion_siniestro(
         db=db,
         incapacidad_id=incapacidad_id,
         observacion=body.observacion,
         usuario_id=current_user.id,
     )
+    return await incapacidad_service.get_incapacidad(db, incapacidad_id)

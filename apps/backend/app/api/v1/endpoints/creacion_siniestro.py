@@ -88,7 +88,7 @@ async def crear_siniestro(
             "Solo el ADMINISTRADOR puede crear siniestros desde esta bandeja"
         )
 
-    return await incapacidad_service.iniciar_creacion_siniestro(
+    await incapacidad_service.iniciar_creacion_siniestro(
         db=db,
         incapacidad_id=incapacidad_id,
         numero_siniestro=body.numero_siniestro,
@@ -98,3 +98,4 @@ async def crear_siniestro(
         usuario_id=current_user.id,
         observacion=body.observacion,
     )
+    return await incapacidad_service.get_incapacidad(db, incapacidad_id)
