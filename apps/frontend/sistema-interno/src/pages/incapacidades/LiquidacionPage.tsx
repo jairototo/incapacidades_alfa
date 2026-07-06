@@ -8,7 +8,7 @@
  *   - Sidebar izquierdo colapsable: documentos adjuntos
  *   - Columna derecha: Tabs "Liquidación" e "Historial"
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -50,6 +50,7 @@ import { incapacidadService } from '@/services/incapacidadService';
 import { plantillaAuditoriaService } from '@/services/plantillaAuditoria';
 import {
   liquidacionService,
+  mapLiquidacionToBreakdown,
   MetodoPagoLiquidacion,
   METODO_PAGO_LABELS,
   type LiquidacionGuardar,
@@ -203,6 +204,13 @@ export function LiquidacionPage() {
     queryFn: () => incapacidadService.getDocumentos(id!),
     enabled: !!id,
   });
+
+  // Breakdown displayed in the table: user's recalculation takes priority;
+  // falls back to the saved values when the user hasn't pressed "Calcular".
+  const displayedBreakdown = useMemo(
+    () => breakdown ?? (liquidacionExistente ? mapLiquidacionToBreakdown(liquidacionExistente) : null),
+    [breakdown, liquidacionExistente]
+  );
 
   // ---------------------------------------------------------------------------
   // Forms
@@ -690,8 +698,8 @@ export function LiquidacionPage() {
                   <h2 className="text-lg font-semibold text-slate-800 mb-4">
                     Desglose de liquidación
                   </h2>
-                  {breakdown && (
-                    <p className="text-xs text-slate-500 mb-3 italic">{breakdown.nota}</p>
+                  {displayedBreakdown && (
+                    <p className="text-xs text-slate-500 mb-3 italic">{displayedBreakdown.nota}</p>
                   )}
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm" data-testid="breakdown-table">
@@ -713,9 +721,9 @@ export function LiquidacionPage() {
                           >
                             <td className="py-2 px-3 text-slate-700">{row.label}</td>
                             <td className="py-2 px-3 text-right font-mono text-slate-700">
-                              {breakdown
+                              {displayedBreakdown
                                 ? formatBreakdownValue(
-                                    breakdown[row.key] as number | null
+                                    displayedBreakdown[row.key] as number | null
                                   )
                                 : 'Pendiente de configuración'}
                             </td>
@@ -724,8 +732,8 @@ export function LiquidacionPage() {
                         <tr className="bg-slate-50 font-semibold">
                           <td className="py-2 px-3 text-slate-800">Total</td>
                           <td className="py-2 px-3 text-right font-mono text-slate-800">
-                            {breakdown
-                              ? formatBreakdownValue(breakdown.valor_total)
+                            {displayedBreakdown
+                              ? formatBreakdownValue(displayedBreakdown.valor_total)
                               : 'Pendiente de configuración'}
                           </td>
                         </tr>

@@ -84,6 +84,43 @@ export interface BreakdownResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps a saved LiquidacionResponse to a BreakdownResponse for display.
+ *
+ * Returns null when the liquidación has no calculated breakdown
+ * (valor_total is null — i.e. a draft without breakdown).
+ *
+ * Uses Number() for defensive conversion: handles both runtime numbers and
+ * strings, and preserves null as null (not 0).
+ */
+export function mapLiquidacionToBreakdown(
+  liq: LiquidacionResponse
+): BreakdownResponse | null {
+  if (liq.valor_total == null) return null;
+
+  const toNum = (v: number | null): number | null =>
+    v != null ? Number(v) : null;
+
+  return {
+    ibl: liq.ibl != null ? Number(liq.ibl) : null,
+    dias: liq.dias_autorizados,
+    incapacidad_temporal: toNum(liq.valor_incapacidad_temporal),
+    aporte_patronal_pension: toNum(liq.valor_aporte_patronal_pension),
+    aporte_trabajador_pension: toNum(liq.valor_aporte_trabajador_pension),
+    aporte_adicional_trabajador_pension: toNum(
+      liq.valor_aporte_adicional_trabajador_pension
+    ),
+    aporte_patronal_salud: toNum(liq.valor_aporte_patronal_salud),
+    aporte_trabajador_salud: toNum(liq.valor_aporte_trabajador_salud),
+    valor_total: Number(liq.valor_total),
+    nota: 'Desglose de la liquidación guardada',
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
 

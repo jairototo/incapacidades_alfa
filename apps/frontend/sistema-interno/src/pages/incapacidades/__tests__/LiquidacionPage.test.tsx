@@ -20,23 +20,19 @@ vi.mock('@/services/incapacidadService', () => ({
   },
 }));
 
-vi.mock('@/services/liquidacion', () => ({
-  liquidacionService: {
-    getLiquidacion: vi.fn(),
-    guardarLiquidacion: vi.fn(),
-    calcularBreakdown: vi.fn(),
-    devolverAuditoria: vi.fn(),
-    completarLiquidacion: vi.fn(),
-  },
-  MetodoPagoLiquidacion: {
-    CHEQUE: 'CHEQUE',
-    OXIRRE: 'OXIRRE',
-  },
-  METODO_PAGO_LABELS: {
-    CHEQUE: 'Cheque',
-    OXIRRE: 'Oxirre (transferencia electrónica)',
-  },
-}));
+vi.mock('@/services/liquidacion', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('@/services/liquidacion');
+  return {
+    ...actual, // preserves mapLiquidacionToBreakdown and other pure helpers
+    liquidacionService: {
+      getLiquidacion: vi.fn(),
+      guardarLiquidacion: vi.fn(),
+      calcularBreakdown: vi.fn(),
+      devolverAuditoria: vi.fn(),
+      completarLiquidacion: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
@@ -92,6 +88,27 @@ const mockLiquidacionExistente = {
   valor_aporte_patronal_salud: null,
   valor_aporte_trabajador_salud: null,
   valor_total: null,
+  metodo_pago: null,
+  notas_liquidador: null,
+  liquidador_id: null,
+};
+
+const mockLiquidacionConDesglose = {
+  id: 'liq-002',
+  incapacidad_id: 'inc-liq-001',
+  ibl: 3500000,
+  periodo_ibl_inicio: null,
+  periodo_ibl_fin: null,
+  dias_autorizados: 10,
+  fecha_inicio_autorizada: '2026-01-01',
+  fecha_fin_autorizada: '2026-01-10',
+  valor_incapacidad_temporal: 35000000,
+  valor_aporte_patronal_pension: 4200000,
+  valor_aporte_trabajador_pension: 1400000,
+  valor_aporte_adicional_trabajador_pension: null,
+  valor_aporte_patronal_salud: 2975000,
+  valor_aporte_trabajador_salud: 1400000,
+  valor_total: 44975000,
   metodo_pago: null,
   notas_liquidador: null,
   liquidador_id: null,
@@ -449,6 +466,90 @@ describe('LiquidacionPage', () => {
         'Error en los días aprobados'
       );
     });
+  });
+
+  // --- Hydration: breakdown populated from saved liquidacion ---
+  it('shows saved breakdown values on mount without clicking "Calcular desglose"', async () => {
+    vi.mocked(incapacidadService.getById).mockResolvedValue(
+      mockIncapacidadLiquidacion as any
+    );
+    vi.mocked(liquidacionService.getLiquidacion).mockResolvedValue(
+      mockLiquidacionConDesglose
+    );
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('breakdown-table')).toBeInTheDocument();
+    });
+
+    // With a saved breakdown, fewer than 7 cells should say "Pendiente"
+    // (only the null adicional_trabajador field renders as "Pendiente")
+    await waitFor(() => {
+      const pendingCells = screen.queryAllByText('Pendiente de configuración');
+      expect(pendingCells.length).toBeLessThan(7);
+    });
+
+    // nota from the mapped breakdown should appear
+    expect(
+      screen.getByText(/Desglose de la liquidación guardada/i)
+    ).toBeInTheDocument();
+  });
+
+  // --- Hydration: borrador sin cálculo (valor_total null) keeps "Pendiente" ---
+  it('still shows "Pendiente de configuración" for all rows when saved liquidacion has no breakdown', async () => {
+    vi.mocked(incapacidadService.getById).mockResolvedValue(
+      mockIncapacidadLiquidacion as any
+    );
+    vi.mocked(liquidacionService.getLiquidacion).mockResolvedValue(
+      mockLiquidacionExistente // valor_total: null
+    );
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('breakdown-table')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      const pendingCells = screen.queryAllByText('Pendiente de configuración');
+      expect(pendingCells.length).toBeGreaterThanOrEqual(6);
+    });
+  });
+
+  // --- User recalculation takes priority over saved values ---
+  it('shows recalculated breakdown (from "Calcular desglose") over saved values', async () => {
+    const user = userEvent.setup();
+    vi.mocked(incapacidadService.getById).mockResolvedValue(
+      mockIncapacidadLiquidacion as any
+    );
+    vi.mocked(liquidacionService.getLiquidacion).mockResolvedValue(
+      mockLiquidacionConDesglose
+    );
+    const freshBreakdown = {
+      ...mockBreakdownResponse,
+      nota: 'Desglose recién calculado',
+    };
+    vi.mocked(liquidacionService.calcularBreakdown).mockResolvedValue(
+      freshBreakdown
+    );
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ibl-input')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('ibl-input'), {
+      target: { value: '2500000' },
+    });
+    await user.click(screen.getByTestId('calcular-breakdown-btn'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Desglose recién calculado/i)
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(/Desglose de la liquidación guardada/i)
+    ).not.toBeInTheDocument();
   });
 
   // --- Método de pago dropdown ---
