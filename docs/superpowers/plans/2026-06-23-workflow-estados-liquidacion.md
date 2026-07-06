@@ -1391,34 +1391,15 @@ valor_total = (
 )
 ```
 
-- [ ] **Step 1: Write failing test**
-
-```python
-@pytest.mark.asyncio
-async def test_ibl_parametros_seed_exists(db_session):
-    from app.db.repositories.ibl_parametros_repository import ibl_parametros_repository
-    params = await ibl_parametros_repository.get_by_ano(db_session, 2026)
-    assert params is not None
-    assert params.aporte_patronal_pension == Decimal("12.00")
-    assert params.aporte_trabajador_pension == Decimal("4.00")
-
-def test_calcular_breakdown_uses_db_parametros():
-    from decimal import Decimal
-    ibl = Decimal("3_500_000")  # example monthly IBL
-    dias = 10
-    # 12% patronal pension: 3_500_000 * 10 * 0.12 = 4_200_000
-    # 4% trabajador pension: 3_500_000 * 10 * 0.04 = 1_400_000
-    # (formula verified against seed values)
-    ...
-```
-
-- [ ] **Step 2: Implement model, repo, seed in migration, wire into service**
-- [ ] **Step 3: Run tests, commit**
-
-```bash
-docker compose exec api sh -c "python -m pytest tests/ -k ibl -v --no-cov"
-git commit -m "feat(liquidacion): add ibl_parametros table with 2026 seed — service reads percentages from DB"
-```
+- [x] **Step 1: Write failing test** — `tests/test_ibl_parametros.py` (5 tests)
+- [x] **Step 2: Implement model, repo, seed in migration, wire into service**
+  - C1 resolved 2026-07-06: `_calcular_breakdown_real` async, uses `_get_parametros(db, ano)`
+  - Formula: `ibl * dias * (pct/100)`, ROUND_HALF_UP, 2 decimales
+  - `aporte_adicional_trabajador_pension` siempre None (revisión legal pendiente)
+  - `guardar_liquidacion` persiste breakdown automáticamente; graceful fallback si no hay params
+  - `calcular_breakdown` raises `BadRequestException` si no hay params para el año
+  - Tests: `test_calcular_breakdown_valores_correctos`, `test_calcular_breakdown_ano_sin_parametros`
+- [x] **Step 3: Run tests, commit** — 21/21 passed
 
 ---
 
@@ -1486,29 +1467,7 @@ liquidacion: Mapped[Optional["Liquidacion"]] = relationship(
 
 **IBL note:** The IBL must come from Imaginex (external system). Until the integration spec is available, `ibl` is stored as a manually entered value. The service exposes a `POST /incapacidades/{id}/liquidacion/calcular-ibl` stub that logs the call and returns `{"ibl": null, "nota": "Integración con Imaginex pendiente de especificación"}`.
 
-**Formula constants:** All percentage constants are in a single dict marked with `# TODO: confirm with Helen before enabling formula`:
-
-```python
-# liquidacion_service.py
-# TODO(C1): Confirm all percentages with Helen before enabling formula calculation
-_PORCENTAJES_PLACEHOLDER: dict = {
-    "incapacidad_temporal_pct": None,        # e.g. 1.0 (100% IBC) — pending
-    "aporte_patronal_pension_pct": None,     # pending
-    "aporte_trabajador_pension_pct": None,   # pending
-    "aporte_adicional_trabajador_pension_pct": None,  # pending
-    "aporte_patronal_salud_pct": None,       # pending
-    "aporte_trabajador_salud_pct": None,     # pending
-}
-
-def _calcular_breakdown(ibl: Decimal, dias: int) -> dict:
-    """Placeholder formula. All values return None until C1 confirmed."""
-    if any(v is None for v in _PORCENTAJES_PLACEHOLDER.values()):
-        return {k.replace("_pct", ""): None for k in _PORCENTAJES_PLACEHOLDER}
-    # When percentages are confirmed, uncomment:
-    # valor_it = ibl * dias * Decimal(_PORCENTAJES_PLACEHOLDER["incapacidad_temporal_pct"])
-    # ...
-    return {}
-```
+**Formula (C1 RESOLVED 2026-07-06):** `_PORCENTAJES_PLACEHOLDER` replaced by `_calcular_breakdown_real(db, ibl, dias, ano)` which reads from `ibl_parametros` table. See Task 5.0 for details. The `aporte_adicional_trabajador_pension` remains None pending legal review.
 
 **Devolution to EN_AUDITORIA:**
 
@@ -1547,32 +1506,10 @@ async def devolver_a_auditoria(
 - `POST /incapacidades/{id}/liquidacion/devolver` — devolution to EN_AUDITORIA
 - `POST /incapacidades/{id}/liquidacion/completar` — transition to PAGADA/PAGADA_PARCIAL
 
-- [ ] **Step 1: Write failing test for devolution**
-
-```python
-@pytest.mark.asyncio
-async def test_devolucion_requiere_observacion(db_session, incapacidad_liquidacion):
-    with pytest.raises(BadRequestException):
-        await liquidacion_service.devolver_a_auditoria(
-            db=db_session,
-            incapacidad_id=incapacidad_liquidacion.id,
-            observacion="",
-            liquidador_id=uuid4(),
-        )
-```
-
-- [ ] **Step 2: Implement service and endpoints**
-- [ ] **Step 3: Run tests**
-
-```bash
-docker compose exec api sh -c "python -m pytest tests/ -k liquidacion -v --no-cov"
-```
-
-- [ ] **Step 4: Commit**
-
-```bash
-git commit -m "feat(liquidacion): add liquidacion service, endpoints, and devolution flow (IBL and formulas pending C1/C2)"
-```
+- [x] **Step 1: Write failing test for devolution** — done in Task 5.2 original
+- [x] **Step 2: Implement service and endpoints** — complete
+- [x] **Step 3: Run tests** — 21/21 passed (ibl + liquidacion)
+- [x] **Step 4: Commit** — `feat(liquidacion): wire breakdown calculation to ibl_parametros table (resolves C1)`
 
 ---
 

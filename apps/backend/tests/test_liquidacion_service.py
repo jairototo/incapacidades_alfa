@@ -334,17 +334,52 @@ async def test_calcular_ibl_stub_retorna_null(db_session):
 
 
 # ---------------------------------------------------------------------------
-# 10. _calcular_breakdown placeholder — all values None
+# 10. _calcular_breakdown_real — valores correctos con seed 2026
 # ---------------------------------------------------------------------------
 
-def test_calcular_breakdown_placeholder_all_none():
-    """_calcular_breakdown returns all None values while C1 is pending."""
-    from app.services.liquidacion_service import _calcular_breakdown
+@pytest.mark.asyncio
+async def test_calcular_breakdown_valores_correctos(db_session):
+    """_calcular_breakdown_real devuelve valores correctos usando seed 2026."""
+    from app.services.liquidacion_service import _calcular_breakdown_real
 
-    result = _calcular_breakdown(Decimal("3500000"), 10)
+    await db_session.execute(sa.text("""
+        INSERT INTO ibl_parametros
+          (id, ano, aporte_patronal_pension, aporte_patronal_salud,
+           aporte_trabajador_pension, aporte_trabajador_salud,
+           created_at, updated_at)
+        VALUES
+          (gen_random_uuid(), 2026, 12.00, 8.50, 4.00, 4.00, NOW(), NOW())
+        ON CONFLICT (ano) DO NOTHING
+    """))
+    await db_session.commit()
 
-    for key, value in result.items():
-        assert value is None, f"Expected None for {key}, got {value}"
+    ibl = Decimal("3500000")
+    dias = 10
+    result = await _calcular_breakdown_real(db_session, ibl, dias, 2026)
+
+    assert result["incapacidad_temporal"] == Decimal("35000000.00")
+    assert result["aporte_patronal_pension"] == Decimal("4200000.00")
+    assert result["aporte_trabajador_pension"] == Decimal("1400000.00")
+    assert result["aporte_patronal_salud"] == Decimal("2975000.00")
+    assert result["aporte_trabajador_salud"] == Decimal("1400000.00")
+    assert result["aporte_adicional_trabajador_pension"] is None
+    expected_total = (
+        Decimal("35000000.00") + Decimal("4200000.00") + Decimal("1400000.00")
+        + Decimal("2975000.00") + Decimal("1400000.00")
+    )
+    assert result["valor_total"] == expected_total
+
+
+@pytest.mark.asyncio
+async def test_calcular_breakdown_ano_sin_parametros(db_session):
+    """_calcular_breakdown_real lanza BadRequestException para año sin parámetros."""
+    from app.core.exceptions import BadRequestException
+    from app.services.liquidacion_service import _calcular_breakdown_real
+
+    with pytest.raises(BadRequestException) as exc_info:
+        await _calcular_breakdown_real(db_session, Decimal("3500000"), 10, 2030)
+
+    assert "2030" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------

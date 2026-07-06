@@ -8,21 +8,25 @@ IBL note: El IBL viene de Imaginex (sistema externo). Hasta que esté
 disponible la especificación de integración, el IBL es un valor
 ingresado manualmente. El endpoint POST calcular-ibl es un stub.
 
-Fórmulas: Los porcentajes de desglose están en _PORCENTAJES_PLACEHOLDER.
-TODO(C1): Confirmar todos los porcentajes con Helen antes de habilitar
-el cálculo automático.
+Fórmulas (C1 resuelto): Los porcentajes se leen de la tabla ibl_parametros
+para el año de la fecha de inicio autorizada.
+    valor = ibl * dias * (porcentaje / 100)  — redondeado a 2 decimales ROUND_HALF_UP
+    incapacidad_temporal = ibl * dias  (100% IBC, RN-010)
+    aporte_adicional_trabajador_pension: pendiente de revisión legal (siempre None)
 """
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestException, InvalidStateException, NotFoundException
+from app.db.repositories.ibl_parametros_repository import ibl_parametros_repository
 from app.db.repositories.liquidacion_repository import liquidacion_repository
+from app.models.ibl_parametros import IblParametros
 from app.models.incapacidad import Incapacidad
 from app.models.liquidacion import Liquidacion
 from app.schemas.liquidacion import LiquidacionGuardar
@@ -30,54 +34,78 @@ from app.utils.enums import EstadoIncapacidad
 
 logger = logging.getLogger(__name__)
 
+_QUANT = Decimal("0.01")
+
+
 # ---------------------------------------------------------------------------
-# TODO(C1): Confirm all percentages with Helen before enabling formula
+# Internal helpers — IBL breakdown calculation
 # ---------------------------------------------------------------------------
-_PORCENTAJES_PLACEHOLDER: dict = {
-    "incapacidad_temporal_pct": None,        # e.g. 100.0 (100% IBC) — pending; stored as percent, divided by 100 in formula
-    "aporte_patronal_pension_pct": None,     # pending
-    "aporte_trabajador_pension_pct": None,   # pending
-    "aporte_adicional_trabajador_pension_pct": None,  # pending
-    "aporte_patronal_salud_pct": None,       # pending
-    "aporte_trabajador_salud_pct": None,     # pending
-}
 
-
-def _calcular_breakdown(ibl: Decimal, dias: int) -> dict:
+async def _get_parametros(db: AsyncSession, ano: int) -> IblParametros:
     """
-    Placeholder formula. All values return None until C1 confirmed.
+    Obtiene los parámetros IBL para el año dado.
 
-    When percentages are confirmed, replace None values in
-    _PORCENTAJES_PLACEHOLDER and uncomment the calculation lines below.
-
-    Args:
-        ibl: Ingreso Base de Liquidación
-        dias: Días autorizados
-
-    Returns:
-        Dict with breakdown values (all None until C1 confirmed)
+    Raises:
+        BadRequestException: si no existe fila en ibl_parametros para ese año
     """
-    if any(v is None for v in _PORCENTAJES_PLACEHOLDER.values()):
-        return {k.replace("_pct", ""): None for k in _PORCENTAJES_PLACEHOLDER}
-    ibl_by_dia = ibl / Decimal("30.0")  # Assuming 30 days in a month for IBL calculation
-    d = Decimal(str(dias))
-    valor_it = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["incapacidad_temporal_pct"])) / 100)  # e.g. pct=100.0 → full IBL
-    aporte_patronal_pension = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_patronal_pension_pct"])) / 100)
-    aporte_trabajador_pension = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_trabajador_pension_pct"])) / 100)
-    aporte_adicional_trabajador_pension = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_adicional_trabajador_pension_pct"])) / 100)
-    aporte_patronal_salud = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_patronal_salud_pct"])) / 100)
-    aporte_trabajador_salud = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_trabajador_salud_pct"])) / 100)
-    valor_total = valor_it + aporte_patronal_pension + aporte_trabajador_pension + aporte_adicional_trabajador_pension + aporte_patronal_salud + aporte_trabajador_salud
+    params = await ibl_parametros_repository.get_by_ano(db, ano)
+    if not params:
+        raise BadRequestException(
+            f"No hay parámetros IBL configurados para el año {ano}"
+        )
+    return params
+
+
+async def _calcular_breakdown_real(
+    db: AsyncSession,
+    ibl: Decimal,
+    dias: int,
+    ano: int,
+) -> dict:
+    """
+    Calcula el desglose de liquidación usando los parámetros IBL del año dado.
+
+    Fórmula: valor = ibl * dias * (porcentaje / 100), redondeado a 2 decimales.
+    incapacidad_temporal = ibl * dias (100% IBC, RN-010).
+    aporte_adicional_trabajador_pension siempre None (fórmula pendiente de revisión legal).
+
+    Raises:
+        BadRequestException: si no hay parámetros para el año dado
+    """
+    params = await _get_parametros(db, ano)
+    d = Decimal(dias)
+
+    def calc(pct: Decimal) -> Decimal:
+        return (ibl * d * pct / Decimal("100")).quantize(_QUANT, rounding=ROUND_HALF_UP)
+
+    valor_incapacidad_temporal = (ibl * d).quantize(_QUANT, rounding=ROUND_HALF_UP)
+    valor_patronal_pension = calc(params.aporte_patronal_pension)
+    valor_trabajador_pension = calc(params.aporte_trabajador_pension)
+    valor_patronal_salud = calc(params.aporte_patronal_salud)
+    valor_trabajador_salud = calc(params.aporte_trabajador_salud)
+
+    valor_total = (
+        valor_incapacidad_temporal
+        + valor_patronal_pension
+        + valor_trabajador_pension
+        + valor_patronal_salud
+        + valor_trabajador_salud
+    ).quantize(_QUANT, rounding=ROUND_HALF_UP)
+
     return {
-        "incapacidad_temporal": valor_it,
-        "aporte_patronal_pension": aporte_patronal_pension,
-        "aporte_trabajador_pension": aporte_trabajador_pension,
-        "aporte_adicional_trabajador_pension": aporte_adicional_trabajador_pension,
-        "aporte_patronal_salud": aporte_patronal_salud,
-        "aporte_trabajador_salud": aporte_trabajador_salud,
+        "incapacidad_temporal": valor_incapacidad_temporal,
+        "aporte_patronal_pension": valor_patronal_pension,
+        "aporte_trabajador_pension": valor_trabajador_pension,
+        "aporte_adicional_trabajador_pension": None,  # fórmula TBD, revisión legal pendiente
+        "aporte_patronal_salud": valor_patronal_salud,
+        "aporte_trabajador_salud": valor_trabajador_salud,
         "valor_total": valor_total,
     }
 
+
+# ---------------------------------------------------------------------------
+# Service class
+# ---------------------------------------------------------------------------
 
 class LiquidacionService:
     """Servicio de liquidación de incapacidades."""
@@ -118,9 +146,9 @@ class LiquidacionService:
         """
         Crea o actualiza la liquidación de una incapacidad.
 
-        Si ya existe una liquidación para la incapacidad, la actualiza.
-        Después de guardar transiciona la incapacidad al estado correcto
-        (LIQUIDACION o LIQUIDACION_PARCIAL) según su estado actual.
+        Si el IBL está disponible, calcula el desglose y lo persiste en las
+        columnas valor_* de la tabla liquidacion. Si no hay parámetros IBL
+        para el año en curso, los valores de desglose quedan en None.
 
         Args:
             db: Sesión de base de datos
@@ -147,6 +175,28 @@ class LiquidacionService:
                 "Solo se puede liquidar una incapacidad en estado LIQUIDACION o LIQUIDACION_PARCIAL"
             )
 
+        # Compute breakdown if IBL is provided; graceful fallback if no params for the year
+        breakdown_valores: dict = {}
+        if data.ibl is not None:
+            try:
+                ano = data.fecha_inicio_autorizada.year
+                bd = await _calcular_breakdown_real(db, data.ibl, data.dias_autorizados, ano)
+                breakdown_valores = {
+                    "valor_incapacidad_temporal": bd["incapacidad_temporal"],
+                    "valor_aporte_patronal_pension": bd["aporte_patronal_pension"],
+                    "valor_aporte_trabajador_pension": bd["aporte_trabajador_pension"],
+                    "valor_aporte_adicional_trabajador_pension": bd["aporte_adicional_trabajador_pension"],
+                    "valor_aporte_patronal_salud": bd["aporte_patronal_salud"],
+                    "valor_aporte_trabajador_salud": bd["aporte_trabajador_salud"],
+                    "valor_total": bd["valor_total"],
+                }
+            except BadRequestException:
+                logger.warning(
+                    "No hay parámetros IBL para el año %s — desglose no calculado para incapacidad %s",
+                    data.fecha_inicio_autorizada.year,
+                    incapacidad_id,
+                )
+
         liquidacion = await liquidacion_repository.get_by_incapacidad(db, incapacidad_id)
 
         obj_data = {
@@ -158,13 +208,27 @@ class LiquidacionService:
             "ibl": data.ibl,
             "periodo_ibl_inicio": data.periodo_ibl_inicio,
             "periodo_ibl_fin": data.periodo_ibl_fin,
-            "valor_incapacidad_temporal": data.valor_incapacidad_temporal,
-            "valor_aporte_patronal_pension": data.valor_aporte_patronal_pension,
-            "valor_aporte_trabajador_pension": data.valor_aporte_trabajador_pension,
-            "valor_aporte_adicional_trabajador_pension": data.valor_aporte_adicional_trabajador_pension,
-            "valor_aporte_patronal_salud": data.valor_aporte_patronal_salud,
-            "valor_aporte_trabajador_salud": data.valor_aporte_trabajador_salud,
-            "valor_total": data.valor_total,
+            # Use computed breakdown values; fall back to what the caller sent if no params
+            "valor_incapacidad_temporal": breakdown_valores.get(
+                "valor_incapacidad_temporal", data.valor_incapacidad_temporal
+            ),
+            "valor_aporte_patronal_pension": breakdown_valores.get(
+                "valor_aporte_patronal_pension", data.valor_aporte_patronal_pension
+            ),
+            "valor_aporte_trabajador_pension": breakdown_valores.get(
+                "valor_aporte_trabajador_pension", data.valor_aporte_trabajador_pension
+            ),
+            "valor_aporte_adicional_trabajador_pension": breakdown_valores.get(
+                "valor_aporte_adicional_trabajador_pension",
+                data.valor_aporte_adicional_trabajador_pension,
+            ),
+            "valor_aporte_patronal_salud": breakdown_valores.get(
+                "valor_aporte_patronal_salud", data.valor_aporte_patronal_salud
+            ),
+            "valor_aporte_trabajador_salud": breakdown_valores.get(
+                "valor_aporte_trabajador_salud", data.valor_aporte_trabajador_salud
+            ),
+            "valor_total": breakdown_valores.get("valor_total", data.valor_total),
             "metodo_pago": data.metodo_pago,
             "notas_liquidador": data.notas_liquidador,
         }
@@ -208,7 +272,6 @@ class LiquidacionService:
         """
         from app.services.incapacidad_service import incapacidad_service
 
-        # Validar que la incapacidad existe
         await incapacidad_service.get_incapacidad(db, incapacidad_id)
 
         logger.info(
@@ -234,21 +297,24 @@ class LiquidacionService:
         """
         Calcula el desglose de la liquidación sin guardar en DB.
 
-        Los valores retornan None hasta confirmar porcentajes con Helen (C1).
-        Cuando ibl es None, también retorna None en todos los campos del desglose.
+        El año de parámetros se deriva de incapacidad.fecha_inicio.
+        Si ibl es None, retorna None en todos los campos de desglose.
 
         Args:
-            db: Sesión de base de datos (para validar que la incapacidad exista)
+            db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
             ibl: Ingreso Base de Liquidación (puede ser None)
             dias: Días autorizados
 
         Returns:
             Dict con el desglose calculado
+
+        Raises:
+            BadRequestException: si ibl no es None y no hay parámetros para el año
         """
         from app.services.incapacidad_service import incapacidad_service
 
-        await incapacidad_service.get_incapacidad(db, incapacidad_id)
+        incapacidad = await incapacidad_service.get_incapacidad(db, incapacidad_id)
 
         if ibl is None:
             return {
@@ -264,12 +330,16 @@ class LiquidacionService:
                 "nota": "IBL no disponible — ingrese el IBL para calcular el desglose",
             }
 
-        breakdown = _calcular_breakdown(ibl, dias)
+        ano = incapacidad.fecha_inicio.year
+        breakdown = await _calcular_breakdown_real(db, ibl, dias, ano)
         return {
             "ibl": ibl,
             "dias": dias,
             **breakdown,
-            "nota": "Porcentajes pendientes de confirmación (C1 — Helen)",
+            "nota": (
+                f"Desglose calculado con parámetros IBL {ano}. "
+                "Aporte adicional trabajador pensión pendiente de definición legal."
+            ),
         }
 
     # ------------------------------------------------------------------
@@ -364,7 +434,6 @@ class LiquidacionService:
                 "Solo se puede completar una liquidación en estado LIQUIDACION o LIQUIDACION_PARCIAL"
             )
 
-        # Validar que existe una liquidación guardada
         liq = await liquidacion_repository.get_by_incapacidad(db, incapacidad_id)
         if liq is None:
             raise NotFoundException(
