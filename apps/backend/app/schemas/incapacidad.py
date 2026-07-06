@@ -11,7 +11,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List, Any, Dict
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, computed_field
 
 from app.utils.enums import TipoIncapacidad, EstadoIncapacidad, Prioridad
 
@@ -188,8 +188,14 @@ class IncapacidadResponder(BaseModel):
 class EmpleadoSimple(BaseModel):
     """Schema simplificado de empleado."""
     id: UUID
-    nombre_completo: str
+    nombres: str
+    apellidos: str
     numero_documento: str
+
+    @computed_field
+    @property
+    def nombre_completo(self) -> str:
+        return f"{self.nombres} {self.apellidos}".strip()
 
     model_config = {"from_attributes": True}
 
@@ -197,9 +203,15 @@ class EmpleadoSimple(BaseModel):
 class AfiliadoSimple(BaseModel):
     """Schema simplificado de afiliado."""
     id: UUID
-    nombre_completo: str
+    nombres: str
+    apellidos: str
     numero_poliza: str
     numero_documento: str
+
+    @computed_field
+    @property
+    def nombre_completo(self) -> str:
+        return f"{self.nombres} {self.apellidos}".strip()
 
     model_config = {"from_attributes": True}
 

@@ -4,7 +4,7 @@ Schemas Pydantic para Siniestro.
 from datetime import date, time, datetime
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.utils.enums import TipoSiniestro, GravedadSiniestro, EstadoSiniestro, SyncSource
 
@@ -93,8 +93,14 @@ class SiniestroInDB(SiniestroBase):
 class EmpleadoSimple(BaseModel):
     """Schema simplificado de empleado."""
     id: UUID
-    nombre_completo: str
+    nombres: str
+    apellidos: str
     numero_documento: str
+
+    @computed_field
+    @property
+    def nombre_completo(self) -> str:
+        return f"{self.nombres} {self.apellidos}".strip()
 
     model_config = {"from_attributes": True}
 
