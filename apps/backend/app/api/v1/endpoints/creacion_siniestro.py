@@ -25,6 +25,12 @@ router = APIRouter()
 
 
 class CreacionSiniestroRequest(BaseModel):
+    numero_siniestro: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Número de siniestro asignado por el sistema ARL externo",
+    )
     fecha_siniestro: date = Field(
         ...,
         description="Fecha en que ocurrió el accidente o evento",
@@ -85,6 +91,7 @@ async def crear_siniestro(
     return await incapacidad_service.iniciar_creacion_siniestro(
         db=db,
         incapacidad_id=incapacidad_id,
+        numero_siniestro=body.numero_siniestro,
         fecha_siniestro=body.fecha_siniestro,
         tipo_siniestro=body.tipo_siniestro,
         descripcion=body.descripcion,

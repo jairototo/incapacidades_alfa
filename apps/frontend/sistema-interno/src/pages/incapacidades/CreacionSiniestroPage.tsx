@@ -54,6 +54,10 @@ const TIPOS_SINIESTRO = [
 // Zod schema (Zod v3 — sistema-interno)
 // ---------------------------------------------------------------------------
 const formSchema = z.object({
+  numero_siniestro: z
+    .string()
+    .min(1, 'El número de siniestro es obligatorio')
+    .max(50, 'Máximo 50 caracteres'),
   fecha_siniestro: z
     .string()
     .min(1, 'La fecha del siniestro es obligatoria')
@@ -94,6 +98,7 @@ export function CreacionSiniestroPage() {
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      numero_siniestro: '',
       fecha_siniestro: '',
       tipo_siniestro: undefined,
       descripcion: '',
@@ -319,6 +324,28 @@ export function CreacionSiniestroPage() {
               {/* Siniestro form */}
               <Card className="p-4">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  {/* Número de siniestro */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="numero_siniestro" className="text-sm font-medium">
+                      Número de siniestro <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      id="numero_siniestro"
+                      type="text"
+                      placeholder="Ej. SIN-2026-00123"
+                      className={cn(
+                        'flex h-8 w-full rounded-md border bg-background px-2.5 py-1.5 text-sm font-mono',
+                        'ring-offset-background placeholder:text-muted-foreground',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        errors.numero_siniestro ? 'border-destructive' : 'border-input'
+                      )}
+                      {...register('numero_siniestro')}
+                    />
+                    {errors.numero_siniestro && (
+                      <p className="text-xs text-destructive">{errors.numero_siniestro.message}</p>
+                    )}
+                  </div>
+
                   {/* Fecha siniestro */}
                   <div className="space-y-1.5">
                     <label htmlFor="fecha_siniestro" className="text-sm font-medium">

@@ -115,8 +115,9 @@ describe('CreacionSiniestroPage', () => {
   it('renders siniestro form fields', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByLabelText(/fecha del siniestro/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/número de siniestro/i)).toBeInTheDocument();
     });
+    expect(screen.getByLabelText(/fecha del siniestro/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/tipo de siniestro/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/descripción del siniestro/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/observación para el historial/i)).toBeInTheDocument();
@@ -150,9 +151,10 @@ describe('CreacionSiniestroPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/fecha del siniestro/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/número de siniestro/i)).toBeInTheDocument();
     });
 
+    await user.type(screen.getByLabelText(/número de siniestro/i), 'SIN-2026-00001');
     await user.type(screen.getByLabelText(/fecha del siniestro/i), '2026-01-01');
     await user.selectOptions(
       screen.getByLabelText(/tipo de siniestro/i),
@@ -173,6 +175,7 @@ describe('CreacionSiniestroPage', () => {
       expect(incapacidadService.iniciarCreacionSiniestro).toHaveBeenCalledWith(
         'inc-arl-001',
         expect.objectContaining({
+          numero_siniestro: 'SIN-2026-00001',
           tipo_siniestro: 'ACCIDENTE_TRABAJO',
           descripcion: 'Accidente de trabajo durante jornada laboral',
           observacion: 'Siniestro creado manualmente por el administrador',

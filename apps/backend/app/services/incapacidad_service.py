@@ -780,6 +780,7 @@ class IncapacidadService:
         descripcion: str,
         usuario_id: UUID,
         observacion: str,
+        numero_siniestro: Optional[str] = None,
     ) -> "Incapacidad":
         """
         Crea el siniestro y retorna la incapacidad a EN_AUDITORIA.
@@ -829,6 +830,7 @@ class IncapacidadService:
             fecha_siniestro=fecha_siniestro,
             tipo_siniestro=tipo_siniestro,
             descripcion=descripcion,
+            numero_siniestro=numero_siniestro,
         )
         siniestro = await siniestro_service.create_siniestro(db, siniestro_data)
 

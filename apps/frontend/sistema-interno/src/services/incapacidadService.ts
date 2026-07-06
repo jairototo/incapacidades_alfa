@@ -281,6 +281,7 @@ export const incapacidadService = {
   async iniciarCreacionSiniestro(
     id: string,
     payload: {
+      numero_siniestro: string;
       fecha_siniestro: string;
       tipo_siniestro: string;
       descripcion: string;

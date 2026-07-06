@@ -31,7 +31,12 @@ class SiniestroBase(BaseModel):
 
 class SiniestroCreate(SiniestroBase):
     """Schema para crear siniestro."""
-    pass
+    numero_siniestro: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=50,
+        description="Número de siniestro asignado externamente. Si se omite, se auto-genera.",
+    )
 
 
 class SiniestroUpdate(BaseModel):

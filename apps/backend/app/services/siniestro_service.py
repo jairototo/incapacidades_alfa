@@ -103,9 +103,11 @@ class SiniestroService:
         if siniestro_data.fecha_siniestro > date.today():
             raise ValidationException("La fecha del siniestro no puede ser futura")
         
-        # Generar número único
-        numero_siniestro = await self._generar_numero_siniestro(db, siniestro_data.fecha_siniestro)
-        
+        # Usar número externo o auto-generar
+        numero_siniestro = siniestro_data.numero_siniestro or await self._generar_numero_siniestro(
+            db, siniestro_data.fecha_siniestro
+        )
+
         # Crear siniestro
         siniestro_dict = siniestro_data.model_dump(exclude_unset=True)
         siniestro_dict["numero_siniestro"] = numero_siniestro
