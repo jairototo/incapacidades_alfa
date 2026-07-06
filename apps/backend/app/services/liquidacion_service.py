@@ -59,26 +59,24 @@ def _calcular_breakdown(ibl: Decimal, dias: int) -> dict:
     """
     if any(v is None for v in _PORCENTAJES_PLACEHOLDER.values()):
         return {k.replace("_pct", ""): None for k in _PORCENTAJES_PLACEHOLDER}
-
-    # When percentages are confirmed, uncomment:
-    # d = Decimal(str(dias))
-    # valor_it = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["incapacidad_temporal_pct"])) / 100)  # e.g. pct=100.0 → full IBL
-    # aporte_patronal_pension = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_patronal_pension_pct"])) / 100)
-    # aporte_trabajador_pension = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_trabajador_pension_pct"])) / 100)
-    # aporte_adicional_trabajador_pension = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_adicional_trabajador_pension_pct"])) / 100)
-    # aporte_patronal_salud = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_patronal_salud_pct"])) / 100)
-    # aporte_trabajador_salud = ibl * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_trabajador_salud_pct"])) / 100)
-    # valor_total = valor_it + aporte_patronal_pension + aporte_trabajador_pension + aporte_adicional_trabajador_pension + aporte_patronal_salud + aporte_trabajador_salud
-    # return {
-    #     "incapacidad_temporal": valor_it,
-    #     "aporte_patronal_pension": aporte_patronal_pension,
-    #     "aporte_trabajador_pension": aporte_trabajador_pension,
-    #     "aporte_adicional_trabajador_pension": aporte_adicional_trabajador_pension,
-    #     "aporte_patronal_salud": aporte_patronal_salud,
-    #     "aporte_trabajador_salud": aporte_trabajador_salud,
-    #     "valor_total": valor_total,
-    # }
-    return {}
+    ibl_by_dia = ibl / Decimal("30.0")  # Assuming 30 days in a month for IBL calculation
+    d = Decimal(str(dias))
+    valor_it = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["incapacidad_temporal_pct"])) / 100)  # e.g. pct=100.0 → full IBL
+    aporte_patronal_pension = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_patronal_pension_pct"])) / 100)
+    aporte_trabajador_pension = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_trabajador_pension_pct"])) / 100)
+    aporte_adicional_trabajador_pension = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_adicional_trabajador_pension_pct"])) / 100)
+    aporte_patronal_salud = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_patronal_salud_pct"])) / 100)
+    aporte_trabajador_salud = ibl_by_dia * d * (Decimal(str(_PORCENTAJES_PLACEHOLDER["aporte_trabajador_salud_pct"])) / 100)
+    valor_total = valor_it + aporte_patronal_pension + aporte_trabajador_pension + aporte_adicional_trabajador_pension + aporte_patronal_salud + aporte_trabajador_salud
+    return {
+        "incapacidad_temporal": valor_it,
+        "aporte_patronal_pension": aporte_patronal_pension,
+        "aporte_trabajador_pension": aporte_trabajador_pension,
+        "aporte_adicional_trabajador_pension": aporte_adicional_trabajador_pension,
+        "aporte_patronal_salud": aporte_patronal_salud,
+        "aporte_trabajador_salud": aporte_trabajador_salud,
+        "valor_total": valor_total,
+    }
 
 
 class LiquidacionService:
@@ -271,7 +269,6 @@ class LiquidacionService:
             "ibl": ibl,
             "dias": dias,
             **breakdown,
-            "valor_total": None,  # Siempre None hasta C1
             "nota": "Porcentajes pendientes de confirmación (C1 — Helen)",
         }
 
