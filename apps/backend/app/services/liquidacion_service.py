@@ -76,9 +76,9 @@ async def _calcular_breakdown_real(
     d = Decimal(dias)
 
     def calc(pct: Decimal) -> Decimal:
-        return (ibl * d * pct / Decimal("100")).quantize(_QUANT, rounding=ROUND_HALF_UP)
+        return ((ibl / 30) * d * pct / Decimal("100")).quantize(_QUANT, rounding=ROUND_HALF_UP)
 
-    valor_incapacidad_temporal = (ibl * d).quantize(_QUANT, rounding=ROUND_HALF_UP)
+    valor_incapacidad_temporal = ((ibl / 30) * d).quantize(_QUANT, rounding=ROUND_HALF_UP)
     valor_patronal_pension = calc(params.aporte_patronal_pension)
     valor_trabajador_pension = calc(params.aporte_trabajador_pension)
     valor_patronal_salud = calc(params.aporte_patronal_salud)
