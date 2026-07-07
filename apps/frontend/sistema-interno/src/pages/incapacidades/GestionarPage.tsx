@@ -363,6 +363,15 @@ export function GestionarPage() {
                     incapacidad={incapacidad}
                     onSuccess={handleAuditoriaSuccess}
                   />
+
+                  {/* Acciones rápidas de gestión */}
+                  <GestionActions
+                    incapacidad={incapacidad}
+                    onAction={({ nuevoEstado, observacion }) =>
+                      cambiarEstadoMutation.mutate({ nuevoEstado, observacion })
+                    }
+                    isLoading={cambiarEstadoMutation.isPending}
+                  />
                 </>
               ) : (
                 <>
