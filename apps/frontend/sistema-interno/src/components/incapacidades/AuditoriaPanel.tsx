@@ -92,7 +92,12 @@ async function fetchCie10Descripcion(codigo: string): Promise<string | null> {
 // Success panel
 // ---------------------------------------------------------------------------
 
-function SuccessPanel({ estado, textoCopiable }: { estado: string; textoCopiable: string }) {
+export interface AprobacionResultado {
+  estado: string;
+  textoCopiable: string;
+}
+
+export function SuccessPanel({ estado, textoCopiable }: AprobacionResultado) {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
@@ -417,12 +422,12 @@ type PanelAction = 'APROBAR' | 'LIQUIDACION_PARCIAL' | 'PENDIENTE' | 'GLOSAR';
 
 interface AuditoriaPanelProps {
   incapacidad: Incapacidad;
+  onResult?: (result: AprobacionResultado) => void;
 }
 
-export function AuditoriaPanel({ incapacidad }: AuditoriaPanelProps) {
+export function AuditoriaPanel({ incapacidad, onResult }: AuditoriaPanelProps) {
   const queryClient = useQueryClient();
   const [selectedAction, setSelectedAction] = useState<PanelAction | null>(null);
-  const [successData, setSuccessData] = useState<{ estado: string; textoCopiable: string } | null>(null);
   const [backendErrors, setBackendErrors] = useState<{ codigo: string; descripcion: string }[]>([]);
 
   // ARL without siniestro → only allow GLOSAR
@@ -452,7 +457,7 @@ export function AuditoriaPanel({ incapacidad }: AuditoriaPanelProps) {
       invalidateQueries();
       setBackendErrors([]);
       setSelectedAction(null);
-      setSuccessData({ estado: result.estado, textoCopiable: result.texto_copiable });
+      onResult?.({ estado: result.estado, textoCopiable: result.texto_copiable });
     },
     onError: (error: any) => {
       const reglas = error.response?.data?.details?.reglas_fallidas ?? [];
@@ -466,7 +471,7 @@ export function AuditoriaPanel({ incapacidad }: AuditoriaPanelProps) {
     onSuccess: result => {
       invalidateQueries();
       setSelectedAction(null);
-      setSuccessData({ estado: result.estado, textoCopiable: `Incapacidad glosada. Estado: ${result.estado}` });
+      onResult?.({ estado: result.estado, textoCopiable: `Incapacidad glosada. Estado: ${result.estado}` });
     },
   });
 
@@ -476,16 +481,11 @@ export function AuditoriaPanel({ incapacidad }: AuditoriaPanelProps) {
     onSuccess: result => {
       invalidateQueries();
       setSelectedAction(null);
-      setSuccessData({ estado: result.estado, textoCopiable: `Incapacidad en pendiente. Estado: ${result.estado}` });
+      onResult?.({ estado: result.estado, textoCopiable: `Incapacidad en pendiente. Estado: ${result.estado}` });
     },
   });
 
   const isLoading = aprobarMutation.isPending || glosarMutation.isPending || pendienteMutation.isPending;
-
-  // Show success panel after any successful action
-  if (successData) {
-    return <SuccessPanel estado={successData.estado} textoCopiable={successData.textoCopiable} />;
-  }
 
   return (
     <Card>

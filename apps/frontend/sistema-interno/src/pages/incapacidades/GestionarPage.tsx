@@ -19,7 +19,7 @@ import {
 
 import { DocumentosViewer } from '@/components/incapacidades/DocumentosViewer';
 import { HistorialTimeline } from '@/components/incapacidades/HistorialTimeline';
-import { AuditoriaPanel } from '@/components/incapacidades/AuditoriaPanel';
+import { AuditoriaPanel, SuccessPanel, type AprobacionResultado } from '@/components/incapacidades/AuditoriaPanel';
 import { IncapacidadContextStrip } from '@/components/incapacidades/IncapacidadContextStrip';
 import { ValidacionesPanel } from '@/components/incapacidades/ValidacionesPanel';
 import { StateDescriptionPanel } from '@/components/incapacidades/StateDescriptionPanel';
@@ -49,6 +49,7 @@ export function GestionarPage() {
   const [activeTab, setActiveTab] = useState('auditoria');
   const [showDocumentsSidebar, setShowDocumentsSidebar] = useState(true);
   const [showReenviarDialog, setShowReenviarDialog] = useState(false);
+  const [aprobacionResultado, setAprobacionResultado] = useState<AprobacionResultado | null>(null);
 
   const isAdminOrAuditor = useHasRole(['ADMIN', 'AUDITOR']);
 
@@ -323,7 +324,7 @@ export function GestionarPage() {
                   )}
 
                   {/* Panel unificado de auditoría */}
-                  <AuditoriaPanel incapacidad={incapacidad} />
+                  <AuditoriaPanel incapacidad={incapacidad} onResult={setAprobacionResultado} />
                 </>
               ) : (
                 <>
@@ -389,6 +390,15 @@ export function GestionarPage() {
                     </DialogContent>
                   </Dialog>
                 </>
+              )}
+
+              {/* Panel de éxito de la última acción de auditoría — sobrevive al refetch
+                  que puede mover la incapacidad a un estado no auditable (LIQUIDACION, GLOSADA, etc.) */}
+              {aprobacionResultado && (
+                <SuccessPanel
+                  estado={aprobacionResultado.estado}
+                  textoCopiable={aprobacionResultado.textoCopiable}
+                />
               )}
             </TabsContent>
 

@@ -2,10 +2,36 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { GestionarPage } from '../GestionarPage';
 import { incapacidadService } from '@/services/incapacidadService';
 import { EstadoIncapacidad, TipoIncapacidad } from '@/types';
+
+// Stub de AuditoriaPanel: aísla el bug de GestionarPage (persistencia del panel de
+// éxito tras el refetch) de la lógica interna del formulario de aprobación, que se
+// prueba por separado en AuditoriaPanel.test.tsx.
+vi.mock('@/components/incapacidades/AuditoriaPanel', async () => {
+  const actual = await vi.importActual<typeof import('@/components/incapacidades/AuditoriaPanel')>(
+    '@/components/incapacidades/AuditoriaPanel'
+  );
+  return {
+    ...actual,
+    AuditoriaPanel: ({ incapacidad, onResult }: any) => {
+      const qc = useQueryClient();
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            onResult?.({ estado: 'LIQUIDACION', textoCopiable: 'TEXTO-COPIABLE-TEST' });
+            qc.invalidateQueries({ queryKey: ['incapacidad', incapacidad.id] });
+          }}
+        >
+          Simular aprobación exitosa
+        </button>
+      );
+    },
+  };
+});
 
 // Mock del servicio de incapacidades
 vi.mock('@/services/incapacidadService', () => ({
@@ -440,6 +466,44 @@ describe('GestionarPage', () => {
       await waitFor(() => {
         expect(incapacidadService.reenviarNotificacionGlosada).toHaveBeenCalled();
       });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Panel de éxito de auditoría sobrevive al refetch (bug: se perdía al pasar
+  // la incapacidad a un estado no auditable como LIQUIDACION)
+  // ---------------------------------------------------------------------------
+
+  describe('Panel de éxito tras aprobar en auditoría', () => {
+    it('sigue visible con el texto_copiable aunque la incapacidad refetcheada ya no sea auditable (LIQUIDACION)', async () => {
+      const user = userEvent.setup();
+
+      vi.mocked(incapacidadService.getById)
+        .mockResolvedValueOnce(mockIncapacidad) // estado inicial: EN_AUDITORIA (auditable)
+        .mockResolvedValue({ ...mockIncapacidad, estado: EstadoIncapacidad.LIQUIDACION }); // tras refetch
+
+      vi.mocked(incapacidadService.getHistorial).mockResolvedValue(mockHistorial);
+      vi.mocked(incapacidadService.getDocumentos).mockResolvedValue(mockDocumentos);
+      vi.mocked(incapacidadService.getDatosAprobados).mockResolvedValue(null);
+      vi.mocked(incapacidadService.getValidaciones).mockResolvedValue({
+        issues: [],
+        has_fraud_alert: false,
+        total: 0,
+      } as any);
+
+      render(<GestionarPage />, { wrapper: createWrapper() });
+
+      const simularBtn = await screen.findByRole('button', { name: /Simular aprobación exitosa/i });
+      await user.click(simularBtn);
+
+      // El refetch debe reflejar el nuevo estado (no auditable)...
+      await waitFor(() => {
+        expect(screen.getByText(/no se puede auditar/i)).toBeInTheDocument();
+      });
+
+      // ...pero el panel de éxito con el texto_copiable debe seguir presente
+      expect(screen.getByText('TEXTO-COPIABLE-TEST')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Volver a pendientes/i })).toBeInTheDocument();
     });
   });
 });
