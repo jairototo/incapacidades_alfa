@@ -31,6 +31,8 @@ from app.schemas.incapacidad import (
     EmpresaFallback,
     ReenviarGlosadaResponse,
     SiniestroBasic,
+    AprobarAuditoriaRequest,
+    AprobarAuditoriaResponse,
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
@@ -1377,6 +1379,35 @@ async def auditar_incapacidad(
     )
     logger.info(f"Incapacidad {incapacidad_id} auditada con acción {auditoria.accion} por usuario {current_user.id}")
     return _serialize_incapacidad(incap)
+
+
+@router.post(
+    "/{incapacidad_id}/aprobar-en-auditoria",
+    response_model=AprobarAuditoriaResponse,
+    summary="Aprobar incapacidad en auditoría",
+    description=(
+        "Aprueba una incapacidad en estado EN_AUDITORIA. "
+        "Auto-determina LIQUIDACION vs LIQUIDACION_PARCIAL comparando fechas aprobadas con las originales. "
+        "Re-evalúa todas las reglas de auditoría con los datos confirmados. "
+        "Persiste auditoria_resultado siempre (incluso en error). "
+        "Crea o actualiza la plantilla_auditoria y retorna el texto_copiable para Arpis."
+    ),
+    tags=["incapacidades-auditoria"],
+)
+async def aprobar_en_auditoria(
+    incapacidad_id: UUID,
+    body: AprobarAuditoriaRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    result = await incapacidad_service.aprobar_en_auditoria(
+        db, incapacidad_id, body, current_user.id
+    )
+    logger.info(
+        f"Incapacidad {incapacidad_id} aprobada en auditoría → {result['estado']} "
+        f"por usuario {current_user.id}"
+    )
+    return result
 
 
 class _AprobacionBody(_BM):

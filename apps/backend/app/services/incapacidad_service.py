@@ -25,7 +25,7 @@ from app.db.repositories.empresa_repository import empresa_repository
 from app.services.historial_estado_service import historial_estado_service
 from app.models.incapacidad import Incapacidad
 from app.models.documento import Documento
-from app.schemas.incapacidad import IncapacidadCreate, IncapacidadUpdate
+from app.schemas.incapacidad import IncapacidadCreate, IncapacidadUpdate, AprobarAuditoriaRequest
 from app.schemas.documento import PresignedUrlResponse
 from app.utils.enums import (
     EstadoIncapacidad,
@@ -733,6 +733,203 @@ class IncapacidadService:
                 )
 
         return incapacidad_actualizada
+
+    async def aprobar_en_auditoria(
+        self,
+        db: AsyncSession,
+        incapacidad_id: UUID,
+        data: "AprobarAuditoriaRequest",
+        usuario_id: UUID,
+    ) -> dict:
+        """
+        Aprueba una incapacidad en auditoría, auto-determinando LIQUIDACION o LIQUIDACION_PARCIAL.
+
+        Siempre persiste auditoria_resultado (incluso si falla).
+        Si alguna regla ERROR falla → rollback del estado + 400 con lista de reglas.
+        Compara solo fechas y días para determinar LIQUIDACION vs LIQUIDACION_PARCIAL.
+        """
+        from app.services.incapacidad_validation_rules import (
+            validate_field_level,
+            validate_business_rules,
+            validate_audit_only_rules,
+        )
+        from app.models.auditoria_resultado import AuditoriaResultado
+        from app.services.auditoria_service import REGLAS_ESPERADAS
+        from app.db.repositories.plantilla_auditoria_repository import plantilla_auditoria_repository
+        from app.schemas.plantilla_auditoria import PlantillaAuditoriaCreate
+        from app.services.plantilla_auditoria_service import plantilla_auditoria_service as pa_svc
+        from sqlalchemy import select as sa_select
+        from sqlalchemy.orm import selectinload
+
+        # 1. Load incapacidad with relations
+        inc = (await db.execute(
+            sa_select(Incapacidad)
+            .options(
+                selectinload(Incapacidad.empleado),
+                selectinload(Incapacidad.siniestro),
+                selectinload(Incapacidad.afiliado),
+            )
+            .where(Incapacidad.id == incapacidad_id)
+        )).scalar_one_or_none()
+
+        if inc is None:
+            raise NotFoundException(f"Incapacidad {incapacidad_id} no encontrada")
+
+        if inc.estado != EstadoIncapacidad.EN_AUDITORIA:
+            raise InvalidStateException(
+                f"Solo se pueden aprobar incapacidades en estado EN_AUDITORIA. "
+                f"Estado actual: {inc.estado.value}"
+            )
+
+        # 2. Compute dias_aprobados (inclusive: fin - inicio + 1)
+        dias_aprobados = (data.fecha_fin_aprobada - data.fecha_inicio_aprobada).days + 1
+
+        # 3. Build confirmed row dict and run all validation rules
+        cie10_confirmado = data.cie10_aprobado or inc.diagnostico_cie10
+        # For SALUD, use afiliado.numero_documento so EMPTY_EMPLEADO_NUMERO doesn't fire
+        identificador_persona = (
+            inc.empleado.numero_documento if inc.empleado
+            else (inc.afiliado.numero_documento if inc.afiliado else None)
+        )
+        confirmed_row = {
+            "tipo": inc.tipo.value if hasattr(inc.tipo, "value") else str(inc.tipo),
+            "empleado_numero_documento": identificador_persona,
+            "tipo_enfermedad": inc.subtipo,
+            "fecha_inicio": data.fecha_inicio_aprobada,
+            "fecha_fin": data.fecha_fin_aprobada,
+            "dias_totales": dias_aprobados,
+            "diagnostico_cie10": cie10_confirmado,
+            "nombre_medico": data.nombre_medico or inc.nombre_medico,
+            "registro_medico": inc.registro_medico,
+            "siniestro_id": inc.siniestro_id,
+            "fecha_siniestro": inc.siniestro.fecha_siniestro if inc.siniestro else None,
+        }
+
+        issues = (
+            validate_field_level(confirmed_row)
+            + validate_business_rules(confirmed_row)
+            + validate_audit_only_rules(confirmed_row)
+        )
+        failed_by_code = {i["codigo"]: i for i in issues}
+
+        # 4. Persist auditoria_resultado — always, even on validation failure
+        existing_rows = (await db.execute(
+            sa_select(AuditoriaResultado)
+            .where(AuditoriaResultado.incapacidad_id == incapacidad_id)
+        )).scalars().all()
+        existing_by_regla = {r.regla: r for r in existing_rows}
+
+        for codigo, categoria in REGLAS_ESPERADAS:
+            issue = failed_by_code.get(codigo)
+            aprobado = issue is None
+            severidad = issue["severidad"] if issue else "INFO"
+            detalle = issue["descripcion"] if issue else "Regla cumplida"
+
+            if codigo in existing_by_regla:
+                row_obj = existing_by_regla[codigo]
+                row_obj.aprobado = aprobado
+                row_obj.severidad = severidad
+                row_obj.detalle = detalle
+                db.add(row_obj)
+            else:
+                db.add(AuditoriaResultado(
+                    incapacidad_id=incapacidad_id,
+                    regla=codigo,
+                    categoria=categoria,
+                    aprobado=aprobado,
+                    severidad=severidad,
+                    detalle=detalle,
+                ))
+
+        await db.commit()  # Always commit auditoria_resultado
+
+        # Reload inc — object is expired after commit
+        inc = (await db.execute(
+            sa_select(Incapacidad)
+            .options(
+                selectinload(Incapacidad.siniestro),
+                selectinload(Incapacidad.afiliado),
+            )
+            .where(Incapacidad.id == incapacidad_id)
+        )).scalar_one()
+
+        # 5. Reject if any ERROR-level rule failed
+        # EMPTY_EMPLEADO_NUMERO / EMPTY_TIPO_ENFERMEDAD are ARL-only at approval stage;
+        # SALUD incapacidades have afiliados instead of empleados and no subtipo.
+        _salud_skip = {"EMPTY_EMPLEADO_NUMERO", "EMPTY_TIPO_ENFERMEDAD"} if inc.tipo == TipoIncapacidad.SALUD else set()
+        error_rules = [i for i in issues if i["severidad"] == "ERROR" and i["codigo"] not in _salud_skip]
+        if error_rules:
+            reglas_fallidas = [
+                {"codigo": r["codigo"], "descripcion": r["descripcion"], "severidad": r["severidad"]}
+                for r in error_rules
+            ]
+            raise BadRequestException(
+                "La incapacidad no puede ser aprobada. Revise las reglas de auditoría.",
+                details={"reglas_fallidas": reglas_fallidas},
+            )
+
+        # 6. Auto-determine LIQUIDACION vs LIQUIDACION_PARCIAL (dates and days only)
+        dates_match = (
+            data.fecha_inicio_aprobada == inc.fecha_inicio
+            and data.fecha_fin_aprobada == inc.fecha_fin
+            and dias_aprobados == inc.dias_totales
+        )
+        nuevo_estado = (
+            EstadoIncapacidad.LIQUIDACION if dates_match
+            else EstadoIncapacidad.LIQUIDACION_PARCIAL
+        )
+
+        # 7. Create/update plantilla_auditoria
+        plantilla_data = PlantillaAuditoriaCreate(
+            canal_recepcion=data.canal_recepcion,
+            nombre_ips=data.nombre_ips,
+            dias_autorizados=dias_aprobados,
+            fecha_inicio_autorizada=data.fecha_inicio_aprobada,
+            fecha_fin_autorizada=data.fecha_fin_aprobada,
+            diagnostico_cie10=cie10_confirmado,
+            descripcion_cie10=data.descripcion_cie10 or inc.descripcion_diagnostico,
+            nombre_medico=data.nombre_medico,
+            especialidad_medico=data.especialidad_medico,
+            dias_documento=inc.dias_totales if nuevo_estado == EstadoIncapacidad.LIQUIDACION_PARCIAL else None,
+            rango_pagado_inicio=data.fecha_inicio_aprobada if nuevo_estado == EstadoIncapacidad.LIQUIDACION_PARCIAL else None,
+            rango_pagado_fin=data.fecha_fin_aprobada if nuevo_estado == EstadoIncapacidad.LIQUIDACION_PARCIAL else None,
+        )
+        plantilla_payload = plantilla_data.model_dump(exclude_none=False)
+        plantilla_payload["auditado_por_id"] = str(usuario_id)
+        await plantilla_auditoria_repository.upsert(
+            db=db, incapacidad_id=incapacidad_id, data=plantilla_payload
+        )
+
+        # Reload inc again (upsert committed — inc expired)
+        inc = (await db.execute(
+            sa_select(Incapacidad).where(Incapacidad.id == incapacidad_id)
+        )).scalar_one()
+
+        # 8. Transition state
+        extra_update: Dict[str, Any] = {
+            "observaciones": data.observacion,
+            "fecha_auditoria": datetime.utcnow(),
+            "fecha_aprobacion": datetime.utcnow(),
+            "aprobado_por_id": usuario_id,
+            "auditado_por_id": usuario_id,
+        }
+        await self._cambiar_estado(
+            db=db,
+            incapacidad=inc,
+            nuevo_estado=nuevo_estado,
+            observacion=f"Aprobación: {data.observacion}",
+            usuario_id=usuario_id,
+            extra_update=extra_update,
+        )
+
+        # 9. Build texto_copiable from saved plantilla
+        plantilla_final = await plantilla_auditoria_repository.get_by_incapacidad(db, incapacidad_id)
+        texto_copiable = pa_svc.build_texto_copiable(plantilla_final) if plantilla_final else ""
+
+        logger.info(
+            f"Incapacidad {incapacidad_id} aprobada → {nuevo_estado.value} por usuario {usuario_id}"
+        )
+        return {"estado": nuevo_estado.value, "texto_copiable": texto_copiable}
 
     async def solicitar_creacion_siniestro(
         self,

@@ -185,6 +185,37 @@ class IncapacidadResponder(BaseModel):
     respuesta: str = Field(..., min_length=10)
 
 
+class AprobarAuditoriaRequest(BaseModel):
+    """Schema para aprobar una incapacidad en auditoría.
+
+    El backend auto-determina LIQUIDACION vs LIQUIDACION_PARCIAL comparando
+    fecha_inicio_aprobada / fecha_fin_aprobada con los valores originales.
+    """
+
+    fecha_inicio_aprobada: date
+    fecha_fin_aprobada: date
+    cie10_aprobado: Optional[str] = Field(None, max_length=10)
+    descripcion_cie10: Optional[str] = Field(None, max_length=500)
+    canal_recepcion: str = Field(..., max_length=100)
+    nombre_ips: Optional[str] = Field(None, max_length=255)
+    nombre_medico: Optional[str] = Field(None, max_length=200)
+    especialidad_medico: Optional[str] = Field(None, max_length=100)
+    observacion: str = Field(..., min_length=10)
+
+    @model_validator(mode="after")
+    def validate_fechas(self) -> "AprobarAuditoriaRequest":
+        if self.fecha_fin_aprobada < self.fecha_inicio_aprobada:
+            raise ValueError("fecha_fin_aprobada no puede ser anterior a fecha_inicio_aprobada")
+        return self
+
+
+class AprobarAuditoriaResponse(BaseModel):
+    """Respuesta del endpoint aprobar-en-auditoria."""
+
+    estado: str
+    texto_copiable: str
+
+
 class EmpleadoSimple(BaseModel):
     """Schema simplificado de empleado."""
     id: UUID

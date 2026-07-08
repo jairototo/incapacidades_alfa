@@ -67,10 +67,10 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(BadRequestException)
     async def bad_request_exception_handler(request: Request, exc: BadRequestException):
         """Handle bad request exceptions."""
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"detail": exc.message}
-        )
+        content: dict = {"detail": exc.message}
+        if exc.details is not None:
+            content["details"] = exc.details
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=content)
     
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
