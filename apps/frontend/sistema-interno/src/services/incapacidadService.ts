@@ -11,6 +11,8 @@ import type {
   ValidacionesResponse,
   SiniestroBasic,
   AuditoriaResultado,
+  AprobarAuditoriaRequest,
+  AprobarAuditoriaResponse,
 } from '@/types/incapacidad';
 
 /**
@@ -397,6 +399,46 @@ export const incapacidadService = {
     const { data } = await api.get<AuditoriaResultado[]>(
       `/incapacidades/${id}/auditoria-resultados`
     );
+    return data;
+  },
+
+  /**
+   * Aprobar incapacidad en auditoría (LIQUIDACION o LIQUIDACION_PARCIAL)
+   * POST /api/v1/incapacidades/{id}/aprobar-en-auditoria
+   * Backend auto-determina estado según fechas/días vs valores originales
+   */
+  async aprobarEnAuditoria(
+    id: string,
+    data: AprobarAuditoriaRequest
+  ): Promise<AprobarAuditoriaResponse> {
+    const { data: response } = await api.post<AprobarAuditoriaResponse>(
+      `/incapacidades/${id}/aprobar-en-auditoria`,
+      data
+    );
+    return response;
+  },
+
+  /**
+   * Glosar incapacidad (EN_AUDITORIA → GLOSADA)
+   * POST /api/v1/incapacidades/{id}/auditar con accion=RECHAZAR
+   */
+  async glosar(id: string, observacion: string): Promise<Incapacidad> {
+    const { data } = await api.post<Incapacidad>(`/incapacidades/${id}/auditar`, {
+      accion: 'RECHAZAR',
+      observaciones: observacion,
+    });
+    return data;
+  },
+
+  /**
+   * Poner incapacidad en PENDIENTE (solicitar información)
+   * POST /api/v1/incapacidades/{id}/auditar con accion=SOLICITAR_INFORMACION
+   */
+  async ponerPendiente(id: string, observacion: string): Promise<Incapacidad> {
+    const { data } = await api.post<Incapacidad>(`/incapacidades/${id}/auditar`, {
+      accion: 'SOLICITAR_INFORMACION',
+      observaciones: observacion,
+    });
     return data;
   },
 };

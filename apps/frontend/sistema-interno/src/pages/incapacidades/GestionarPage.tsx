@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, FileText, History, CheckCircle, XCircle, AlertCircle, Image, ChevronLeft, ChevronRight, AlertTriangle, Send } from 'lucide-react';
+import { ArrowLeft, FileText, History, XCircle, AlertCircle, Image, ChevronLeft, ChevronRight, AlertTriangle, Send } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,8 +19,7 @@ import {
 
 import { DocumentosViewer } from '@/components/incapacidades/DocumentosViewer';
 import { HistorialTimeline } from '@/components/incapacidades/HistorialTimeline';
-import { GestionActions } from '@/components/incapacidades/GestionActions';
-import { AuditoriaFormulario } from '@/components/incapacidades/AuditoriaFormulario';
+import { AuditoriaPanel } from '@/components/incapacidades/AuditoriaPanel';
 import { IncapacidadContextStrip } from '@/components/incapacidades/IncapacidadContextStrip';
 import { ValidacionesPanel } from '@/components/incapacidades/ValidacionesPanel';
 import { StateDescriptionPanel } from '@/components/incapacidades/StateDescriptionPanel';
@@ -110,33 +109,6 @@ export function GestionarPage() {
     ? { nombres: preIncapacidadData.empleado_nombres, numero_documento: preIncapacidadData.empleado_numero_documento }
     : null;
 
-  // Mutation: Cambiar estado (deprecado - usar AuditoriaFormulario)
-  const cambiarEstadoMutation = useMutation({
-    mutationFn: ({ nuevoEstado, observacion }: { nuevoEstado: string; observacion?: string }) =>
-      incapacidadService.cambiarEstado(id!, nuevoEstado, observacion),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['incapacidad', id] });
-      queryClient.invalidateQueries({ queryKey: ['incapacidad', id, 'historial'] });
-      queryClient.invalidateQueries({ queryKey: ['incapacidades-pendientes'] });
-      
-      toast({
-        title: '✅ Estado actualizado',
-        description: `La incapacidad ahora está en estado: ${data.estado}`,
-      });
-      
-      setTimeout(() => {
-        navigate('/incapacidades/pendientes');
-      }, 1500);
-    },
-    onError: (error: any) => {
-      toast({
-        title: '❌ Error',
-        description: error.response?.data?.detail || 'No se pudo actualizar el estado',
-        variant: 'destructive',
-      });
-    },
-  });
-
   // Mutation: Reenviar notificación de glosa
   const reenviarNotificacionMutation = useMutation({
     mutationFn: () => incapacidadService.reenviarNotificacionGlosada(id!),
@@ -156,14 +128,6 @@ export function GestionarPage() {
       });
     },
   });
-
-  // Handler éxito de auditoría
-  const handleAuditoriaSuccess = () => {
-    // Redirigir después de brief delay
-    setTimeout(() => {
-      navigate('/incapacidades/pendientes');
-    }, 2000);
-  };
 
   // Loading state
   if (isLoading) {
@@ -358,20 +322,8 @@ export function GestionarPage() {
                     </Card>
                   )}
 
-                  {/* Formulario de auditoría mejorado */}
-                  <AuditoriaFormulario
-                    incapacidad={incapacidad}
-                    onSuccess={handleAuditoriaSuccess}
-                  />
-
-                  {/* Acciones rápidas de gestión */}
-                  <GestionActions
-                    incapacidad={incapacidad}
-                    onAction={({ nuevoEstado, observacion }) =>
-                      cambiarEstadoMutation.mutate({ nuevoEstado, observacion })
-                    }
-                    isLoading={cambiarEstadoMutation.isPending}
-                  />
+                  {/* Panel unificado de auditoría */}
+                  <AuditoriaPanel incapacidad={incapacidad} />
                 </>
               ) : (
                 <>

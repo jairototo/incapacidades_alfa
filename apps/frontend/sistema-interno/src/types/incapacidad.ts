@@ -281,6 +281,30 @@ export interface ValidacionesResponse {
 }
 
 /**
+ * Request para aprobar incapacidad en auditoría
+ * POST /api/v1/incapacidades/{id}/aprobar-en-auditoria
+ */
+export interface AprobarAuditoriaRequest {
+  fecha_inicio_aprobada: string; // YYYY-MM-DD
+  fecha_fin_aprobada: string;    // YYYY-MM-DD
+  cie10_aprobado?: string;
+  descripcion_cie10?: string;
+  canal_recepcion: string;
+  nombre_ips?: string;
+  nombre_medico?: string;
+  especialidad_medico?: string;
+  observacion: string;
+}
+
+/**
+ * Response de aprobar-en-auditoria
+ */
+export interface AprobarAuditoriaResponse {
+  estado: string;
+  texto_copiable: string;
+}
+
+/**
  * Filtros para módulo de pendientes
  */
 export interface FiltrosPendientes {
