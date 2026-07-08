@@ -79,6 +79,15 @@ function useCie10Search(query: string) {
   return { results, loading };
 }
 
+async function fetchCie10Descripcion(codigo: string): Promise<string | null> {
+  try {
+    const { data } = await api.get<Cie10Item>(`/catalogos/cie10/${codigo}`);
+    return data.descripcion;
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Success panel
 // ---------------------------------------------------------------------------
@@ -162,8 +171,10 @@ function ApprovalForm({ incapacidad, onSubmit, onCancel, isLoading, backendError
       fecha_inicio_aprobada: incapacidad.fecha_inicio,
       fecha_fin_aprobada: incapacidad.fecha_fin,
       cie10_aprobado: incapacidad.diagnostico_cie10 ?? '',
-      descripcion_cie10: incapacidad.diagnostico ?? '',
-      canal_recepcion: '',
+      descripcion_cie10: '',
+      canal_recepcion: 'Portal IT',
+      nombre_ips: incapacidad.ips ?? '',
+      nombre_medico: incapacidad.nombre_medico ?? '',
       observacion: '',
     },
   });
@@ -171,6 +182,18 @@ function ApprovalForm({ incapacidad, onSubmit, onCancel, isLoading, backendError
   const [cie10Query, setCie10Query] = useState(incapacidad.diagnostico_cie10 ?? '');
   const [showCie10Dropdown, setShowCie10Dropdown] = useState(false);
   const { results: cie10Results } = useCie10Search(cie10Query);
+
+  // Resolver la descripción del código CIE-10 original consultando el catálogo
+  useEffect(() => {
+    const codigoOriginal = incapacidad.diagnostico_cie10;
+    if (!codigoOriginal) return;
+    let cancelled = false;
+    fetchCie10Descripcion(codigoOriginal).then(descripcion => {
+      if (!cancelled && descripcion) setValue('descripcion_cie10', descripcion);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fechaInicio = watch('fecha_inicio_aprobada');
   const fechaFin = watch('fecha_fin_aprobada');
@@ -256,8 +279,9 @@ function ApprovalForm({ incapacidad, onSubmit, onCancel, isLoading, backendError
 
       {/* Descripción CIE-10 (read-only from catalog) */}
       <div className="space-y-1">
-        <Label>Descripción diagnóstico</Label>
+        <Label htmlFor="descripcion_cie10_display">Descripción diagnóstico</Label>
         <Input
+          id="descripcion_cie10_display"
           value={watch('descripcion_cie10') ?? ''}
           readOnly
           className="bg-slate-50 cursor-not-allowed text-slate-600"

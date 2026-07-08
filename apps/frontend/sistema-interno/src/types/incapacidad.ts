@@ -27,6 +27,8 @@ export interface Incapacidad {
   dias_totales: number;
   diagnostico_cie10: string;
   diagnostico_descripcion: string;
+  ips?: string | null;
+  nombre_medico?: string | null;
   valor_total: number;
   observaciones?: string;
   siniestro_id?: string | null;
