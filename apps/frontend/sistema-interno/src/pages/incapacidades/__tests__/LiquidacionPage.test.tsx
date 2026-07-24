@@ -560,12 +560,69 @@ describe('LiquidacionPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      expect(
+        screen.getByRole('combobox', { name: /Método de pago/i })
+      ).toBeInTheDocument();
     });
 
-    const select = screen.getByRole('combobox');
-    expect(select).toBeInTheDocument();
     expect(screen.getByText('Cheque')).toBeInTheDocument();
     expect(screen.getByText('Oxirre (transferencia electrónica)')).toBeInTheDocument();
+  });
+
+  // --- Sucursal dropdown ---
+  it('renders sucursal select with its four options', async () => {
+    vi.mocked(incapacidadService.getById).mockResolvedValue(
+      mockIncapacidadLiquidacion as any
+    );
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('combobox', { name: /Sucursal giradora/i })
+      ).toBeInTheDocument();
+    });
+
+    const select = screen.getByRole('combobox', { name: /Sucursal giradora/i });
+    expect(select).toBeInTheDocument();
+    expect(screen.getByText('Cali')).toBeInTheDocument();
+    expect(screen.getByText('Medellín')).toBeInTheDocument();
+    expect(screen.getByText('Cartagena')).toBeInTheDocument();
+    expect(screen.getByText('Bogotá')).toBeInTheDocument();
+  });
+
+  // --- Save liquidacion includes sucursal ---
+  it('calls guardarLiquidacion with sucursal in the payload when selected', async () => {
+    const user = userEvent.setup();
+    vi.mocked(incapacidadService.getById).mockResolvedValue(
+      mockIncapacidadLiquidacion as any
+    );
+    vi.mocked(liquidacionService.guardarLiquidacion).mockResolvedValue(
+      mockLiquidacionExistente
+    );
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ibl-input')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('ibl-input'), {
+      target: { value: '2500000' },
+    });
+
+    const sucursalSelect = screen.getByRole('combobox', {
+      name: /Sucursal giradora/i,
+    });
+    await user.selectOptions(sucursalSelect, 'Cali');
+
+    await user.click(screen.getByTestId('guardar-borrador-btn'));
+
+    await waitFor(() => {
+      expect(liquidacionService.guardarLiquidacion).toHaveBeenCalledWith(
+        'inc-liq-001',
+        expect.objectContaining({
+          sucursal: 'Cali',
+        })
+      );
+    });
   });
 });

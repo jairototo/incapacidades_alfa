@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { mapLiquidacionToBreakdown, type LiquidacionResponse } from '../liquidacion';
+import {
+  mapLiquidacionToBreakdown,
+  SucursalSiniestro,
+  type LiquidacionResponse,
+} from '../liquidacion';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -81,5 +85,16 @@ describe('mapLiquidacionToBreakdown', () => {
     const result = mapLiquidacionToBreakdown(makeBase());
     expect(typeof result!.nota).toBe('string');
     expect(result!.nota.length).toBeGreaterThan(0);
+  });
+});
+
+describe('SucursalSiniestro', () => {
+  it('exposes exactly the four expected sucursal values', () => {
+    expect(Object.values(SucursalSiniestro)).toEqual([
+      'Cali',
+      'Medellín',
+      'Cartagena',
+      'Bogotá',
+    ]);
   });
 });

@@ -27,6 +27,15 @@ export const METODO_PAGO_LABELS: Record<MetodoPagoLiquidacion, string> = {
   OXIRRE: 'Oxirre (transferencia electrónica)',
 };
 
+export const SucursalSiniestro = {
+  CALI: 'Cali',
+  MEDELLIN: 'Medellín',
+  CARTAGENA: 'Cartagena',
+  BOGOTA: 'Bogotá',
+} as const;
+
+export type SucursalSiniestro = (typeof SucursalSiniestro)[keyof typeof SucursalSiniestro];
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -48,6 +57,7 @@ export interface LiquidacionResponse {
   valor_aporte_trabajador_salud: number | null;
   valor_total: number | null;
   metodo_pago: MetodoPagoLiquidacion | null;
+  sucursal?: SucursalSiniestro | null;
   notas_liquidador: string | null;
   liquidador_id: string | null;
 }
@@ -67,6 +77,7 @@ export interface LiquidacionGuardar {
   valor_aporte_trabajador_salud?: number | null;
   valor_total?: number | null;
   metodo_pago?: MetodoPagoLiquidacion | null;
+  sucursal?: SucursalSiniestro | null;
   notas_liquidador?: string | null;
 }
 

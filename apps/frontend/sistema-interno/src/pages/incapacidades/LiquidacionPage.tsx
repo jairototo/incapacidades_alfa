@@ -53,6 +53,7 @@ import {
   mapLiquidacionToBreakdown,
   MetodoPagoLiquidacion,
   METODO_PAGO_LABELS,
+  SucursalSiniestro,
   type LiquidacionGuardar,
   type BreakdownResponse,
 } from '@/services/liquidacion';
@@ -103,6 +104,10 @@ const liquidacionFormSchema = z.object({
       (val) => !isNaN(Number(val)) && Number(val) > 0,
       'El IBL debe ser un número mayor a 0'
     ),
+  sucursal: z
+    .string()
+    .optional()
+    .transform((val) => (val === '' ? undefined : val)),
   metodo_pago: z
     .string()
     .optional()
@@ -227,6 +232,7 @@ export function LiquidacionPage() {
     resolver: zodResolver(liquidacionFormSchema),
     defaultValues: {
       ibl: '',
+      sucursal: undefined,
       metodo_pago: undefined,
       notas_liquidador: '',
     },
@@ -236,6 +242,7 @@ export function LiquidacionPage() {
     if (liquidacionExistente) {
       resetForm({
         ibl: liquidacionExistente.ibl != null ? String(liquidacionExistente.ibl) : '',
+        sucursal: liquidacionExistente.sucursal ?? undefined,
         metodo_pago: liquidacionExistente.metodo_pago ?? undefined,
         notas_liquidador: liquidacionExistente.notas_liquidador ?? '',
       });
@@ -365,6 +372,7 @@ export function LiquidacionPage() {
       metodo_pago: values.metodo_pago
         ? (values.metodo_pago as MetodoPagoLiquidacion)
         : null,
+      sucursal: values.sucursal ? (values.sucursal as SucursalSiniestro) : null,
       notas_liquidador: values.notas_liquidador || null,
     };
     guardarMutation.mutate(payload);
@@ -771,6 +779,36 @@ export function LiquidacionPage() {
                       {Object.entries(MetodoPagoLiquidacion).map(([key, value]) => (
                         <option key={key} value={value}>
                           {METODO_PAGO_LABELS[value as MetodoPagoLiquidacion]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </Card>
+
+                {/* Sucursal */}
+                <Card className="p-4 space-y-4">
+                  <h2 className="text-lg font-semibold text-slate-800">Sucursal</h2>
+                  <div className="space-y-1.5">
+                    <label htmlFor="sucursal" className="text-sm font-medium leading-none">
+                      Sucursal giradora
+                      <span className="text-xs text-slate-500 ml-2">
+                        (Solo ARL con siniestro vinculado)
+                      </span>
+                    </label>
+                    <select
+                      id="sucursal"
+                      className={[
+                        'flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm',
+                        'ring-offset-background',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'border-input',
+                      ].join(' ')}
+                      {...register('sucursal')}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {Object.entries(SucursalSiniestro).map(([key, value]) => (
+                        <option key={key} value={value}>
+                          {value}
                         </option>
                       ))}
                     </select>
