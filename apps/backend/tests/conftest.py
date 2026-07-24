@@ -52,11 +52,23 @@ async def db_engine():
             DO $b$ BEGIN
                 CREATE TYPE estadoincapacidad AS ENUM (
                     'RADICADA', 'EN_AUDITORIA', 'PENDIENTE', 'CREACION_SINIESTRO',
-                    'LIQUIDACION', 'LIQUIDACION_PARCIAL', 'GLOSADA', 'PAGADA', 'PAGADA_PARCIAL'
+                    'LIQUIDACION', 'LIQUIDACION_PARCIAL', 'GLOSADA', 'EN_PAGO', 'EN_PAGO_PARCIAL',
+                    'PAGADA', 'PAGADA_PARCIAL'
                 );
             EXCEPTION WHEN duplicate_object THEN null;
             END $b$;
         """))
+        # Si el tipo ya existía de una corrida de tests anterior (previa a la
+        # incorporación de EN_PAGO/EN_PAGO_PARCIAL), el CREATE TYPE de arriba
+        # se saltea vía duplicate_object y los valores nuevos nunca se agregan.
+        # ALTER TYPE ... ADD VALUE IF NOT EXISTS cubre ese caso (soportado
+        # dentro de una transacción desde PostgreSQL 12+).
+        await conn.execute(sa.text(
+            "ALTER TYPE estadoincapacidad ADD VALUE IF NOT EXISTS 'EN_PAGO' AFTER 'GLOSADA';"
+        ))
+        await conn.execute(sa.text(
+            "ALTER TYPE estadoincapacidad ADD VALUE IF NOT EXISTS 'EN_PAGO_PARCIAL' AFTER 'EN_PAGO';"
+        ))
         await conn.execute(sa.text("""
             DO $b$ BEGIN
                 CREATE TYPE prioridad AS ENUM ('BAJA', 'NORMAL', 'ALTA', 'URGENTE');
