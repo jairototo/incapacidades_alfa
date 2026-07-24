@@ -62,14 +62,21 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
         EstadoIncapacidad.EN_AUDITORIA,
     ],
     EstadoIncapacidad.LIQUIDACION: [
-        EstadoIncapacidad.PAGADA,
+        EstadoIncapacidad.EN_PAGO,
+        EstadoIncapacidad.PAGADA,  # kept for the legacy /enviar-pago, /marcar-pagada endpoints
         EstadoIncapacidad.EN_AUDITORIA,
     ],
     EstadoIncapacidad.LIQUIDACION_PARCIAL: [
-        EstadoIncapacidad.PAGADA_PARCIAL,
+        EstadoIncapacidad.EN_PAGO_PARCIAL,
         EstadoIncapacidad.EN_AUDITORIA,
     ],
     EstadoIncapacidad.GLOSADA: [],
+    EstadoIncapacidad.EN_PAGO: [
+        EstadoIncapacidad.PAGADA,
+    ],
+    EstadoIncapacidad.EN_PAGO_PARCIAL: [
+        EstadoIncapacidad.PAGADA_PARCIAL,
+    ],
     EstadoIncapacidad.PAGADA: [],
     EstadoIncapacidad.PAGADA_PARCIAL: [],
 }
