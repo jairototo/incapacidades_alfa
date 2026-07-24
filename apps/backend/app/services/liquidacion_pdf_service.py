@@ -13,7 +13,6 @@ de definición de negocio (decisión explícita, 2026-07-24).
 """
 from __future__ import annotations
 
-import hashlib
 import io
 from datetime import date, datetime
 from decimal import Decimal
