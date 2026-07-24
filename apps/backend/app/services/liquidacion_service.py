@@ -130,7 +130,18 @@ class LiquidacionService:
             raise NotFoundException(
                 f"No se encontró liquidación para la incapacidad {incapacidad_id}"
             )
+        await self._attach_sucursal(db, liquidacion)
         return liquidacion
+
+    async def _attach_sucursal(self, db: AsyncSession, liquidacion: Liquidacion) -> None:
+        """
+        Adjunta el valor actual de sucursal (vive en Siniestro, no en Liquidacion)
+        como atributo transitorio para que LiquidacionResponse.model_validate lo lea.
+        """
+        from app.services.incapacidad_service import incapacidad_service
+
+        incapacidad = await incapacidad_service.get_incapacidad(db, liquidacion.incapacidad_id)
+        liquidacion.sucursal = incapacidad.siniestro.sucursal if incapacidad.siniestro else None
 
     # ------------------------------------------------------------------
     # Guardar (crear o actualizar)
@@ -240,7 +251,15 @@ class LiquidacionService:
             await db.flush()
             liquidacion = await liquidacion_repository.get_by_incapacidad(db, incapacidad_id)
 
+        # Sucursal vive en Siniestro, no en Liquidacion — actualizar si se envió
+        if data.sucursal is not None and incapacidad.siniestro is not None:
+            from app.db.repositories.siniestro_repository import SiniestroRepository
+            await SiniestroRepository().update(
+                db, id=incapacidad.siniestro.id, obj_in={"sucursal": data.sucursal}
+            )
+
         await db.commit()
+        liquidacion.sucursal = data.sucursal if incapacidad.siniestro is not None else None
         logger.info(
             "Liquidación guardada para incapacidad %s por liquidador %s",
             incapacidad_id,

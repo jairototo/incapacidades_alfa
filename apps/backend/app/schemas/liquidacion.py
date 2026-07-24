@@ -10,7 +10,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.utils.enums import MetodoPagoLiquidacion
+from app.utils.enums import MetodoPagoLiquidacion, SucursalSiniestro
 
 
 # ---------------------------------------------------------------------------
@@ -41,6 +41,7 @@ class LiquidacionGuardar(BaseModel):
 
     metodo_pago: Optional[MetodoPagoLiquidacion] = None
     notas_liquidador: Optional[str] = None
+    sucursal: Optional[SucursalSiniestro] = None
 
 
 class LiquidacionDevolver(BaseModel):
@@ -80,6 +81,7 @@ class LiquidacionResponse(BaseModel):
     metodo_pago: Optional[MetodoPagoLiquidacion] = None
     notas_liquidador: Optional[str] = None
     liquidador_id: Optional[UUID] = None
+    sucursal: Optional[SucursalSiniestro] = None
 
 
 class BreakdownResponse(BaseModel):

@@ -49,6 +49,58 @@ async def _make_incapacidad(db_session, estado: str = "LIQUIDACION") -> sa.engin
     return inc_id
 
 
+async def _make_incapacidad_arl_con_siniestro(db_session, estado: str = "LIQUIDACION") -> "UUID":
+    """Crea Empresa + Empleado + Siniestro + Incapacidad (ARL) vinculados, vía ORM."""
+    from app.models.empresa import Empresa
+    from app.models.empleado import Empleado
+    from app.models.siniestro import Siniestro
+    from app.models.incapacidad import Incapacidad
+    from app.utils.enums import TipoDocumento, TipoIncapacidad, TipoSiniestro
+
+    uid = uuid4()
+    empresa = Empresa(nit=f"900{uid.hex[:6]}", razon_social="TechCorp S.A.S.")
+    db_session.add(empresa)
+    await db_session.flush()
+
+    empleado = Empleado(
+        empresa_id=empresa.id,
+        numero_documento=str(uid.int % 10**9),
+        tipo_documento=TipoDocumento.CC,
+        nombres="Juan",
+        apellidos="Pérez",
+        fecha_ingreso=date(2020, 1, 1),
+    )
+    db_session.add(empleado)
+    await db_session.flush()
+
+    siniestro = Siniestro(
+        numero_siniestro=f"SIN-TEST-{uid.hex[:8]}",
+        empleado_id=empleado.id,
+        empresa_id=empresa.id,
+        fecha_siniestro=date(2026, 5, 1),
+        tipo_siniestro=TipoSiniestro.ACCIDENTE_TRABAJO,
+        descripcion="Accidente de prueba",
+    )
+    db_session.add(siniestro)
+    await db_session.flush()
+
+    incapacidad = Incapacidad(
+        numero=f"INC-TEST-{uid.hex[:8]}",
+        tipo=TipoIncapacidad.ARL,
+        empresa_id=empresa.id,
+        empleado_id=empleado.id,
+        siniestro_id=siniestro.id,
+        estado=estado,
+        fecha_inicio=date(2026, 6, 1),
+        fecha_fin=date(2026, 6, 10),
+        dias_totales=10,
+    )
+    db_session.add(incapacidad)
+    await db_session.commit()
+    await db_session.refresh(incapacidad)
+    return incapacidad.id
+
+
 async def _make_liquidador(db_session) -> "UUID":
     """Create a minimal usuario (AUDITOR role) via ORM and return its id."""
     from app.models.usuario import Usuario
@@ -468,3 +520,34 @@ async def test_completar_liquidacion_sin_registro(db_session):
             incapacidad_id=inc_id,
             liquidador_id=liquidador_id,
         )
+
+
+# ---------------------------------------------------------------------------
+# 15. guardar_liquidacion writes sucursal onto the linked Siniestro
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_guardar_liquidacion_updates_siniestro_sucursal(db_session):
+    """guardar_liquidacion writes sucursal onto the linked Siniestro, and the
+    returned Liquidacion carries it back for the response schema."""
+    from app.services.liquidacion_service import liquidacion_service
+    from app.services.incapacidad_service import incapacidad_service
+    from app.schemas.liquidacion import LiquidacionGuardar
+    from app.utils.enums import SucursalSiniestro
+
+    inc_id = await _make_incapacidad_arl_con_siniestro(db_session, "LIQUIDACION")
+    liquidador_id = await _make_liquidador(db_session)
+
+    data = LiquidacionGuardar(
+        dias_autorizados=5,
+        fecha_inicio_autorizada=date(2026, 6, 1),
+        fecha_fin_autorizada=date(2026, 6, 5),
+        sucursal=SucursalSiniestro.BOGOTA,
+    )
+    liquidacion = await liquidacion_service.guardar_liquidacion(
+        db=db_session, incapacidad_id=inc_id, data=data, liquidador_id=liquidador_id,
+    )
+
+    incapacidad = await incapacidad_service.get_incapacidad(db_session, inc_id)
+    assert incapacidad.siniestro.sucursal == SucursalSiniestro.BOGOTA
+    assert liquidacion.sucursal == SucursalSiniestro.BOGOTA
