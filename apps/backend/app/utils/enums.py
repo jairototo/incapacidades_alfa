@@ -193,6 +193,19 @@ class EstadoSiniestro(str, Enum):
     ANULADO = "ANULADO"
 
 
+class SucursalSiniestro(str, Enum):
+    """
+    Sucursal que gira la autorización de pago para un siniestro ARL.
+
+    Fuente: docs/recursos_arl/Asignación Auditores - Incapacidades ARL.xlsx
+    (única lista de sucursales disponible a la fecha).
+    """
+    CALI = "Cali"
+    MEDELLIN = "Medellín"
+    CARTAGENA = "Cartagena"
+    BOGOTA = "Bogotá"
+
+
 class MetodoPagoLiquidacion(str, Enum):
     """Método de pago para liquidación de incapacidades.
 

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, ENUM as PGEnum
 
 from app.models.base import BaseModel
-from app.utils.enums import TipoSiniestro, GravedadSiniestro, EstadoSiniestro, SyncSource
+from app.utils.enums import TipoSiniestro, GravedadSiniestro, EstadoSiniestro, SyncSource, SucursalSiniestro
 
 
 class Siniestro(BaseModel):
@@ -41,7 +41,12 @@ class Siniestro(BaseModel):
         nullable=False,
         default=GravedadSiniestro.LEVE
     )
-    
+    sucursal: Mapped[Optional[SucursalSiniestro]] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Sucursal giradora de la autorización de pago",
+    )
+
     # Información adicional
     testigos: Mapped[Optional[str]] = mapped_column(Text)
     requirio_hospitalizacion: Mapped[bool] = mapped_column(Boolean, default=False)
