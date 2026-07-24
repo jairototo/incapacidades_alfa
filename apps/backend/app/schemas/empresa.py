@@ -19,6 +19,7 @@ class EmpresaBase(BaseModel):
     ciudad: Optional[str] = Field(None, max_length=100, description="Ciudad")
     departamento: Optional[str] = Field(None, max_length=100, description="Departamento")
     tipo_empresa: Optional[str] = Field(None, max_length=50, description="Tipo de empresa")
+    nro_contrato: Optional[str] = Field(None, max_length=100, description="Número de contrato")
 
 
 class EmpresaCreate(EmpresaBase):
@@ -37,6 +38,7 @@ class EmpresaUpdate(BaseModel):
     ciudad: Optional[str] = Field(None, max_length=100)
     departamento: Optional[str] = Field(None, max_length=100)
     tipo_empresa: Optional[str] = Field(None, max_length=50)
+    nro_contrato: Optional[str] = Field(None, max_length=100)
 
 
 class EmpresaResponse(EmpresaBase):

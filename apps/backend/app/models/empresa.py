@@ -26,7 +26,8 @@ class Empresa(BaseModel):
     direccion: Mapped[Optional[str]] = mapped_column(Text)
     ciudad: Mapped[Optional[str]] = mapped_column(String(100))
     departamento: Mapped[Optional[str]] = mapped_column(String(100))
-    
+    nro_contrato: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
     # Tipo y estado
     tipo_empresa: Mapped[Optional[TipoEmpresa]] = mapped_column(String(50))
     estado: Mapped[EstadoEmpresa] = mapped_column(
