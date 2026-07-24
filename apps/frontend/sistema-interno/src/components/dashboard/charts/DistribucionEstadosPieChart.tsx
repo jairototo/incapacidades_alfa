@@ -14,6 +14,8 @@ const ESTADO_COLORS: Record<string, string> = {
   LIQUIDACION: '#a855f7',
   LIQUIDACION_PARCIAL: '#6366f1',
   GLOSADA: '#ef4444',
+  EN_PAGO: '#0891b2',
+  EN_PAGO_PARCIAL: '#0284c7',
   PAGADA: '#22c55e',
   PAGADA_PARCIAL: '#14b8a6',
 };

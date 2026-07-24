@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Ban,
   CreditCard,
+  Send,
   CheckCircle,
   CheckCircle2,
 } from 'lucide-react';
@@ -94,6 +95,20 @@ const STATE_INFO: Record<string, StateInfo> = {
       'El rango de días pagados está especificado en la plantilla de auditoría',
     ],
     sla: 'SLA: 3 días hábiles para completar la liquidación',
+  },
+  EN_PAGO: {
+    icon: <Send className="h-4 w-4" />,
+    colorClass: 'border-cyan-200 bg-cyan-50 text-cyan-800',
+    descripcion:
+      'Liquidación completada. La orden de pago se genera y confirma desde el módulo de Órdenes de Pago.',
+    requisitos: ['Orden de pago generada y pagada para pasar a PAGADA'],
+  },
+  EN_PAGO_PARCIAL: {
+    icon: <Send className="h-4 w-4" />,
+    colorClass: 'border-sky-200 bg-sky-50 text-sky-800',
+    descripcion:
+      'Liquidación parcial completada. La orden de pago se genera y confirma desde el módulo de Órdenes de Pago.',
+    requisitos: ['Orden de pago generada y pagada para pasar a PAGADA_PARCIAL'],
   },
   GLOSADA: {
     icon: <Ban className="h-4 w-4" />,

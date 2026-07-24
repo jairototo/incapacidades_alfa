@@ -279,7 +279,7 @@ export function LiquidacionPage() {
       queryClient.invalidateQueries({ queryKey: ['incapacidad', id] });
       toast({
         title: 'Liquidación completada',
-        description: 'La incapacidad ha sido marcada como pagada.',
+        description: 'La incapacidad pasó a estado EN_PAGO y queda lista para generar la orden de pago.',
       });
       setTimeout(() => navigate('/incapacidades/pendientes'), 1500);
     },

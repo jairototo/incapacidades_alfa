@@ -112,6 +112,8 @@ export function IncapacidadesTable({
             LIQUIDACION: 'bg-purple-100 text-purple-800',
             LIQUIDACION_PARCIAL: 'bg-indigo-100 text-indigo-800',
             GLOSADA: 'bg-red-100 text-red-800',
+            EN_PAGO: 'bg-cyan-100 text-cyan-800',
+            EN_PAGO_PARCIAL: 'bg-sky-100 text-sky-800',
             PAGADA: 'bg-green-100 text-green-800',
             PAGADA_PARCIAL: 'bg-teal-100 text-teal-800',
           };
@@ -123,6 +125,8 @@ export function IncapacidadesTable({
             LIQUIDACION: 'En Liquidación',
             LIQUIDACION_PARCIAL: 'En Liquidación Parcial',
             GLOSADA: 'Glosada',
+            EN_PAGO: 'En Pago',
+            EN_PAGO_PARCIAL: 'En Pago Parcial',
             PAGADA: 'Pagada',
             PAGADA_PARCIAL: 'Pagada Parcialmente',
           };

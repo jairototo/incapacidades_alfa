@@ -168,6 +168,8 @@ const STATE_LABELS: Record<string, string> = {
   LIQUIDACION: 'En Liquidación',
   LIQUIDACION_PARCIAL: 'En Liquidación Parcial',
   GLOSADA: 'Glosada',
+  EN_PAGO: 'En Pago',
+  EN_PAGO_PARCIAL: 'En Pago Parcial',
   PAGADA: 'Pagada',
   PAGADA_PARCIAL: 'Pagada Parcialmente',
 };
@@ -185,6 +187,8 @@ function getEstadoIcon(estado: string) {
       return <FileText className="h-6 w-6 text-white" />;
     case 'LIQUIDACION':
     case 'LIQUIDACION_PARCIAL':
+    case 'EN_PAGO':
+    case 'EN_PAGO_PARCIAL':
       return <DollarSign className="h-6 w-6 text-white" />;
     case 'GLOSADA':
       return <XCircle className="h-6 w-6 text-white" />;
@@ -210,6 +214,10 @@ function getEstadoBackground(estado: string): string {
       return 'bg-purple-500';
     case 'LIQUIDACION_PARCIAL':
       return 'bg-indigo-500';
+    case 'EN_PAGO':
+      return 'bg-cyan-500';
+    case 'EN_PAGO_PARCIAL':
+      return 'bg-sky-500';
     case 'GLOSADA':
       return 'bg-red-500';
     case 'PAGADA':
@@ -233,6 +241,8 @@ function getEstadoBadgeVariant(estado: string): 'default' | 'secondary' | 'destr
       return 'secondary';
     case 'LIQUIDACION':
     case 'LIQUIDACION_PARCIAL':
+    case 'EN_PAGO':
+    case 'EN_PAGO_PARCIAL':
       return 'default';
     case 'GLOSADA':
       return 'destructive';

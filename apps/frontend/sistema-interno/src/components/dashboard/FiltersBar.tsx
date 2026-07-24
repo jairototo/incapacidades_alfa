@@ -117,6 +117,8 @@ export function FiltersBar({ filters, onFiltersChange, empresas }: FiltersBarPro
               <SelectItem value="LIQUIDACION">En Liquidación</SelectItem>
               <SelectItem value="LIQUIDACION_PARCIAL">Liquidación Parcial</SelectItem>
               <SelectItem value="GLOSADA">Glosada</SelectItem>
+              <SelectItem value="EN_PAGO">En Pago</SelectItem>
+              <SelectItem value="EN_PAGO_PARCIAL">En Pago Parcial</SelectItem>
               <SelectItem value={EstadoIncapacidad.PAGADA}>Pagada</SelectItem>
               <SelectItem value="PAGADA_PARCIAL">Pagada Parcial</SelectItem>
             </SelectContent>
