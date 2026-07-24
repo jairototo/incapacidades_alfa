@@ -405,10 +405,10 @@ class LiquidacionService:
         liquidador_id: UUID,
     ) -> Incapacidad:
         """
-        Completa la liquidación y transiciona la incapacidad a PAGADA o PAGADA_PARCIAL.
+        Completa la liquidación y transiciona la incapacidad a EN_PAGO o EN_PAGO_PARCIAL.
 
-        LIQUIDACION → PAGADA
-        LIQUIDACION_PARCIAL → PAGADA_PARCIAL
+        LIQUIDACION → EN_PAGO
+        LIQUIDACION_PARCIAL → EN_PAGO_PARCIAL
 
         Args:
             db: Sesión de base de datos
@@ -416,7 +416,7 @@ class LiquidacionService:
             liquidador_id: ID del usuario que completa
 
         Returns:
-            Incapacidad en estado PAGADA o PAGADA_PARCIAL
+            Incapacidad en estado EN_PAGO o EN_PAGO_PARCIAL
 
         Raises:
             NotFoundException: si no existe liquidación para esta incapacidad
@@ -441,16 +441,16 @@ class LiquidacionService:
             )
 
         nuevo_estado = (
-            EstadoIncapacidad.PAGADA
+            EstadoIncapacidad.EN_PAGO
             if incapacidad.estado == EstadoIncapacidad.LIQUIDACION
-            else EstadoIncapacidad.PAGADA_PARCIAL
+            else EstadoIncapacidad.EN_PAGO_PARCIAL
         )
 
         await incapacidad_service._cambiar_estado(
             db=db,
             incapacidad=incapacidad,
             nuevo_estado=nuevo_estado,
-            observacion="Liquidación completada — transición a PAGADA",
+            observacion="Liquidación completada — enviada a pago",
             usuario_id=liquidador_id,
         )
 

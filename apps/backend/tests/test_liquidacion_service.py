@@ -13,8 +13,8 @@ Tests:
 9.  calcular_ibl_stub_retorna_null — always returns ibl=None
 10. calcular_breakdown_placeholder_all_none — all values None while C1 pending
 11. calcular_breakdown_ibl_none — None ibl returns all None breakdown
-12. completar_liquidacion_a_pagada — LIQUIDACION → PAGADA
-13. completar_liquidacion_a_pagada_parcial — LIQUIDACION_PARCIAL → PAGADA_PARCIAL
+12. completar_liquidacion_a_en_pago — LIQUIDACION → EN_PAGO
+13. completar_liquidacion_a_en_pago_parcial — LIQUIDACION_PARCIAL → EN_PAGO_PARCIAL
 14. completar_liquidacion_sin_registro — NotFoundException if no liquidacion saved
 """
 import pytest
@@ -407,12 +407,12 @@ async def test_calcular_breakdown_ibl_none(db_session):
 
 
 # ---------------------------------------------------------------------------
-# 12. completar_liquidacion: LIQUIDACION → PAGADA
+# 12. completar_liquidacion: LIQUIDACION → EN_PAGO
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_completar_liquidacion_a_pagada(db_session):
-    """completar_liquidacion transitions LIQUIDACION → PAGADA."""
+async def test_completar_liquidacion_a_en_pago(db_session):
+    """completar_liquidacion transitions LIQUIDACION → EN_PAGO."""
     from app.services.liquidacion_service import liquidacion_service
 
     inc_id = await _make_incapacidad(db_session, "LIQUIDACION")
@@ -425,16 +425,16 @@ async def test_completar_liquidacion_a_pagada(db_session):
         liquidador_id=liquidador_id,
     )
 
-    assert incapacidad.estado == EstadoIncapacidad.PAGADA
+    assert incapacidad.estado == EstadoIncapacidad.EN_PAGO
 
 
 # ---------------------------------------------------------------------------
-# 13. completar_liquidacion: LIQUIDACION_PARCIAL → PAGADA_PARCIAL
+# 13. completar_liquidacion: LIQUIDACION_PARCIAL → EN_PAGO_PARCIAL
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_completar_liquidacion_a_pagada_parcial(db_session):
-    """completar_liquidacion transitions LIQUIDACION_PARCIAL → PAGADA_PARCIAL."""
+async def test_completar_liquidacion_a_en_pago_parcial(db_session):
+    """completar_liquidacion transitions LIQUIDACION_PARCIAL → EN_PAGO_PARCIAL."""
     from app.services.liquidacion_service import liquidacion_service
 
     inc_id = await _make_incapacidad(db_session, "LIQUIDACION_PARCIAL")
@@ -447,7 +447,7 @@ async def test_completar_liquidacion_a_pagada_parcial(db_session):
         liquidador_id=liquidador_id,
     )
 
-    assert incapacidad.estado == EstadoIncapacidad.PAGADA_PARCIAL
+    assert incapacidad.estado == EstadoIncapacidad.EN_PAGO_PARCIAL
 
 
 # ---------------------------------------------------------------------------
