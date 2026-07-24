@@ -260,6 +260,31 @@ class LiquidacionService:
 
         await db.commit()
         liquidacion.sucursal = data.sucursal if incapacidad.siniestro is not None else None
+
+        # Generar/actualizar el PDF de autorización de pago (borrador, best-effort:
+        # un fallo aquí no debe impedir que la liquidación quede guardada).
+        try:
+            from app.services.liquidacion_pdf_service import (
+                generar_pdf_autorizacion_pago,
+                guardar_pdf_autorizacion_pago,
+            )
+            from app.db.repositories.plantilla_auditoria_repository import (
+                plantilla_auditoria_repository,
+            )
+
+            plantilla = await plantilla_auditoria_repository.get_by_incapacidad(db, incapacidad_id)
+            nombre_ips = plantilla.nombre_ips if plantilla else incapacidad.ips
+            pdf_bytes = generar_pdf_autorizacion_pago(
+                incapacidad, liquidacion, nombre_ips=nombre_ips, borrador=True
+            )
+            await guardar_pdf_autorizacion_pago(db, incapacidad, pdf_bytes)
+            await db.commit()
+        except Exception:
+            logger.exception(
+                "No se pudo generar/guardar el PDF de autorización de pago (borrador) "
+                "para incapacidad %s", incapacidad_id,
+            )
+
         logger.info(
             "Liquidación guardada para incapacidad %s por liquidador %s",
             incapacidad_id,

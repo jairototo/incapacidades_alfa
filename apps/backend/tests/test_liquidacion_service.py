@@ -551,3 +551,30 @@ async def test_guardar_liquidacion_updates_siniestro_sucursal(db_session):
     incapacidad = await incapacidad_service.get_incapacidad(db_session, inc_id)
     assert incapacidad.siniestro.sucursal == SucursalSiniestro.BOGOTA
     assert liquidacion.sucursal == SucursalSiniestro.BOGOTA
+
+
+# ---------------------------------------------------------------------------
+# 16. guardar_liquidacion generates the borrador PDF as a Documento
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_guardar_liquidacion_genera_documento_borrador(db_session):
+    from app.services.liquidacion_service import liquidacion_service
+    from app.schemas.liquidacion import LiquidacionGuardar
+    from app.db.repositories.documento_repository import DocumentoRepository
+
+    inc_id = await _make_incapacidad(db_session, "LIQUIDACION")
+    liquidador_id = await _make_liquidador(db_session)
+
+    data = LiquidacionGuardar(
+        dias_autorizados=5,
+        fecha_inicio_autorizada=date(2026, 6, 1),
+        fecha_fin_autorizada=date(2026, 6, 5),
+    )
+    await liquidacion_service.guardar_liquidacion(
+        db=db_session, incapacidad_id=inc_id, data=data, liquidador_id=liquidador_id,
+    )
+
+    documentos = await DocumentoRepository().get_by_incapacidad(db_session, inc_id)
+    nombres = [d.nombre_original for d in documentos]
+    assert "Autorizacion de pago por OCCIRED.pdf" in nombres
