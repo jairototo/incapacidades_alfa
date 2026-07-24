@@ -578,3 +578,66 @@ async def test_guardar_liquidacion_genera_documento_borrador(db_session):
     documentos = await DocumentoRepository().get_by_incapacidad(db_session, inc_id)
     nombres = [d.nombre_original for d in documentos]
     assert "Autorizacion de pago por OCCIRED.pdf" in nombres
+
+
+# ---------------------------------------------------------------------------
+# 17. completar_liquidacion regenerates the PDF without the borrador watermark
+# ---------------------------------------------------------------------------
+
+def _pdf_streams_decodificados(contenido: bytes) -> bytes:
+    """
+    Extrae y decodifica (ASCII85 + Flate) los content streams de un PDF
+    generado por reportlab.
+
+    Los bytes crudos del PDF están comprimidos (ASCII85Decode + FlateDecode
+    es el filtro por defecto de reportlab), así que buscar texto plano como
+    b"BORRADOR" directamente en `contenido` NUNCA lo encuentra — ni en el
+    PDF con marca de agua ni en el final. Hay que decodificar los streams
+    primero para poder inspeccionar el texto real dibujado.
+    """
+    import base64
+    import re
+    import zlib
+
+    salida = b""
+    for match in re.finditer(rb"stream\r?\n(.*?)endstream", contenido, re.DOTALL):
+        chunk = match.group(1).strip(b"\r\n")
+        if chunk.endswith(b"~>"):
+            chunk = chunk[:-2]
+        try:
+            crudo = base64.a85decode(chunk, adobe=False)
+            salida += zlib.decompress(crudo)
+        except Exception:
+            continue
+    return salida
+
+
+@pytest.mark.asyncio
+async def test_completar_liquidacion_genera_documento_final_sin_marca_agua(db_session):
+    from app.services.liquidacion_service import liquidacion_service
+    from app.schemas.liquidacion import LiquidacionGuardar
+    from app.db.repositories.documento_repository import DocumentoRepository
+    from app.core.storage_core import storage_backend
+
+    inc_id = await _make_incapacidad(db_session, "LIQUIDACION")
+    liquidador_id = await _make_liquidador(db_session)
+
+    data = LiquidacionGuardar(
+        dias_autorizados=5,
+        fecha_inicio_autorizada=date(2026, 6, 1),
+        fecha_fin_autorizada=date(2026, 6, 5),
+    )
+    await liquidacion_service.guardar_liquidacion(
+        db=db_session, incapacidad_id=inc_id, data=data, liquidador_id=liquidador_id,
+    )
+    await liquidacion_service.completar_liquidacion(
+        db=db_session, incapacidad_id=inc_id, liquidador_id=liquidador_id,
+    )
+
+    documentos = await DocumentoRepository().get_by_incapacidad(db_session, inc_id)
+    finales = [d for d in documentos if d.nombre_original == "Autorizacion de pago por OCCIRED.pdf"]
+    assert len(finales) == 1  # same Documento row reused, not duplicated
+
+    contenido = storage_backend.get_file_content(finales[0].ruta_storage)
+    texto_streams = _pdf_streams_decodificados(contenido)
+    assert b"BORRADOR" not in texto_streams  # el texto de marca de agua debe haber desaparecido

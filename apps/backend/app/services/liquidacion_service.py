@@ -498,6 +498,31 @@ class LiquidacionService:
             usuario_id=liquidador_id,
         )
 
+        # Generar/actualizar el PDF final de autorización de pago (sin marca
+        # de agua, best-effort: un fallo aquí no debe impedir que la
+        # liquidación quede completada).
+        try:
+            from app.services.liquidacion_pdf_service import (
+                generar_pdf_autorizacion_pago,
+                guardar_pdf_autorizacion_pago,
+            )
+            from app.db.repositories.plantilla_auditoria_repository import (
+                plantilla_auditoria_repository,
+            )
+
+            plantilla = await plantilla_auditoria_repository.get_by_incapacidad(db, incapacidad_id)
+            nombre_ips = plantilla.nombre_ips if plantilla else incapacidad.ips
+            pdf_bytes = generar_pdf_autorizacion_pago(
+                incapacidad, liq, nombre_ips=nombre_ips, borrador=False
+            )
+            await guardar_pdf_autorizacion_pago(db, incapacidad, pdf_bytes)
+            await db.commit()
+        except Exception:
+            logger.exception(
+                "No se pudo generar/guardar el PDF final de autorización de pago "
+                "para incapacidad %s", incapacidad_id,
+            )
+
         return await incapacidad_service.get_incapacidad(db, incapacidad_id)
 
 
