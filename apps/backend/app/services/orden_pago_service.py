@@ -84,7 +84,7 @@ class OrdenPagoService:
         observaciones: Optional[str] = None
     ) -> OrdenPago:
         """
-        Crea una orden de pago desde una incapacidad en LIQUIDACION.
+        Crea una orden de pago desde una incapacidad en EN_PAGO.
 
         Args:
             db: Sesión de base de datos
@@ -97,18 +97,18 @@ class OrdenPagoService:
 
         Raises:
             NotFoundException: Si la incapacidad no existe
-            BadRequestException: Si la incapacidad no está en LIQUIDACION
+            BadRequestException: Si la incapacidad no está en EN_PAGO
             ConflictException: Si ya existe una orden activa para esta incapacidad
         """
         # 1. Verificar que la incapacidad existe
         incapacidad = await self.incapacidad_repository.get_by_id(db, incapacidad_id)
         if not incapacidad:
             raise NotFoundException(f"Incapacidad {incapacidad_id} no encontrada")
-        
-        # 2. Validar que esté en estado LIQUIDACION
-        if incapacidad.estado != EstadoIncapacidad.LIQUIDACION:
+
+        # 2. Validar que esté en estado EN_PAGO (liquidación completada, lista para pago)
+        if incapacidad.estado != EstadoIncapacidad.EN_PAGO:
             raise BadRequestException(
-                f"La incapacidad debe estar en LIQUIDACION. Estado actual: {incapacidad.estado}"
+                f"La incapacidad debe estar en EN_PAGO. Estado actual: {incapacidad.estado}"
             )
         
         # 3. Verificar que no exista otra orden activa (no ANULADA ni RECHAZADA)
@@ -318,11 +318,11 @@ class OrdenPagoService:
         
         # 6. Actualizar estado de la incapacidad a PAGADA / PAGADA_PARCIAL
         incapacidad = await self.incapacidad_repository.get_by_id(db, orden_pago.incapacidad_id)
-        if incapacidad and incapacidad.estado in [EstadoIncapacidad.LIQUIDACION, EstadoIncapacidad.LIQUIDACION_PARCIAL]:
+        if incapacidad and incapacidad.estado in [EstadoIncapacidad.EN_PAGO, EstadoIncapacidad.EN_PAGO_PARCIAL]:
             from app.services.incapacidad_service import incapacidad_service
             nuevo_estado = (
                 EstadoIncapacidad.PAGADA_PARCIAL
-                if incapacidad.estado == EstadoIncapacidad.LIQUIDACION_PARCIAL
+                if incapacidad.estado == EstadoIncapacidad.EN_PAGO_PARCIAL
                 else EstadoIncapacidad.PAGADA
             )
             await incapacidad_service._cambiar_estado(

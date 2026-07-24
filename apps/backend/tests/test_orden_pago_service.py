@@ -106,7 +106,7 @@ async def test_incapacidad_arl_aprobada(db_session: AsyncSession, test_empresa, 
         fecha_fin=(datetime.utcnow() + timedelta(days=5)).date(),
         dias_totales=5,
         valor_incapacidad=Decimal("1500000.00"),
-        estado=EstadoIncapacidad.LIQUIDACION,
+        estado=EstadoIncapacidad.EN_PAGO,
         diagnostico="Fractura de brazo"
     )
     db_session.add(incapacidad)
@@ -126,7 +126,7 @@ async def test_incapacidad_salud_aprobada(db_session: AsyncSession, test_afiliad
         fecha_fin=(datetime.utcnow() + timedelta(days=3)).date(),
         dias_totales=3,
         valor_incapacidad=Decimal("900000.00"),
-        estado=EstadoIncapacidad.LIQUIDACION,
+        estado=EstadoIncapacidad.EN_PAGO,
         diagnostico="Gripe"
     )
     db_session.add(incapacidad)

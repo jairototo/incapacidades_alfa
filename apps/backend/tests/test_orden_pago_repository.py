@@ -73,7 +73,7 @@ async def test_incapacidad(db_session: AsyncSession, test_empresa, test_empleado
         fecha_fin=(datetime.utcnow() + timedelta(days=5)).date(),
         dias_totales=5,
         valor_incapacidad=Decimal("1500000.00"),
-        estado=EstadoIncapacidad.LIQUIDACION,
+        estado=EstadoIncapacidad.EN_PAGO,
         diagnostico="Fractura de brazo"
     )
     db_session.add(incapacidad)
