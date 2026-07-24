@@ -13,6 +13,7 @@ de definición de negocio (decisión explícita, 2026-07-24).
 """
 from __future__ import annotations
 
+import hashlib
 import io
 from datetime import date, datetime
 from decimal import Decimal
@@ -30,13 +31,19 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.storage_core import storage_backend
+from app.models.documento import Documento
 from app.models.incapacidad import Incapacidad
 from app.models.liquidacion import Liquidacion
+from app.utils.enums import TipoDocumentoAdjunto
 
 TITULO = "AUTORIZACIÓN DE PAGO POR OCCIRED"
 TIPO_BENEFICIARIO_FIJO = "Empleador"
 TIPO_LIQUIDACION_FIJO = "Empleador"
+NOMBRE_DOCUMENTO_DISPLAY = "Autorizacion de pago por OCCIRED.pdf"
 
 
 # ---------------------------------------------------------------------------
@@ -232,3 +239,68 @@ def generar_pdf_autorizacion_pago(
     doc.build(story, onFirstPage=_draw_watermark if borrador else _no_watermark,
                onLaterPages=_draw_watermark if borrador else _no_watermark)
     return buffer.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Persistence: guardar_pdf_autorizacion_pago
+# ---------------------------------------------------------------------------
+
+
+async def guardar_pdf_autorizacion_pago(
+    db: AsyncSession,
+    incapacidad: Incapacidad,
+    pdf_bytes: bytes,
+) -> Documento:
+    """
+    Guarda (o reemplaza) el PDF de autorización de pago como Documento de la
+    incapacidad. Un único Documento por incapacidad — su contenido pasa de
+    borrador (con marca de agua) a final (sin marca de agua) en el mismo
+    registro, para que el usuario siempre vea un solo archivo con ese nombre
+    en el espacio de documentos.
+    """
+    result = await db.execute(
+        select(Documento).where(
+            Documento.incapacidad_id == incapacidad.id,
+            Documento.nombre_original == NOMBRE_DOCUMENTO_DISPLAY,
+        )
+    )
+    existente = result.scalar_one_or_none()
+
+    if existente is not None:
+        try:
+            storage_backend.delete_file(existente.ruta_storage)
+        except Exception:
+            pass  # archivo físico ya ausente — no bloquear el reemplazo
+
+    ruta_storage, hash_md5, hash_sha256, tamanio_bytes = storage_backend.upload_file(
+        file_data=io.BytesIO(pdf_bytes),
+        file_name=NOMBRE_DOCUMENTO_DISPLAY,
+        content_type="application/pdf",
+        folder=f"liquidacion/{incapacidad.id}",
+    )
+
+    if existente is not None:
+        existente.ruta_storage = ruta_storage
+        existente.hash_md5 = hash_md5
+        existente.hash_sha256 = hash_sha256
+        existente.tamanio_bytes = tamanio_bytes
+        await db.flush()
+        return existente
+
+    documento = Documento(
+        incapacidad_id=incapacidad.id,
+        tipo_documento=TipoDocumentoAdjunto.SOPORTE_PAGO,
+        nombre_archivo=f"autorizacion_pago_occired_{incapacidad.numero}.pdf",
+        nombre_original=NOMBRE_DOCUMENTO_DISPLAY,
+        ruta_storage=ruta_storage,
+        bucket="incapacidades",
+        mime_type="application/pdf",
+        tamanio_bytes=tamanio_bytes,
+        hash_md5=hash_md5,
+        hash_sha256=hash_sha256,
+        uploaded_by_id=None,
+        validado=True,
+    )
+    db.add(documento)
+    await db.flush()
+    return documento

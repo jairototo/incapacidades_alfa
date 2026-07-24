@@ -3,7 +3,8 @@ from datetime import date
 from decimal import Decimal
 from uuid import uuid4
 
-from app.services.liquidacion_pdf_service import generar_pdf_autorizacion_pago
+from app.services.liquidacion_pdf_service import generar_pdf_autorizacion_pago, guardar_pdf_autorizacion_pago
+from app.utils.enums import TipoDocumentoAdjunto, TipoIncapacidad
 
 
 class _FakeEmpresa:
@@ -76,3 +77,54 @@ def test_generar_pdf_handles_missing_siniestro():
     inc.empleado = None
     pdf_bytes = generar_pdf_autorizacion_pago(inc, _FakeLiquidacion(), nombre_ips=None, borrador=True)
     assert pdf_bytes.startswith(b"%PDF")
+
+
+# ---------------------------------------------------------------------------
+# Tests for guardar_pdf_autorizacion_pago (persistence with real storage)
+# ---------------------------------------------------------------------------
+
+
+async def _crear_incapacidad_real(db_session):
+    from app.models.incapacidad import Incapacidad
+
+    uid = uuid4()
+    incapacidad = Incapacidad(
+        numero=f"INC-TEST-{uid.hex[:8]}",
+        tipo=TipoIncapacidad.ARL,
+        estado="LIQUIDACION",
+        fecha_inicio=date(2026, 6, 1),
+        fecha_fin=date(2026, 6, 10),
+        dias_totales=10,
+    )
+    db_session.add(incapacidad)
+    await db_session.commit()
+    await db_session.refresh(incapacidad)
+    return incapacidad
+
+
+@pytest.mark.asyncio
+async def test_guardar_pdf_crea_documento_nuevo(db_session):
+    incapacidad = await _crear_incapacidad_real(db_session)
+    documento = await guardar_pdf_autorizacion_pago(db_session, incapacidad, b"%PDF-1.4 fake content")
+
+    assert documento.incapacidad_id == incapacidad.id
+    assert documento.nombre_original == "Autorizacion de pago por OCCIRED.pdf"
+    assert documento.tipo_documento == TipoDocumentoAdjunto.SOPORTE_PAGO
+    assert documento.mime_type == "application/pdf"
+    # The bytes must be readable back from the real storage backend, not just referenced.
+    from app.core.storage_core import storage_backend
+    contenido = storage_backend.get_file_content(documento.ruta_storage)
+    assert contenido == b"%PDF-1.4 fake content"
+
+
+@pytest.mark.asyncio
+async def test_guardar_pdf_reemplaza_documento_existente(db_session):
+    incapacidad = await _crear_incapacidad_real(db_session)
+    primero = await guardar_pdf_autorizacion_pago(db_session, incapacidad, b"%PDF-1.4 borrador")
+    segundo = await guardar_pdf_autorizacion_pago(db_session, incapacidad, b"%PDF-1.4 final")
+
+    assert primero.id == segundo.id  # same Documento row, content replaced
+
+    from app.core.storage_core import storage_backend
+    contenido = storage_backend.get_file_content(segundo.ruta_storage)
+    assert contenido == b"%PDF-1.4 final"
