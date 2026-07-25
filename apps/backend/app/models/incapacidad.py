@@ -127,6 +127,10 @@ class Incapacidad(BaseModel):
     radicado_por_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("usuario.id"))
     auditado_por_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("usuario.id"))
     aprobado_por_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("usuario.id"))
+    auditor_asignado_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("usuario.id"),
+        comment="Auditor asignado automáticamente al entrar a EN_AUDITORIA, según sucursal del siniestro y balanceo de carga",
+    )
     
     # Fechas de proceso
     fecha_radicacion: Mapped[datetime] = mapped_column(nullable=False, default=datetime.utcnow)
@@ -194,6 +198,7 @@ class Incapacidad(BaseModel):
     radicado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[radicado_por_id])
     auditado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[auditado_por_id])
     aprobado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[aprobado_por_id])
-    
+    auditor_asignado: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[auditor_asignado_id])
+
     def __repr__(self) -> str:
         return f"<Incapacidad {self.numero} - {self.estado}>"

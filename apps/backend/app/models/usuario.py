@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, TIMESTAMP
 
 from app.models.base import BaseModel
-from app.utils.enums import RolUsuario, EstadoUsuario
+from app.utils.enums import RolUsuario, EstadoUsuario, SucursalSiniestro
 
 
 class Usuario(BaseModel):
@@ -50,7 +50,18 @@ class Usuario(BaseModel):
     bloqueado_hasta: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
     token_version: Mapped[int] = mapped_column(Integer, default=0)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
+    # Auditoría por sucursal
+    sucursal: Mapped[Optional[SucursalSiniestro]] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Sucursal asignada (solo aplica a rol=AUDITOR); determina qué incapacidades ARL puede recibir",
+    )
+    incapacidades_asignadas_activas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0",
+        comment="Contador de incapacidades actualmente asignadas y abiertas (balanceo de carga); no es acumulado histórico",
+    )
+
     # Relaciones
     empleado: Mapped[Optional["Empleado"]] = relationship(
         "Empleado",
