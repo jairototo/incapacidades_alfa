@@ -204,7 +204,7 @@ async def test_create_orden_from_incapacidad_arl_success(
     usuario_id = uuid4()
     
     # Mock del historial_estado_service
-    with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+    with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
         orden = await orden_pago_service.create_orden_from_incapacidad(
             db=db_session,
             incapacidad_id=test_incapacidad_arl_aprobada.id,
@@ -231,7 +231,7 @@ async def test_create_orden_from_incapacidad_salud_success(
     """Test crear orden de pago desde incapacidad SALUD exitosamente."""
     usuario_id = uuid4()
     
-    with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+    with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
         orden = await orden_pago_service.create_orden_from_incapacidad(
             db=db_session,
             incapacidad_id=test_incapacidad_salud_aprobada.id,
@@ -259,16 +259,9 @@ async def test_create_orden_from_incapacidad_en_pago_parcial_success(
     """
     usuario_id = test_usuario.id
 
-    # NOTE: `create=True` works around a separate, pre-existing bug where
-    # orden_pago_service calls historial_estado_service.create_historial(),
-    # a method that does not exist on HistorialEstadoService (the real method
-    # is create_historial_entry with different kwargs). That bug predates this
-    # plan (present since the initial repo reorg commit) and is out of scope
-    # here, but it means this call is currently broken in production too.
     with patch(
-        "app.services.orden_pago_service.historial_estado_service.create_historial",
+        "app.services.orden_pago_service.historial_estado_service.create_historial_entry",
         new_callable=AsyncMock,
-        create=True,
     ):
         orden = await orden_pago_service.create_orden_from_incapacidad(
             db=db_session,
@@ -330,7 +323,7 @@ async def test_create_orden_duplicate_fails(
     usuario_id = uuid4()
     
     # Crear primera orden
-    with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+    with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
         await orden_pago_service.create_orden_from_incapacidad(
             db=db_session,
             incapacidad_id=test_incapacidad_arl_aprobada.id,
@@ -339,7 +332,7 @@ async def test_create_orden_duplicate_fails(
     
     # Intentar crear segunda orden para la misma incapacidad
     with pytest.raises(BadRequestException) as exc_info:
-        with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+        with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
             await orden_pago_service.create_orden_from_incapacidad(
                 db=db_session,
                 incapacidad_id=test_incapacidad_arl_aprobada.id,
@@ -358,7 +351,7 @@ async def test_aprobar_orden_success(
     usuario_id = uuid4()
     
     # Crear orden
-    with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+    with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
         orden = await orden_pago_service.create_orden_from_incapacidad(
             db=db_session,
             incapacidad_id=test_incapacidad_arl_aprobada.id,
@@ -367,7 +360,7 @@ async def test_aprobar_orden_success(
     
     # Aprobar orden
     admin_id = uuid4()
-    with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+    with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
         orden_aprobada = await orden_pago_service.aprobar_orden(
             db=db_session,
             orden_pago_id=orden.id,
@@ -388,7 +381,7 @@ async def test_aprobar_orden_unauthorized(
     usuario_id = uuid4()
     
     # Crear orden
-    with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+    with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
         orden = await orden_pago_service.create_orden_from_incapacidad(
             db=db_session,
             incapacidad_id=test_incapacidad_arl_aprobada.id,
@@ -465,7 +458,7 @@ async def test_registrar_pago_success(
     
     # Registrar pago
     usuario_id = uuid4()
-    with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+    with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
         with patch("app.services.orden_pago_service.incapacidad_service") as mock_incap_service:
             mock_incap_service.cambiar_estado = AsyncMock()
             
@@ -542,7 +535,7 @@ async def test_anular_orden_success(
     
     # Anular
     usuario_id = uuid4()
-    with patch("app.services.orden_pago_service.historial_estado_service.create_historial", new_callable=AsyncMock):
+    with patch("app.services.orden_pago_service.historial_estado_service.create_historial_entry", new_callable=AsyncMock):
         orden_anulada = await orden_pago_service.anular_orden(
             db=db_session,
             orden_pago_id=orden.id,

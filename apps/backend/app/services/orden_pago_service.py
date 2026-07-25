@@ -177,14 +177,14 @@ class OrdenPagoService:
         orden_pago = await self.repository.create(db, orden_pago_data)
         
         # 8. Registrar en historial de estados
-        await historial_estado_service.create_historial(
+        await historial_estado_service.create_historial_entry(
             db=db,
             entity_type="OrdenPago",
             entity_id=orden_pago.id,
             estado_anterior=None,
             estado_nuevo=EstadoOrdenPago.GENERADA,
-            observaciones=observaciones or f"Orden generada desde incapacidad {incapacidad.numero}",
-            usuario_id=usuario_id
+            observacion=observaciones or f"Orden generada desde incapacidad {incapacidad.numero}",
+            cambiado_por_id=usuario_id
         )
         
         return orden_pago
@@ -240,14 +240,14 @@ class OrdenPagoService:
         orden_pago = await self.repository.update(db, orden_pago_id, update_data)
         
         # 5. Registrar en historial
-        await historial_estado_service.create_historial(
+        await historial_estado_service.create_historial_entry(
             db=db,
             entity_type="OrdenPago",
             entity_id=orden_pago.id,
             estado_anterior=estado_anterior,
             estado_nuevo=EstadoOrdenPago.APROBADA,
-            observaciones=observaciones or "Orden de pago aprobada",
-            usuario_id=usuario_id
+            observacion=observaciones or "Orden de pago aprobada",
+            cambiado_por_id=usuario_id
         )
         
         return orden_pago
@@ -306,14 +306,14 @@ class OrdenPagoService:
         orden_pago = await self.repository.update(db, orden_pago_id, update_data)
         
         # 5. Registrar en historial
-        await historial_estado_service.create_historial(
+        await historial_estado_service.create_historial_entry(
             db=db,
             entity_type="OrdenPago",
             entity_id=orden_pago.id,
             estado_anterior=estado_anterior,
             estado_nuevo=EstadoOrdenPago.PAGADA,
-            observaciones=observaciones or f"Pago registrado con referencia {referencia_pago}",
-            usuario_id=usuario_id
+            observacion=observaciones or f"Pago registrado con referencia {referencia_pago}",
+            cambiado_por_id=usuario_id
         )
         
         # 6. Actualizar estado de la incapacidad a PAGADA / PAGADA_PARCIAL
@@ -387,14 +387,14 @@ class OrdenPagoService:
         orden_pago = await self.repository.update(db, orden_pago_id, update_data)
         
         # 5. Registrar en historial
-        await historial_estado_service.create_historial(
+        await historial_estado_service.create_historial_entry(
             db=db,
             entity_type="OrdenPago",
             entity_id=orden_pago.id,
             estado_anterior=estado_anterior,
             estado_nuevo=EstadoOrdenPago.ANULADA,
-            observaciones=motivo_anulacion,
-            usuario_id=usuario_id
+            observacion=motivo_anulacion,
+            cambiado_por_id=usuario_id
         )
         
         return orden_pago
