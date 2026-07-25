@@ -16,6 +16,7 @@ import { RolUsuario } from '@/types/auth';
 import { CreacionSiniestroPage } from '@/pages/incapacidades/CreacionSiniestroPage';
 import { BandejaSiniestroPage } from '@/pages/incapacidades/BandejaSiniestroPage';
 import { BandejaLiquidacionPage } from '@/pages/incapacidades/BandejaLiquidacionPage';
+import { AuditoresPage } from '@/pages/admin/AuditoresPage';
 
 /**
  * Configuración de rutas del sistema
@@ -148,14 +149,14 @@ export const router = createBrowserRouter([
             ],
           },
           
-          // Usuarios - Solo ADMIN
+          // Usuarios (Gestión de Auditores) - Solo ADMIN
           {
             path: '/usuarios',
             element: <ProtectedRoute allowedRoles={[RolUsuario.ADMIN]} />,
             children: [
               {
                 index: true,
-                element: <div className="p-6">Módulo Usuarios (Placeholder)</div>,
+                element: <AuditoresPage />,
               },
             ],
           },
