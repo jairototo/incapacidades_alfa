@@ -1486,12 +1486,17 @@ async def enviar_a_pago(
 ):
     """
     Envía una incapacidad aprobada a pago.
-    
+
     Transición: LIQUIDACION → PAGADA
 
     Validaciones:
     - Debe estar en estado LIQUIDACION
     - Debe tener valor_total calculado
+
+    TODO: este endpoint salta EN_PAGO (y por lo tanto la generación del PDF
+    final de "Autorización de pago por OCCIRED") y el pipeline de
+    orden_pago_service. Está desconectado del frontend vivo hoy, pero se
+    retomará/gateará en el próximo plan de órdenes de pago.
     """
     incap = await incapacidad_service.enviar_a_pago(db, incapacidad_id, current_user.id)
     return _serialize_incapacidad(incap)
@@ -1510,12 +1515,17 @@ async def marcar_como_pagada(
 ):
     """
     Marca una incapacidad como pagada.
-    
+
     Transición: LIQUIDACION → PAGADA
 
     Validaciones:
     - Debe estar en estado LIQUIDACION
     - Estado final del workflow
+
+    TODO: este endpoint salta EN_PAGO (y por lo tanto la generación del PDF
+    final de "Autorización de pago por OCCIRED") y el pipeline de
+    orden_pago_service. Está desconectado del frontend vivo hoy, pero se
+    retomará/gateará en el próximo plan de órdenes de pago.
     """
     incap = await incapacidad_service.marcar_como_pagada(db, incapacidad_id, current_user.id)
     return _serialize_incapacidad(incap)
