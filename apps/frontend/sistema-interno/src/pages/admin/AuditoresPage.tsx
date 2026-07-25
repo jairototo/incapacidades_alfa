@@ -27,15 +27,21 @@ interface FormState {
 
 const emptyForm: FormState = { username: '', nombre_completo: '', email: '', password: '', sucursal: '' };
 
+function extractErrorMessage(error: unknown, fallback: string): string {
+  const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+  return detail ?? fallback;
+}
+
 export function AuditoresPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AuditorOption | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { data: auditores = [], isLoading } = useQuery({
     queryKey: ['auditores-admin'],
-    queryFn: () => auditorService.listAll(),
+    queryFn: () => auditorService.reporte(),
   });
 
   const createMutation = useMutation({
@@ -50,6 +56,10 @@ export function AuditoresPage() {
       queryClient.invalidateQueries({ queryKey: ['auditores-admin'] });
       setDialogOpen(false);
       setForm(emptyForm);
+      setErrorMessage(null);
+    },
+    onError: (error: unknown) => {
+      setErrorMessage(extractErrorMessage(error, 'No se pudo crear el auditor'));
     },
   });
 
@@ -67,17 +77,28 @@ export function AuditoresPage() {
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
+      setErrorMessage(null);
+    },
+    onError: (error: unknown) => {
+      setErrorMessage(extractErrorMessage(error, 'No se pudo actualizar el auditor'));
     },
   });
 
   const deactivateMutation = useMutation({
     mutationFn: (id: string) => auditorService.deactivate(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['auditores-admin'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auditores-admin'] });
+      setErrorMessage(null);
+    },
+    onError: (error: unknown) => {
+      setErrorMessage(extractErrorMessage(error, 'No se pudo desactivar el auditor'));
+    },
   });
 
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setErrorMessage(null);
     setDialogOpen(true);
   };
 
@@ -90,6 +111,7 @@ export function AuditoresPage() {
       password: '',
       sucursal: auditor.sucursal ?? '',
     });
+    setErrorMessage(null);
     setDialogOpen(true);
   };
 
@@ -98,6 +120,15 @@ export function AuditoresPage() {
       updateMutation.mutate();
     } else {
       createMutation.mutate();
+    }
+  };
+
+  const handleDeactivate = (auditor: AuditorOption) => {
+    const confirmed = window.confirm(
+      `¿Seguro que deseas desactivar a ${auditor.nombre_completo}? Esto puede afectar la asignación automática de auditoría si es el auditor por defecto.`
+    );
+    if (confirmed) {
+      deactivateMutation.mutate(auditor.id);
     }
   };
 
@@ -175,6 +206,9 @@ export function AuditoresPage() {
                 </Select>
               </div>
             </div>
+            {errorMessage && (
+              <p className="text-sm text-red-600">{errorMessage}</p>
+            )}
             <DialogFooter>
               <Button
                 onClick={handleSubmit}
@@ -217,7 +251,7 @@ export function AuditoresPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => deactivateMutation.mutate(auditor.id)}
+                      onClick={() => handleDeactivate(auditor)}
                     >
                       Desactivar
                     </Button>

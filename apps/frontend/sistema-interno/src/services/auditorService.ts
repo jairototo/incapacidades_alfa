@@ -34,13 +34,6 @@ class AuditorService {
     return data;
   }
 
-  async listAll(): Promise<AuditorOption[]> {
-    const { data } = await api.get<AuditorOption[]>(this.baseUrl, {
-      params: { rol: 'AUDITOR', limit: 100 },
-    });
-    return data;
-  }
-
   async create(payload: CreateAuditorData): Promise<AuditorOption> {
     const { data } = await api.post<AuditorOption>(`${this.baseUrl}/`, {
       ...payload,
