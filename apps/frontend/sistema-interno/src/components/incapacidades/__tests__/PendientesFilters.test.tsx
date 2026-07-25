@@ -17,7 +17,7 @@ function renderWithClient(ui: React.ReactElement) {
 describe('PendientesFilters — auditor asignado', () => {
   beforeEach(() => {
     vi.mocked(auditorService.listActivos).mockResolvedValue([
-      { id: 'aud-1', username: 'auditor.cali', nombre_completo: 'Camila Restrepo Vargas', sucursal: 'Cali', incapacidades_asignadas_activas: 2 },
+      { id: 'aud-1', username: 'auditor.cali', email: 'camila.restrepo@segurosalfa-test.com.co', nombre_completo: 'Camila Restrepo Vargas', sucursal: 'Cali', incapacidades_asignadas_activas: 2, estado: 'ACTIVO' },
     ]);
   });
 
