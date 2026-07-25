@@ -1,5 +1,61 @@
 # Scripts de Utilidades
 
+## seed_auditores.py
+
+**⚠️ Prerrequisito obligatorio antes de auditar cualquier incapacidad.**
+
+Script que crea los auditores ficticios (uno por sucursal) y el auditor
+`auditor_default` usados por la asignación automática de auditoría
+(`app/services/auditor_assignment_service.py`). Si `auditor_default` no
+existe en la base de datos, `asignar_auditor()` lanza `RuntimeError`, el
+commit de `auditoria_service.auditar_incapacidad` nunca ocurre, y la tarea
+de Celery que envuelve la auditoría reintenta 3 veces y finalmente falla —
+la incapacidad queda silenciosamente detenida en estado `RADICADA`.
+
+### Uso
+
+```bash
+# Dentro del contenedor de la API
+docker-compose exec api python scripts/seed_auditores.py
+
+# O usando el target de Makefile (equivalente, ejecutar desde apps/backend/)
+make seed-auditores
+```
+
+### Datos Creados
+
+El script es idempotente (si un `username` ya existe, lo omite) y crea 8 usuarios
+con rol `AUDITOR`, contraseña temporal `Auditor2026!`:
+
+#### Auditores por sucursal (7)
+- **auditor.cali** — Camila Restrepo Vargas (sucursal Cali)
+- **auditor.medellin** — Santiago Zuluaga Marín (sucursal Medellín)
+- **auditor.cartagena** — Valentina Cabrales Ibarra (sucursal Cartagena)
+- **auditor.bogota1** — Andrés Felipe Rojas Peña (sucursal Bogotá)
+- **auditor.bogota2** — Laura Camila Torres Duque (sucursal Bogotá)
+- **auditor.bogota3** — Juan Pablo Medina Salcedo (sucursal Bogotá)
+- **auditor.bogota4** — Daniela Ríos Castañeda (sucursal Bogotá)
+
+#### Auditor por defecto (1)
+- **auditor_default** — Auditor por Defecto (sin sucursal asignada)
+
+  Usado como fallback cuando una incapacidad SALUD, o una ARL sin siniestro
+  activo con sucursal, no puede asignarse a un auditor de sucursal
+  específica. Debe permanecer **ACTIVO**: si se desactiva desde
+  `AuditoresPage` (módulo admin), toda incapacidad que dependa del fallback
+  queda sin auditor asignado y la auditoría automática falla ruidosamente
+  (`RuntimeError`) en vez de asignarse silenciosamente a una cuenta
+  deshabilitada.
+
+Los nombres/correos son ficticios, deliberadamente distintos a los
+auditores reales (ver comentario en el propio script), ya que esos usuarios
+reales aún no tienen cuentas en el sistema.
+
+### Prerrequisitos
+
+- Base de datos PostgreSQL con migraciones aplicadas (tabla `usuario` y
+  enums `RolUsuario`/`EstadoUsuario`/`SucursalSiniestro` existentes).
+
 ## seed_test_data.py
 
 Script para poblar la base de datos con datos de prueba para el sistema de gestión de incapacidades.
