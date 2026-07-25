@@ -13,6 +13,7 @@ from loguru import logger
 from app.models.incapacidad import Incapacidad
 from app.models.auditoria_resultado import AuditoriaResultado
 from app.services.incapacidad_validation_rules import validate_field_level, validate_business_rules, validate_audit_only_rules
+from app.services.auditor_assignment_service import asignar_auditor
 from app.utils.enums import EstadoIncapacidad
 
 # Reglas que SIEMPRE se evalúan (para registrar también las que pasan).
@@ -91,6 +92,7 @@ async def auditar_incapacidad(db: AsyncSession, incapacidad_id: UUID) -> None:
     # Transicionar estado RADICADA → EN_AUDITORIA
     estado_anterior = inc.estado
     inc.estado = EstadoIncapacidad.EN_AUDITORIA
+    auditor_asignado = await asignar_auditor(db, inc)
     db.add(inc)
 
     # Registrar historial usando historial_estado_service (best-effort)
@@ -99,7 +101,7 @@ async def auditar_incapacidad(db: AsyncSession, incapacidad_id: UUID) -> None:
     await db.commit()
     logger.info(
         f"Auditoría completa para {inc.numero}: {len(REGLAS_ESPERADAS)} reglas evaluadas "
-        f"({len(failed_by_code)} fallidas) → EN_AUDITORIA"
+        f"({len(failed_by_code)} fallidas) → EN_AUDITORIA, asignada a {auditor_asignado.username}"
     )
 
 

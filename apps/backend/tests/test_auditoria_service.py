@@ -11,6 +11,18 @@ from app.services.incapacidad_service import ALLOWED_TRANSITIONS, incapacidad_se
 
 @pytest.mark.asyncio
 async def test_audit_persists_results_and_transitions(db_session, test_empleado, test_empresa):
+    from app.models.usuario import Usuario
+    from app.utils.enums import RolUsuario, EstadoUsuario
+    from app.core.security import get_password_hash
+
+    default_auditor = Usuario(
+        username="auditor_default", email="auditor.default@segurosalfa-test.com.co",
+        password_hash=get_password_hash("Test123!"), nombre_completo="Auditor por Defecto",
+        rol=RolUsuario.AUDITOR, estado=EstadoUsuario.ACTIVO,
+    )
+    db_session.add(default_auditor)
+    await db_session.commit()
+
     inc = Incapacidad(
         numero="ARL-AUDIT-0001", tipo=TipoIncapacidad.ARL,
         empleado_id=test_empleado.id, empresa_id=test_empresa.id,
@@ -31,6 +43,36 @@ async def test_audit_persists_results_and_transitions(db_session, test_empleado,
 
     refreshed = (await db_session.execute(select(Incapacidad).where(Incapacidad.id == inc.id))).scalar_one()
     assert refreshed.estado == EstadoIncapacidad.EN_AUDITORIA
+
+
+@pytest.mark.asyncio
+async def test_audit_assigns_default_auditor_when_no_siniestro(db_session, test_empleado, test_empresa):
+    from app.models.usuario import Usuario
+    from app.utils.enums import RolUsuario, EstadoUsuario
+    from app.core.security import get_password_hash
+
+    default_auditor = Usuario(
+        username="auditor_default", email="auditor.default@segurosalfa-test.com.co",
+        password_hash=get_password_hash("Test123!"), nombre_completo="Auditor por Defecto",
+        rol=RolUsuario.AUDITOR, estado=EstadoUsuario.ACTIVO,
+    )
+    db_session.add(default_auditor)
+    await db_session.commit()
+
+    inc = Incapacidad(
+        numero="ARL-AUDIT-ASIG01", tipo=TipoIncapacidad.ARL,
+        empleado_id=test_empleado.id, empresa_id=test_empresa.id,
+        fecha_inicio=dt.date(2026, 6, 1), fecha_fin=dt.date(2026, 6, 5), dias_totales=5,
+        diagnostico_cie10="S00.0", nombre_medico="Dr X", registro_medico="RM-ASIG1",
+        estado=EstadoIncapacidad.RADICADA, fecha_radicacion=dt.datetime.utcnow(),
+    )
+    db_session.add(inc)
+    await db_session.flush()
+
+    await auditar_incapacidad(db_session, inc.id)
+
+    refreshed = (await db_session.execute(select(Incapacidad).where(Incapacidad.id == inc.id))).scalar_one()
+    assert refreshed.auditor_asignado_id == default_auditor.id
 
 
 # --- Unit tests: ALLOWED_TRANSITIONS for CREACION_SINIESTRO ---
