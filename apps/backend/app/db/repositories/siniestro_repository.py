@@ -246,6 +246,43 @@ class SiniestroRepository(BaseRepository[Siniestro]):
         result = await db.execute(query)
         return list(result.scalars().all())
 
+    async def get_activo_para_incapacidad(
+        self,
+        db: AsyncSession,
+        empleado_id: UUID,
+        fecha_inicio: date,
+    ) -> Optional[Siniestro]:
+        """
+        Encuentra el siniestro activo más reciente del empleado que pudo haber
+        originado una incapacidad con esta fecha_inicio.
+
+        "Activo" = estado in (REPORTADO, EN_INVESTIGACION) — excluye CERRADO/ANULADO.
+        El siniestro debe ocurrir el mismo día o antes del inicio de la incapacidad
+        (fecha_siniestro <= fecha_inicio); nunca después.
+
+        Usado por auditor_assignment_service para determinar la sucursal a la
+        que enrutar la auditoría. No confundir con get_candidatos(), que sirve
+        la UI manual de vinculación de siniestro (sin filtro de estado, acotado
+        por fecha_fin en vez de fecha_inicio).
+
+        Returns:
+            El siniestro calificado más reciente, o None si ninguno califica.
+        """
+        query = (
+            select(Siniestro)
+            .where(
+                and_(
+                    Siniestro.empleado_id == empleado_id,
+                    Siniestro.estado.in_([EstadoSiniestro.REPORTADO, EstadoSiniestro.EN_INVESTIGACION]),
+                    Siniestro.fecha_siniestro <= fecha_inicio,
+                )
+            )
+            .order_by(Siniestro.fecha_siniestro.desc())
+            .limit(1)
+        )
+        result = await db.execute(query)
+        return result.scalars().first()
+
     async def get_by_external_id(
         self,
         db: AsyncSession,
