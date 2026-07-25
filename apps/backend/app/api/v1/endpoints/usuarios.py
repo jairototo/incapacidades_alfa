@@ -101,6 +101,24 @@ async def get_current_usuario_info(
 
 
 @router.get(
+    "/reporte-auditores",
+    response_model=List[UsuarioListItem],
+    summary="Reporte de carga de auditores",
+    description="Cantidad de incapacidades actualmente asignadas a cada auditor (solo ADMIN)"
+)
+async def reporte_auditores(
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Retorna todos los usuarios AUDITOR con su sucursal e incapacidades_asignadas_activas.
+
+    Requiere rol ADMIN.
+    """
+    return await usuario_service.reporte_auditores(db, admin_rol=current_user.rol)
+
+
+@router.get(
     "/{usuario_id}",
     response_model=UsuarioResponse,
     summary="Obtener usuario",

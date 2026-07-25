@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.utils.enums import SucursalSiniestro
+
 
 class UsuarioBase(BaseModel):
     """Schema base para Usuario."""
@@ -14,6 +16,7 @@ class UsuarioBase(BaseModel):
     email: EmailStr = Field(..., description="Email del usuario")
     nombre_completo: str = Field(..., min_length=1, max_length=200, description="Nombre completo")
     rol: str = Field(..., description="Rol del usuario")
+    sucursal: Optional[SucursalSiniestro] = Field(None, description="Sucursal (solo aplica a rol=AUDITOR)")
 
 
 class UsuarioCreate(UsuarioBase):
@@ -33,6 +36,7 @@ class UsuarioUpdate(BaseModel):
     estado: Optional[str] = None
     empleado_id: Optional[UUID] = None
     empresa_id: Optional[UUID] = None
+    sucursal: Optional[SucursalSiniestro] = None
 
 
 class UsuarioChangePassword(BaseModel):
@@ -60,7 +64,8 @@ class UsuarioResponse(UsuarioBase):
     must_change_password: bool
     created_at: datetime
     updated_at: datetime
-    
+    incapacidades_asignadas_activas: int
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -74,7 +79,9 @@ class UsuarioListItem(BaseModel):
     estado: str
     ultimo_acceso: Optional[datetime] = None
     created_at: datetime
-    
+    sucursal: Optional[SucursalSiniestro] = None
+    incapacidades_asignadas_activas: int
+
     model_config = ConfigDict(from_attributes=True)
 
 

@@ -379,6 +379,21 @@ class UsuarioService:
         
         return await self.repository.update(db, id=usuario_id, obj_in=update_dict)
 
+    async def reporte_auditores(
+        self,
+        db: AsyncSession,
+        admin_rol: RolUsuario,
+    ) -> List[Usuario]:
+        """
+        Lista todos los usuarios AUDITOR con su sucursal y carga activa actual.
+
+        Requiere rol ADMIN.
+        """
+        if admin_rol != RolUsuario.ADMIN:
+            raise ForbiddenException("Solo los ADMIN pueden ver el reporte de auditores")
+
+        return await self.repository.list_by_rol(db, RolUsuario.AUDITOR, skip=0, limit=1000)
+
     async def assign_rol(
         self,
         db: AsyncSession,
