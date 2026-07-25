@@ -81,6 +81,19 @@ ALLOWED_TRANSITIONS: Dict[EstadoIncapacidad, List[EstadoIncapacidad]] = {
     EstadoIncapacidad.PAGADA_PARCIAL: [],
 }
 
+# Estados donde una incapacidad cuenta como carga activa del auditor asignado.
+AUDITOR_ESTADOS_ACTIVOS = {
+    EstadoIncapacidad.EN_AUDITORIA,
+    EstadoIncapacidad.PENDIENTE,
+    EstadoIncapacidad.CREACION_SINIESTRO,
+}
+# Estados terminales desde la perspectiva del auditor (ya no es su carga).
+AUDITOR_ESTADOS_TERMINALES = {
+    EstadoIncapacidad.LIQUIDACION,
+    EstadoIncapacidad.LIQUIDACION_PARCIAL,
+    EstadoIncapacidad.GLOSADA,
+}
+
 
 # Tipos de documentos públicos permitidos para descarga sin autenticación
 TIPOS_DOCUMENTOS_PUBLICOS = [
@@ -448,6 +461,39 @@ class IncapacidadService:
         
         return await self.repository.update(db, id=incapacidad_id, obj_in=update_data)
 
+    async def _ajustar_carga_auditor(
+        self,
+        db: AsyncSession,
+        incapacidad: "Incapacidad",
+        estado_anterior: EstadoIncapacidad,
+        nuevo_estado: EstadoIncapacidad,
+    ) -> None:
+        """
+        Mantiene incapacidades_asignadas_activas del auditor asignado en sync:
+        decrementa al salir de los estados activos hacia un terminal, re-incrementa
+        si una devolución del liquidador regresa el caso a EN_AUDITORIA. No-op si
+        la incapacidad no tiene auditor_asignado_id (p. ej. el path de
+        pre_incapacidad_promotion_service, que no pasa por la asignación automática).
+        """
+        if not incapacidad.auditor_asignado_id:
+            return
+
+        delta = 0
+        if estado_anterior in AUDITOR_ESTADOS_ACTIVOS and nuevo_estado in AUDITOR_ESTADOS_TERMINALES:
+            delta = -1
+        elif estado_anterior in AUDITOR_ESTADOS_TERMINALES and nuevo_estado == EstadoIncapacidad.EN_AUDITORIA:
+            delta = 1
+
+        if delta == 0:
+            return
+
+        from app.models.usuario import Usuario
+        auditor = await db.get(Usuario, incapacidad.auditor_asignado_id)
+        if auditor is None:
+            return
+        auditor.incapacidades_asignadas_activas = max(0, auditor.incapacidades_asignadas_activas + delta)
+        db.add(auditor)
+
     async def _cambiar_estado(
         self,
         db: AsyncSession,
@@ -491,6 +537,7 @@ class IncapacidadService:
         await self._validate_state_transition(incapacidad.estado, nuevo_estado)
 
         estado_anterior = incapacidad.estado
+        await self._ajustar_carga_auditor(db, incapacidad, estado_anterior, nuevo_estado)
         update_data: Dict[str, Any] = {"estado": nuevo_estado, **(extra_update or {})}
 
         if flush_only:
