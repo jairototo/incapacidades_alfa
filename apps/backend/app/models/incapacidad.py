@@ -128,7 +128,7 @@ class Incapacidad(BaseModel):
     auditado_por_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("usuario.id"))
     aprobado_por_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("usuario.id"))
     auditor_asignado_id: Mapped[Optional[UUID]] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("usuario.id"),
+        PGUUID(as_uuid=True), ForeignKey("usuario.id", ondelete="SET NULL"),
         comment="Auditor asignado automáticamente al entrar a EN_AUDITORIA, según sucursal del siniestro y balanceo de carga",
     )
     
