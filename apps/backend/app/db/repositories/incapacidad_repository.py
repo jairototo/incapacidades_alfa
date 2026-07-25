@@ -356,25 +356,27 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
         tipo: Optional[TipoIncapacidad] = None,
         prioridad: Optional[Prioridad] = None,
         empresa_nit: Optional[str] = None,
+        auditor_asignado_id: Optional[UUID] = None,
         skip: int = 0,
         limit: int = 100
     ) -> List[Incapacidad]:
         """
         Listar incapacidades pendientes con filtros y ordenamiento por prioridad.
-        
-        Orden: 
+
+        Orden:
         1. Prioridad (URGENTE → ALTA → NORMAL → BAJA)
         2. Antigüedad (created_at ASC - más antiguas primero)
-        
+
         Args:
             db: Sesión de base de datos
             estados: Lista de estados pendientes
             tipo: Filtro opcional por tipo (ARL/SALUD)
             prioridad: Filtro opcional por prioridad
             empresa_nit: Filtro opcional por NIT de empresa (solo ARL)
+            auditor_asignado_id: Filtro opcional por auditor asignado
             skip: Offset para paginación
             limit: Límite de resultados
-            
+
         Returns:
             Lista de incapacidades ordenadas por prioridad y antigüedad
         """
@@ -383,7 +385,7 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
         from app.models.empresa import Empresa
         from app.models.empleado import Empleado
         from app.models.afiliado import Afiliado
-        
+
         # Query base con eager loading
         query = (
             select(Incapacidad)
@@ -391,21 +393,25 @@ class IncapacidadRepository(BaseRepository[Incapacidad]):
             .options(
                 selectinload(Incapacidad.empleado).selectinload(Empleado.empresa),
                 selectinload(Incapacidad.afiliado),
-                selectinload(Incapacidad.empresa)
+                selectinload(Incapacidad.empresa),
+                selectinload(Incapacidad.auditor_asignado)
             )
         )
-        
+
         # Filtros opcionales
         if tipo:
             query = query.where(Incapacidad.tipo == tipo)
-        
+
         if prioridad:
             query = query.where(Incapacidad.prioridad == prioridad)
-        
+
         if empresa_nit:
             # Join con empresa para filtrar por NIT
             query = query.join(Empresa).where(Empresa.nit == empresa_nit)
-        
+
+        if auditor_asignado_id:
+            query = query.where(Incapacidad.auditor_asignado_id == auditor_asignado_id)
+
         # Ordenamiento por prioridad custom
         prioridad_order = case(
             (Incapacidad.prioridad == Prioridad.URGENTE, 1),

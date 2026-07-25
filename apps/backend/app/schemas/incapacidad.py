@@ -306,6 +306,7 @@ class IncapacidadInDB(IncapacidadBase):
     motivo_rechazo: Optional[str]
     radicado_por_id: Optional[UUID]
     auditado_por_id: Optional[UUID]
+    auditor_asignado_id: Optional[UUID]
     aprobado_por_id: Optional[UUID]
     fecha_radicacion: datetime
     fecha_auditoria: Optional[datetime]
@@ -340,6 +341,7 @@ class IncapacidadResponse(IncapacidadInDB):
     solicitante: Optional["SolicitanteSimple"] = None
     radicado_por: Optional["UsuarioSimple"] = None
     auditado_por: Optional["UsuarioSimple"] = None
+    auditor_asignado: Optional["UsuarioSimple"] = None
     aprobado_por: Optional["UsuarioSimple"] = None
     documentos: list["DocumentoSimple"] = []
     historial: list["HistorialEstadoSchema"] = []
@@ -401,6 +403,7 @@ class IncapacidadPendienteResponse(IncapacidadInDB):
     empresa_fallback: Optional[EmpresaFallback] = Field(
         None, description="Datos crudos de la empresa si no existe en BD"
     )
+    auditor_asignado: Optional["UsuarioSimple"] = None
 
     model_config = {"from_attributes": True}
 

@@ -344,6 +344,7 @@ class IncapacidadService:
         prioridad: Optional[Prioridad] = None,
         empresa_nit: Optional[str] = None,
         dias_antiguedad_min: Optional[int] = None,
+        auditor_asignado_id: Optional[UUID] = None,
         skip: int = 0,
         limit: int = 100,
         estados: Optional[List[EstadoIncapacidad]] = None,
@@ -357,6 +358,7 @@ class IncapacidadService:
             prioridad: Filtro por prioridad
             empresa_nit: Filtro por NIT de empresa (solo ARL)
             dias_antiguedad_min: Días mínimos desde radicación
+            auditor_asignado_id: Filtro por auditor asignado
             skip: Offset para paginación
             limit: Límite de resultados
             estados: Lista de estados a incluir; por defecto RADICADA/EN_AUDITORIA/PENDIENTE
@@ -377,6 +379,7 @@ class IncapacidadService:
             tipo=tipo,
             prioridad=prioridad,
             empresa_nit=empresa_nit,
+            auditor_asignado_id=auditor_asignado_id,
             skip=skip,
             limit=limit
         )

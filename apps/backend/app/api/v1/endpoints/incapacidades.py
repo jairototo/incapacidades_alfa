@@ -33,6 +33,7 @@ from app.schemas.incapacidad import (
     SiniestroBasic,
     AprobarAuditoriaRequest,
     AprobarAuditoriaResponse,
+    UsuarioSimple,
 )
 from app.schemas.documento import PresignedUrlResponse
 from app.schemas.historial_estado import HistorialEstadoResponse
@@ -358,6 +359,7 @@ async def listar_incapacidades_pendientes(
     prioridad: Optional[Prioridad] = Query(None, description="Filtrar por prioridad"),
     empresa_nit: Optional[str] = Query(None, description="Filtrar por NIT de empresa (solo ARL)"),
     dias_antiguedad_min: Optional[int] = Query(None, ge=0, description="Días mínimos desde radicación"),
+    auditor_asignado_id: Optional[UUID] = Query(None, description="Filtrar por auditor asignado"),
     skip: int = Query(0, ge=0, description="Offset para paginación"),
     limit: int = Query(100, ge=1, le=500, description="Límite de resultados"),
     current_user: Usuario = Depends(get_current_user)
@@ -391,10 +393,11 @@ async def listar_incapacidades_pendientes(
         prioridad=prioridad,
         empresa_nit=empresa_nit,
         dias_antiguedad_min=dias_antiguedad_min,
+        auditor_asignado_id=auditor_asignado_id,
         skip=skip,
         limit=limit
     )
-    
+
     # Convertir objetos SQLAlchemy a schemas Pydantic
     result: list[dict] = []
     ids_sin_empleado: list[UUID] = []
@@ -421,6 +424,8 @@ async def listar_incapacidades_pendientes(
             incap_dict['empresa'] = EmpresaResponse.model_validate(incap.empresa).model_dump()
         if incap.afiliado:
             incap_dict['afiliado'] = AfiliadoResponse.model_validate(incap.afiliado).model_dump()
+        if incap.auditor_asignado:
+            incap_dict['auditor_asignado'] = UsuarioSimple.model_validate(incap.auditor_asignado).model_dump()
 
         if not incap.empleado_id:
             ids_sin_empleado.append(incap.id)
