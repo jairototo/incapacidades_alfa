@@ -365,6 +365,45 @@ class TestUsuarioService:
             mock_session.refresh = AsyncMock()
             
             result = await usuario_service.handle_successful_login(db=mock_session, usuario=mock_usuario)
-            
+
             mock_reset.assert_called_once()
             mock_update_access.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_list_usuarios_combines_rol_and_estado_filters(self, db_session: AsyncSession):
+        """
+        Regression test (Finding 3, final review): list_usuarios(rol=AUDITOR, estado=ACTIVO)
+        debe aplicar AMBOS filtros con AND, no solo el primero de un chain if/elif.
+
+        Antes del fix, pasar rol Y estado solo aplicaba el filtro de rol
+        (elif estado nunca se evaluaba), por lo que un auditor INACTIVO
+        aparecía igual en la lista de "Auditor asignado" de la bandeja.
+        """
+        activo = await usuario_service.repository.create(db_session, {
+            "username": "auditor.activo.filtro",
+            "email": "auditor.activo.filtro@example.com",
+            "password_hash": "hashed",
+            "nombre_completo": "Auditor Activo Filtro",
+            "rol": RolUsuario.AUDITOR,
+            "estado": EstadoUsuario.ACTIVO,
+            "intentos_fallidos": 0,
+            "token_version": 0,
+        })
+        inactivo = await usuario_service.repository.create(db_session, {
+            "username": "auditor.inactivo.filtro",
+            "email": "auditor.inactivo.filtro@example.com",
+            "password_hash": "hashed",
+            "nombre_completo": "Auditor Inactivo Filtro",
+            "rol": RolUsuario.AUDITOR,
+            "estado": EstadoUsuario.INACTIVO,
+            "intentos_fallidos": 0,
+            "token_version": 0,
+        })
+
+        resultados = await usuario_service.list_usuarios(
+            db_session, rol=RolUsuario.AUDITOR, estado=EstadoUsuario.ACTIVO
+        )
+
+        ids = {u.id for u in resultados}
+        assert activo.id in ids
+        assert inactivo.id not in ids

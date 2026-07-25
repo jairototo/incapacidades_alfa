@@ -72,6 +72,14 @@ async def auditar_incapacidad(db: AsyncSession, incapacidad_id: UUID) -> None:
         logger.warning(f"Auditoría: incapacidad {incapacidad_id} no encontrada")
         return
 
+    if inc.estado != EstadoIncapacidad.RADICADA:
+        logger.warning(
+            f"Auditoría: incapacidad {incapacidad_id} ya no está en RADICADA "
+            f"(estado actual: {inc.estado}). Se omite para evitar reprocesamiento "
+            "duplicado (p. ej. redelivery de Celery)."
+        )
+        return
+
     # Evaluar reglas y construir mapa {codigo: issue}
     row = _incapacidad_to_row(inc)
     issues = validate_field_level(row) + validate_business_rules(row) + validate_audit_only_rules(row)

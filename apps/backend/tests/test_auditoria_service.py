@@ -75,6 +75,65 @@ async def test_audit_assigns_default_auditor_when_no_siniestro(db_session, test_
     assert refreshed.auditor_asignado_id == default_auditor.id
 
 
+@pytest.mark.asyncio
+async def test_auditar_incapacidad_is_idempotent_on_celery_redelivery(db_session, test_empleado, test_empresa):
+    """
+    Finding 2 (final review): un redelivery de Celery (acks_late + retry) puede
+    volver a invocar auditar_incapacidad sobre una incapacidad que ya fue
+    transicionada a EN_AUDITORIA y ya tiene auditor_asignado_id. La segunda
+    llamada NO debe:
+      - re-incrementar incapacidades_asignadas_activas del auditor asignado
+      - lanzar RuntimeError
+      - reasignar a otro auditor
+    """
+    from app.models.usuario import Usuario
+    from app.utils.enums import RolUsuario, EstadoUsuario
+    from app.core.security import get_password_hash
+
+    default_auditor = Usuario(
+        username="auditor_default", email="auditor.default2@segurosalfa-test.com.co",
+        password_hash=get_password_hash("Test123!"), nombre_completo="Auditor por Defecto",
+        rol=RolUsuario.AUDITOR, estado=EstadoUsuario.ACTIVO,
+    )
+    db_session.add(default_auditor)
+    await db_session.commit()
+
+    inc = Incapacidad(
+        numero="ARL-AUDIT-IDEMP01", tipo=TipoIncapacidad.ARL,
+        empleado_id=test_empleado.id, empresa_id=test_empresa.id,
+        fecha_inicio=dt.date(2026, 6, 1), fecha_fin=dt.date(2026, 6, 5), dias_totales=5,
+        diagnostico_cie10="S00.0", nombre_medico="Dr X", registro_medico="RM-IDEMP1",
+        estado=EstadoIncapacidad.RADICADA, fecha_radicacion=dt.datetime.utcnow(),
+    )
+    db_session.add(inc)
+    await db_session.flush()
+
+    # Primera ejecución: transiciona y asigna, incrementa la carga en 1.
+    await auditar_incapacidad(db_session, inc.id)
+
+    await db_session.refresh(default_auditor)
+    carga_tras_primera = default_auditor.incapacidades_asignadas_activas
+    assert carga_tras_primera == 1
+
+    resultados_tras_primera = (await db_session.execute(
+        select(AuditoriaResultado).where(AuditoriaResultado.incapacidad_id == inc.id)
+    )).scalars().all()
+    assert len(resultados_tras_primera) >= 1
+
+    # Redelivery de Celery: se vuelve a invocar sobre la MISMA incapacidad,
+    # que ya está EN_AUDITORIA con auditor_asignado_id fijado.
+    await auditar_incapacidad(db_session, inc.id)
+
+    await db_session.refresh(default_auditor)
+    assert default_auditor.incapacidades_asignadas_activas == carga_tras_primera, (
+        "La segunda llamada (redelivery) no debe re-incrementar la carga del auditor"
+    )
+
+    refreshed = (await db_session.execute(select(Incapacidad).where(Incapacidad.id == inc.id))).scalar_one()
+    assert refreshed.auditor_asignado_id == default_auditor.id
+    assert refreshed.estado == EstadoIncapacidad.EN_AUDITORIA
+
+
 # --- Unit tests: ALLOWED_TRANSITIONS for CREACION_SINIESTRO ---
 
 def test_creacion_siniestro_allowed_transitions():

@@ -254,6 +254,44 @@ class UsuarioRepository(BaseRepository[Usuario]):
         result = await db.execute(query)
         return list(result.scalars().all())
 
+    async def list_by_rol_y_estado(
+        self,
+        db: AsyncSession,
+        rol: Optional[RolUsuario] = None,
+        estado: Optional[EstadoUsuario] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Usuario]:
+        """
+        Obtiene usuarios filtrando por rol y/o estado, combinando ambos con AND
+        cuando los dos se proporcionan (a diferencia de list_by_rol/list_by_estado,
+        que solo aplican un filtro cada uno).
+
+        Args:
+            db: Sesión de base de datos
+            rol: Rol a filtrar (opcional)
+            estado: Estado a filtrar (opcional)
+            skip: Número de registros a saltar
+            limit: Número máximo de registros
+
+        Returns:
+            Lista de usuarios que cumplen todos los filtros proporcionados
+        """
+        query = select(Usuario)
+
+        if rol is not None:
+            query = query.where(Usuario.rol == rol)
+
+        if estado is not None:
+            query = query.where(Usuario.estado == estado)
+
+        query = query.order_by(
+            Usuario.created_at.desc()
+        ).offset(skip).limit(limit)
+
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
     async def search_usuarios(
         self,
         db: AsyncSession,

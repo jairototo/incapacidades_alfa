@@ -536,10 +536,8 @@ class UsuarioService:
         """
         if search:
             return await self.repository.search_usuarios(db, search, skip, limit)
-        elif rol:
-            return await self.repository.list_by_rol(db, rol, skip, limit)
-        elif estado:
-            return await self.repository.list_by_estado(db, estado, skip, limit)
+        elif rol or estado:
+            return await self.repository.list_by_rol_y_estado(db, rol, estado, skip, limit)
         else:
             return await self.repository.list_all(db, skip, limit)
 

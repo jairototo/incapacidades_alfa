@@ -21,7 +21,19 @@ async def asignar_auditor(db: AsyncSession, incapacidad: Incapacidad) -> Usuario
     Asigna un auditor a `incapacidad` (ya en estado EN_AUDITORIA) y persiste
     tanto `incapacidad.auditor_asignado_id` como el incremento de carga del
     auditor elegido. No hace commit — el caller controla la transacción.
+
+    Idempotente: si la incapacidad ya tiene un auditor asignado (p. ej. por un
+    redelivery de Celery tras un commit previo), retorna ese auditor sin
+    reasignar ni incrementar la carga de nuevo.
     """
+    if incapacidad.auditor_asignado_id is not None:
+        result = await db.execute(
+            select(Usuario).where(Usuario.id == incapacidad.auditor_asignado_id)
+        )
+        auditor_ya_asignado = result.scalars().first()
+        if auditor_ya_asignado is not None:
+            return auditor_ya_asignado
+
     siniestro = await _resolver_siniestro(db, incapacidad)
 
     auditor: Optional[Usuario] = None
@@ -70,7 +82,12 @@ async def _pick_by_sucursal(db: AsyncSession, sucursal: SucursalSiniestro) -> Op
 
 
 async def _get_auditor_default(db: AsyncSession) -> Usuario:
-    result = await db.execute(select(Usuario).where(Usuario.username == "auditor_default"))
+    result = await db.execute(
+        select(Usuario).where(
+            Usuario.username == "auditor_default",
+            Usuario.estado == EstadoUsuario.ACTIVO,
+        )
+    )
     auditor = result.scalars().first()
     if auditor is None:
         raise RuntimeError(
