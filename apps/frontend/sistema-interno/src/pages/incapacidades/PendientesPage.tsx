@@ -178,6 +178,18 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
     },
   },
   {
+    accessorKey: 'auditor_asignado',
+    header: 'Auditor Asignado',
+    cell: ({ row }) => {
+      const auditor = row.original.auditor_asignado;
+      return auditor ? (
+        <span className="text-sm">{auditor.nombre_completo}</span>
+      ) : (
+        <span className="text-sm text-slate-400">Sin asignar</span>
+      );
+    },
+  },
+  {
     id: 'actions',
     header: 'Acciones',
     cell: ({ row }) => {

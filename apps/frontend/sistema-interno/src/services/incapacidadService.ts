@@ -78,6 +78,7 @@ export const incapacidadService = {
         prioridad: filtros.prioridad,
         empresa_nit: filtros.empresa_nit,
         dias_antiguedad_min: filtros.dias_antiguedad_min,
+        auditor_asignado_id: filtros.auditor_asignado_id,
         skip: filtros.skip ?? 0,
         limit: filtros.limit ?? 100,
       }).filter(([_, value]) => {

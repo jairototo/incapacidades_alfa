@@ -34,6 +34,8 @@ export interface Incapacidad {
   siniestro_id?: string | null;
   numero_siniestro?: string | null;
   siniestro?: SiniestroBasic | null;
+  auditor_asignado_id?: string | null;
+  auditor_asignado?: { id: string; nombre_completo: string; rol: string } | null;
   empleado?: Empleado;
   afiliado?: Afiliado;
   empresa?: Empresa;
@@ -314,6 +316,7 @@ export interface FiltrosPendientes {
   prioridad?: Prioridad;
   empresa_nit?: string;
   dias_antiguedad_min?: number;
+  auditor_asignado_id?: string;
   skip?: number;
   limit?: number;
 }

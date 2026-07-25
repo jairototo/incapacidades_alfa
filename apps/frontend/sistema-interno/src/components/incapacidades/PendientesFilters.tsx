@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import type { FiltrosPendientes } from '@/types/incapacidad';
 import { TipoIncapacidad, Prioridad } from '@/types/enums';
+import { auditorService } from '@/services/auditorService';
 
 interface PendientesFiltersProps {
   onSearch: (filtros: FiltrosPendientes) => void;
@@ -21,6 +23,12 @@ interface PendientesFiltersProps {
 
 export function PendientesFilters({ onSearch, isLoading }: PendientesFiltersProps) {
   const { register, handleSubmit, reset, setValue, watch } = useForm<FiltrosPendientes>();
+
+  const { data: auditores = [] } = useQuery({
+    queryKey: ['auditores-activos'],
+    queryFn: () => auditorService.listActivos(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const onSubmit = (data: FiltrosPendientes) => {
     // Filtrar valores vacíos, NaN, y valores "ALL"
@@ -109,6 +117,27 @@ export function PendientesFilters({ onSearch, isLoading }: PendientesFiltersProp
                 placeholder="Ej: 3"
                 {...register('dias_antiguedad_min', { valueAsNumber: true })}
               />
+            </div>
+
+            {/* Auditor asignado */}
+            <div className="space-y-2">
+              <Label htmlFor="auditor_asignado_id">Auditor asignado</Label>
+              <Select
+                onValueChange={(value) => setValue('auditor_asignado_id', value === 'ALL' ? undefined : value)}
+                defaultValue={watch('auditor_asignado_id')}
+              >
+                <SelectTrigger id="auditor_asignado_id">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos</SelectItem>
+                  {auditores.map((auditor) => (
+                    <SelectItem key={auditor.id} value={auditor.id}>
+                      {auditor.nombre_completo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
