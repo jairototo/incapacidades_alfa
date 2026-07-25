@@ -84,7 +84,7 @@ class OrdenPagoService:
         observaciones: Optional[str] = None
     ) -> OrdenPago:
         """
-        Crea una orden de pago desde una incapacidad en EN_PAGO.
+        Crea una orden de pago desde una incapacidad en EN_PAGO o EN_PAGO_PARCIAL.
 
         Args:
             db: Sesión de base de datos
@@ -97,7 +97,7 @@ class OrdenPagoService:
 
         Raises:
             NotFoundException: Si la incapacidad no existe
-            BadRequestException: Si la incapacidad no está en EN_PAGO
+            BadRequestException: Si la incapacidad no está en EN_PAGO ni EN_PAGO_PARCIAL
             ConflictException: Si ya existe una orden activa para esta incapacidad
         """
         # 1. Verificar que la incapacidad existe
@@ -105,10 +105,10 @@ class OrdenPagoService:
         if not incapacidad:
             raise NotFoundException(f"Incapacidad {incapacidad_id} no encontrada")
 
-        # 2. Validar que esté en estado EN_PAGO (liquidación completada, lista para pago)
-        if incapacidad.estado != EstadoIncapacidad.EN_PAGO:
+        # 2. Validar que esté en estado EN_PAGO o EN_PAGO_PARCIAL (liquidación completada, lista para pago)
+        if incapacidad.estado not in (EstadoIncapacidad.EN_PAGO, EstadoIncapacidad.EN_PAGO_PARCIAL):
             raise BadRequestException(
-                f"La incapacidad debe estar en EN_PAGO. Estado actual: {incapacidad.estado}"
+                f"La incapacidad debe estar en EN_PAGO o EN_PAGO_PARCIAL. Estado actual: {incapacidad.estado}"
             )
         
         # 3. Verificar que no exista otra orden activa (no ANULADA ni RECHAZADA)
