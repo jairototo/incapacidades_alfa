@@ -33,6 +33,20 @@ class Incapacidad(BaseModel):
             "(tipo = 'SALUD' AND afiliado_id IS NOT NULL AND empleado_id IS NULL AND empresa_id IS NULL)",
             name="chk_incapacidad_tipo_relacion"
         ),
+        # Mirrors the CHECK constraint managed by Alembic (see
+        # 20260725_..._add_en_pago_states_to_chk_incapacidad_.py). Declaring
+        # it here too means `Base.metadata.create_all()` (used by the test
+        # DB bootstrap in tests/conftest.py) creates it as well — without
+        # this, the enum type accepted new EstadoIncapacidad values that the
+        # separate CHECK constraint still silently rejected in production,
+        # with no test able to catch the drift.
+        CheckConstraint(
+            "estado::text = ANY (ARRAY["
+            "'RADICADA','EN_AUDITORIA','PENDIENTE','CREACION_SINIESTRO',"
+            "'LIQUIDACION','LIQUIDACION_PARCIAL','GLOSADA','EN_PAGO','EN_PAGO_PARCIAL',"
+            "'PAGADA','PAGADA_PARCIAL'])",
+            name="chk_incapacidad_estado"
+        ),
     )
     
     # Campos principales
