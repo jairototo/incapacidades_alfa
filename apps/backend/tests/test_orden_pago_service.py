@@ -105,9 +105,10 @@ async def test_incapacidad_arl_aprobada(db_session: AsyncSession, test_empresa, 
         fecha_inicio=datetime.utcnow().date(),
         fecha_fin=(datetime.utcnow() + timedelta(days=5)).date(),
         dias_totales=5,
-        valor_incapacidad=Decimal("1500000.00"),
+        valor_dia=Decimal("300000.00"),
+        valor_total=Decimal("1500000.00"),
         estado=EstadoIncapacidad.EN_PAGO,
-        diagnostico="Fractura de brazo"
+        descripcion_diagnostico="Fractura de brazo"
     )
     db_session.add(incapacidad)
     await db_session.commit()
@@ -125,9 +126,32 @@ async def test_incapacidad_salud_aprobada(db_session: AsyncSession, test_afiliad
         fecha_inicio=datetime.utcnow().date(),
         fecha_fin=(datetime.utcnow() + timedelta(days=3)).date(),
         dias_totales=3,
-        valor_incapacidad=Decimal("900000.00"),
+        valor_dia=Decimal("300000.00"),
+        valor_total=Decimal("900000.00"),
         estado=EstadoIncapacidad.EN_PAGO,
-        diagnostico="Gripe"
+        descripcion_diagnostico="Gripe"
+    )
+    db_session.add(incapacidad)
+    await db_session.commit()
+    await db_session.refresh(incapacidad)
+    return incapacidad
+
+
+@pytest.fixture
+async def test_incapacidad_arl_en_pago_parcial(db_session: AsyncSession, test_empresa, test_empleado):
+    """Crea una incapacidad ARL liquidada parcialmente (EN_PAGO_PARCIAL)."""
+    incapacidad = Incapacidad(
+        numero=f"INC-TEST-{uuid4().hex[:8]}",
+        tipo=TipoIncapacidad.ARL,
+        empresa_id=test_empresa.id,
+        empleado_id=test_empleado.id,
+        fecha_inicio=datetime.utcnow().date(),
+        fecha_fin=(datetime.utcnow() + timedelta(days=5)).date(),
+        dias_totales=5,
+        valor_dia=Decimal("200000.00"),
+        valor_total=Decimal("1000000.00"),
+        estado=EstadoIncapacidad.EN_PAGO_PARCIAL,
+        descripcion_diagnostico="Fractura de brazo"
     )
     db_session.add(incapacidad)
     await db_session.commit()
@@ -193,7 +217,7 @@ async def test_create_orden_from_incapacidad_arl_success(
     assert orden.beneficiario_tipo == BeneficiarioTipo.EMPLEADO
     assert orden.beneficiario_id == test_empleado.id
     assert orden.beneficiario_nombre == test_empleado.nombre_completo
-    assert orden.valor_pagar == test_incapacidad_arl_aprobada.valor_incapacidad
+    assert orden.valor_pagar == test_incapacidad_arl_aprobada.valor_total
     assert orden.estado_pago == EstadoOrdenPago.GENERADA
     assert orden.cuenta_bancaria == test_empleado.cuenta_bancaria
 
@@ -218,7 +242,44 @@ async def test_create_orden_from_incapacidad_salud_success(
     assert orden.beneficiario_tipo == BeneficiarioTipo.AFILIADO
     assert orden.beneficiario_id == test_afiliado.id
     assert orden.beneficiario_nombre == test_afiliado.nombre_completo
-    assert orden.valor_pagar == test_incapacidad_salud_aprobada.valor_incapacidad
+    assert orden.valor_pagar == test_incapacidad_salud_aprobada.valor_total
+
+
+@pytest.mark.asyncio
+async def test_create_orden_from_incapacidad_en_pago_parcial_success(
+    db_session: AsyncSession,
+    test_incapacidad_arl_en_pago_parcial,
+    test_empleado,
+    test_usuario
+):
+    """Test crear orden de pago desde incapacidad EN_PAGO_PARCIAL exitosamente.
+
+    Regression test for Finding 1: partial liquidations must not be stranded
+    without a way to reach PAGADA_PARCIAL.
+    """
+    usuario_id = test_usuario.id
+
+    # NOTE: `create=True` works around a separate, pre-existing bug where
+    # orden_pago_service calls historial_estado_service.create_historial(),
+    # a method that does not exist on HistorialEstadoService (the real method
+    # is create_historial_entry with different kwargs). That bug predates this
+    # plan (present since the initial repo reorg commit) and is out of scope
+    # here, but it means this call is currently broken in production too.
+    with patch(
+        "app.services.orden_pago_service.historial_estado_service.create_historial",
+        new_callable=AsyncMock,
+        create=True,
+    ):
+        orden = await orden_pago_service.create_orden_from_incapacidad(
+            db=db_session,
+            incapacidad_id=test_incapacidad_arl_en_pago_parcial.id,
+            usuario_id=usuario_id
+        )
+
+    assert orden is not None
+    assert orden.incapacidad_id == test_incapacidad_arl_en_pago_parcial.id
+    assert orden.valor_pagar == test_incapacidad_arl_en_pago_parcial.valor_total
+    assert orden.estado_pago == EstadoOrdenPago.GENERADA
 
 
 @pytest.mark.asyncio
