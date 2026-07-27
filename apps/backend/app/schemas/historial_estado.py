@@ -47,6 +47,9 @@ class HistorialEstadoInDB(HistorialEstadoBase):
     id: UUID
     fecha_cambio: datetime
     cambiado_por_id: Optional[UUID]
+    cambiado_por_nombre: Optional[str] = Field(
+        None, description="Nombre del usuario que realizó el cambio (None si fue automático)"
+    )
     created_at: datetime
     updated_at: datetime
     metadata: Optional[dict] = Field(None, validation_alias="metadata_")

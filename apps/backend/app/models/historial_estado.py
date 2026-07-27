@@ -83,3 +83,15 @@ class HistorialEstado(BaseModel):
         if self.estado_anterior:
             return f"Cambio de {self.estado_anterior.value} a {self.estado_nuevo.value}"
         return f"Estado inicial: {self.estado_nuevo.value}"
+
+    @property
+    def cambiado_por_nombre(self) -> Optional[str]:
+        """
+        Nombre del usuario responsable del cambio, para mostrar en el frontend
+        (el timeline de historial no debe mostrar solo un UUID). None cuando el
+        cambio fue generado automáticamente (sin usuario asociado).
+
+        Requiere que la relación `cambiado_por` venga precargada (selectinload) —
+        accederla sin precarga en un contexto async dispara MissingGreenlet.
+        """
+        return self.cambiado_por.nombre_completo if self.cambiado_por else None

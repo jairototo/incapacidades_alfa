@@ -11,6 +11,7 @@ from uuid import UUID
 
 from sqlalchemy import select, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.repositories.base_repository import BaseRepository
 from app.models.historial_estado import HistorialEstado
@@ -42,6 +43,7 @@ class HistorialEstadoRepository(BaseRepository[HistorialEstado]):
         """
         stmt = (
             select(HistorialEstado)
+            .options(selectinload(HistorialEstado.cambiado_por))
             .where(
                 and_(
                     HistorialEstado.entity_type == entity_type,
@@ -126,11 +128,11 @@ class HistorialEstadoRepository(BaseRepository[HistorialEstado]):
         Returns:
             Lista de cambios de estado ordenados por fecha (más reciente primero)
         """
-        stmt = select(HistorialEstado)
-        
+        stmt = select(HistorialEstado).options(selectinload(HistorialEstado.cambiado_por))
+
         if entity_type:
             stmt = stmt.where(HistorialEstado.entity_type == entity_type)
-        
+
         stmt = stmt.order_by(desc(HistorialEstado.fecha_cambio)).limit(limit)
         
         result = await db.execute(stmt)
@@ -186,8 +188,8 @@ class HistorialEstadoRepository(BaseRepository[HistorialEstado]):
         if fecha_hasta:
             conditions.append(HistorialEstado.fecha_cambio <= fecha_hasta)
         
-        stmt = select(HistorialEstado)
-        
+        stmt = select(HistorialEstado).options(selectinload(HistorialEstado.cambiado_por))
+
         if conditions:
             stmt = stmt.where(and_(*conditions))
         
@@ -249,6 +251,7 @@ class HistorialEstadoRepository(BaseRepository[HistorialEstado]):
         """
         stmt = (
             select(HistorialEstado)
+            .options(selectinload(HistorialEstado.cambiado_por))
             .where(
                 and_(
                     HistorialEstado.entity_type == entity_type,
@@ -280,6 +283,7 @@ class HistorialEstadoRepository(BaseRepository[HistorialEstado]):
         """
         stmt = (
             select(HistorialEstado)
+            .options(selectinload(HistorialEstado.cambiado_por))
             .where(
                 and_(
                     HistorialEstado.entity_type == entity_type,

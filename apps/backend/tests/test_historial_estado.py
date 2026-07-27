@@ -94,7 +94,50 @@ class TestHistorialEstadoService:
         
         assert len(historial) == 1
         assert historial[0].entity_type == "incapacidad"
-    
+
+    async def test_get_incapacidad_history_includes_cambiado_por_nombre(self, db_session, test_usuario):
+        """El historial debe incluir el nombre del usuario responsable del cambio (no solo el id)."""
+        incapacidad_id = uuid4()
+
+        await historial_estado_service.create_historial_entry(
+            db=db_session,
+            entity_type="incapacidad",
+            entity_id=incapacidad_id,
+            estado_anterior="RADICADA",
+            estado_nuevo="EN_AUDITORIA",
+            cambiado_por_id=test_usuario.id,
+        )
+
+        historial = await historial_estado_service.get_incapacidad_history(
+            db=db_session,
+            incapacidad_id=incapacidad_id,
+        )
+
+        assert len(historial) == 1
+        assert historial[0].cambiado_por_id == test_usuario.id
+        assert historial[0].cambiado_por_nombre == test_usuario.nombre_completo
+
+    async def test_get_incapacidad_history_cambiado_por_nombre_none_when_system_generated(self, db_session):
+        """Una transición automática (sin usuario) no debe tener nombre — no un error."""
+        incapacidad_id = uuid4()
+
+        await historial_estado_service.create_historial_entry(
+            db=db_session,
+            entity_type="incapacidad",
+            entity_id=incapacidad_id,
+            estado_anterior=None,
+            estado_nuevo="RADICADA",
+            cambiado_por_id=None,
+        )
+
+        historial = await historial_estado_service.get_incapacidad_history(
+            db=db_session,
+            incapacidad_id=incapacidad_id,
+        )
+
+        assert len(historial) == 1
+        assert historial[0].cambiado_por_nombre is None
+
     async def test_get_siniestro_history(self, db_session):
         """Test shortcut para historial de siniestro."""
         siniestro_id = uuid4()
@@ -278,12 +321,33 @@ class TestHistorialEstadoAPI:
         )
         
         response = await client.get(f"/api/v1/historial/incapacidad/{entity_id}")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
         assert data[0]["entity_type"] == "incapacidad"
-    
+
+    async def test_get_entity_history_endpoint_includes_cambiado_por_nombre(self, client, db_session, test_usuario):
+        """La respuesta HTTP del historial debe traer el nombre del responsable, no solo su id."""
+        entity_id = uuid4()
+
+        await historial_estado_service.create_historial_entry(
+            db=db_session,
+            entity_type="incapacidad",
+            entity_id=entity_id,
+            estado_anterior="RADICADA",
+            estado_nuevo="EN_AUDITORIA",
+            cambiado_por_id=test_usuario.id,
+        )
+
+        response = await client.get(f"/api/v1/historial/incapacidad/{entity_id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["cambiado_por_id"] == str(test_usuario.id)
+        assert data[0]["cambiado_por_nombre"] == test_usuario.nombre_completo
+
     async def test_count_endpoint(self, client, db_session):
         """Test endpoint de contador."""
         entity_id = uuid4()
