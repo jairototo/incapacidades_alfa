@@ -237,6 +237,9 @@ export function PendientesPage() {
   };
 
   const totalPendientes = data?.length || 0;
+  const hasActiveFilters = Object.keys(filtros).some(
+    (key) => key !== 'skip' && key !== 'limit'
+  );
 
   return (
     <div className="space-y-4">
@@ -282,8 +285,11 @@ export function PendientesPage() {
       {/* Tabla de pendientes */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-4">
-          {!isLoading && totalPendientes === 0 ? (
-            // Empty state
+          {!isLoading && totalPendientes === 0 && !hasActiveFilters ? (
+            // Empty state — solo cuando no hay pendientes en absoluto (sin filtros aplicados).
+            // Si hay un filtro activo, un resultado vacío significa "sin coincidencias",
+            // no "todo al día" — ese caso cae al DataTable, que muestra su propio
+            // emptyMessage más preciso.
             <div className="text-center py-12">
               <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
               <h3 className="mt-4 text-xl font-medium text-slate-900">

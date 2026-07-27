@@ -15,6 +15,13 @@ vi.mock('@/services/incapacidadService', () => ({
   },
 }));
 
+// Mock del servicio de auditores (usado por PendientesFilters al abrir el panel de filtros)
+vi.mock('@/services/auditorService', () => ({
+  auditorService: {
+    listActivos: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 // Mock de react-router-dom navigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -307,6 +314,36 @@ describe('PendientesPage', () => {
         expect(screen.getByText('¡No hay pendientes!')).toBeInTheDocument();
         expect(screen.getByText('Todas las incapacidades están al día.')).toBeInTheDocument();
       });
+    });
+
+    it('debe mostrar el mensaje de "sin resultados con filtros" (no el de "no hay pendientes") cuando un filtro aplicado no encuentra coincidencias', async () => {
+      // Con la bandeja llena, seleccionar un filtro (p. ej. un auditor específico) que no
+      // tenga incapacidades asignadas debe devolver una lista vacía — pero la UI no debe
+      // decir "¡No hay pendientes! Todas las incapacidades están al día", porque eso es
+      // falso: sí hay pendientes, solo que ninguno coincide con el filtro aplicado. Ese
+      // mensaje incorrecto es lo que hacía parecer que el filtro de auditor asignado no
+      // funcionaba.
+      vi.mocked(incapacidadService.listarPendientes)
+        .mockResolvedValueOnce(mockIncapacidadesPendientes) // carga inicial sin filtros
+        .mockResolvedValueOnce([]); // resultado tras aplicar el filtro
+
+      const user = userEvent.setup();
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByText('INC-001')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /mostrar filtros/i }));
+      await user.type(await screen.findByLabelText(/nit empresa/i), '900123456');
+      await user.click(screen.getByRole('button', { name: /^buscar$/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('No se encontraron incapacidades pendientes con los filtros aplicados.')
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText('¡No hay pendientes!')).not.toBeInTheDocument();
     });
 
     it('debe mostrar botón de actualizar en empty state', async () => {
