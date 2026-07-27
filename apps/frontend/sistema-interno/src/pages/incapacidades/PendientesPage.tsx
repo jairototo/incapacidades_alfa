@@ -9,7 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/shared/DataTable';
 import { PendientesFilters } from '@/components/incapacidades/PendientesFilters';
 import { incapacidadService } from '@/services/incapacidadService';
+import { useAuthStore } from '@/store/authStore';
 import type { IncapacidadPendiente, FiltrosPendientes } from '@/types/incapacidad';
+import { RolUsuario } from '@/types/enums';
 import { formatDate, formatRelativeDate } from '@/utils/formatters';
 
 /**
@@ -218,10 +220,18 @@ const columns: ColumnDef<IncapacidadPendiente>[] = [
  * - Empty state cuando no hay pendientes
  */
 export function PendientesPage() {
-  const [filtros, setFiltros] = useState<FiltrosPendientes>({
+  const { user } = useAuthStore();
+  // Un AUDITOR no puede gestionar incapacidades que no le fueron asignadas — la bandeja
+  // siempre debe estar filtrada por su propio auditor_asignado_id, sin excepción y sin
+  // posibilidad de elegir otro auditor desde el formulario de filtros.
+  const isAuditor = user?.rol === RolUsuario.AUDITOR;
+  const auditorAsignadoIdForzado = isAuditor && user ? user.id : undefined;
+
+  const [filtros, setFiltros] = useState<FiltrosPendientes>(() => ({
     skip: 0,
     limit: 100,
-  });
+    ...(auditorAsignadoIdForzado ? { auditor_asignado_id: auditorAsignadoIdForzado } : {}),
+  }));
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Query para cargar pendientes
@@ -233,7 +243,12 @@ export function PendientesPage() {
   });
 
   const handleSearch = (nuevosFiltros: FiltrosPendientes) => {
-    setFiltros({ ...nuevosFiltros, skip: 0, limit: 100 });
+    setFiltros({
+      ...nuevosFiltros,
+      skip: 0,
+      limit: 100,
+      ...(auditorAsignadoIdForzado ? { auditor_asignado_id: auditorAsignadoIdForzado } : {}),
+    });
   };
 
   const totalPendientes = data?.length || 0;
@@ -278,7 +293,11 @@ export function PendientesPage() {
         </Button>
         
         {filtersOpen && (
-          <PendientesFilters onSearch={handleSearch} isLoading={isLoading} />
+          <PendientesFilters
+            onSearch={handleSearch}
+            isLoading={isLoading}
+            showAuditorFilter={!isAuditor}
+          />
         )}
       </div>
 

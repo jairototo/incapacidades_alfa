@@ -19,15 +19,22 @@ import { auditorService } from '@/services/auditorService';
 interface PendientesFiltersProps {
   onSearch: (filtros: FiltrosPendientes) => void;
   isLoading?: boolean;
+  /**
+   * Muestra el selector manual de "Auditor asignado". Debe ser `false` para un usuario
+   * con rol AUDITOR — no puede elegir gestionar incapacidades de otro auditor, así que
+   * el campo no tiene sentido y PendientesPage ya fuerza su propio auditor_asignado_id.
+   */
+  showAuditorFilter?: boolean;
 }
 
-export function PendientesFilters({ onSearch, isLoading }: PendientesFiltersProps) {
+export function PendientesFilters({ onSearch, isLoading, showAuditorFilter = true }: PendientesFiltersProps) {
   const { register, handleSubmit, reset, setValue, watch } = useForm<FiltrosPendientes>();
 
   const { data: auditores = [] } = useQuery({
     queryKey: ['auditores-activos'],
     queryFn: () => auditorService.listActivos(),
     staleTime: 5 * 60 * 1000,
+    enabled: showAuditorFilter,
   });
 
   const onSubmit = (data: FiltrosPendientes) => {
@@ -119,26 +126,28 @@ export function PendientesFilters({ onSearch, isLoading }: PendientesFiltersProp
               />
             </div>
 
-            {/* Auditor asignado */}
-            <div className="space-y-2">
-              <Label htmlFor="auditor_asignado_id">Auditor asignado</Label>
-              <Select
-                onValueChange={(value) => setValue('auditor_asignado_id', value === 'ALL' ? undefined : value)}
-                defaultValue={watch('auditor_asignado_id')}
-              >
-                <SelectTrigger id="auditor_asignado_id">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
-                  {auditores.map((auditor) => (
-                    <SelectItem key={auditor.id} value={auditor.id}>
-                      {auditor.nombre_completo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Auditor asignado — solo visible para roles que pueden gestionar más de una cola (p. ej. ADMIN) */}
+            {showAuditorFilter && (
+              <div className="space-y-2">
+                <Label htmlFor="auditor_asignado_id">Auditor asignado</Label>
+                <Select
+                  onValueChange={(value) => setValue('auditor_asignado_id', value === 'ALL' ? undefined : value)}
+                  defaultValue={watch('auditor_asignado_id')}
+                >
+                  <SelectTrigger id="auditor_asignado_id">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Todos</SelectItem>
+                    {auditores.map((auditor) => (
+                      <SelectItem key={auditor.id} value={auditor.id}>
+                        {auditor.nombre_completo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {/* Botones de acción */}

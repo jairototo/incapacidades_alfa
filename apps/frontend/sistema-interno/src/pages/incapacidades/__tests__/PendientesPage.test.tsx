@@ -5,8 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { PendientesPage } from '../PendientesPage';
 import { incapacidadService } from '@/services/incapacidadService';
+import { useAuthStore } from '@/store/authStore';
 import type { IncapacidadPendiente } from '@/types/incapacidad';
-import { TipoIncapacidad, EstadoIncapacidad, Prioridad, TipoDocumento } from '@/types/enums';
+import { TipoIncapacidad, EstadoIncapacidad, Prioridad, TipoDocumento, RolUsuario, EstadoUsuario } from '@/types/enums';
 
 // Mock del servicio
 vi.mock('@/services/incapacidadService', () => ({
@@ -21,6 +22,23 @@ vi.mock('@/services/auditorService', () => ({
     listActivos: vi.fn().mockResolvedValue([]),
   },
 }));
+
+// Mock del store de auth — por defecto simula un ADMIN (sin auto-filtro de auditor)
+vi.mock('@/store/authStore', () => ({
+  useAuthStore: vi.fn(),
+}));
+
+const mockAdminUser = {
+  id: 'admin-1', username: 'admin', email: 'admin@example.com',
+  nombres: 'Admin', apellidos: 'Uno', rol: RolUsuario.ADMIN,
+  estado: EstadoUsuario.ACTIVO, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+};
+
+const mockAuditorUser = {
+  id: 'auditor-77', username: 'auditor.prueba', email: 'auditor.prueba@example.com',
+  nombres: 'Auditor', apellidos: 'Prueba', rol: RolUsuario.AUDITOR,
+  estado: EstadoUsuario.ACTIVO, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+};
 
 // Mock de react-router-dom navigate
 const mockNavigate = vi.fn();
@@ -104,6 +122,8 @@ describe('PendientesPage', () => {
       },
     });
     vi.clearAllMocks();
+    // Por defecto, ADMIN — no dispara el auto-filtro de auditor asignado.
+    vi.mocked(useAuthStore).mockReturnValue({ user: mockAdminUser } as ReturnType<typeof useAuthStore>);
   });
 
   const renderComponent = () => {
@@ -454,6 +474,60 @@ describe('PendientesPage', () => {
         expect(filtros.dias_antiguedad_min).toBe(3);
         expect(filtros.dias_antiguedad_min).not.toBeNaN();
       });
+    });
+  });
+
+  describe('Auto-filtro por auditor asignado (rol AUDITOR)', () => {
+    it('debe filtrar automáticamente por el id del auditor logueado desde la carga inicial', async () => {
+      vi.mocked(useAuthStore).mockReturnValue({ user: mockAuditorUser } as ReturnType<typeof useAuthStore>);
+      vi.mocked(incapacidadService.listarPendientes).mockResolvedValue(mockIncapacidadesPendientes);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(incapacidadService.listarPendientes).toHaveBeenCalledWith(
+          expect.objectContaining({ auditor_asignado_id: mockAuditorUser.id })
+        );
+      });
+    });
+
+    it('no debe auto-filtrar por auditor cuando el usuario logueado es ADMIN', async () => {
+      vi.mocked(useAuthStore).mockReturnValue({ user: mockAdminUser } as ReturnType<typeof useAuthStore>);
+      vi.mocked(incapacidadService.listarPendientes).mockResolvedValue(mockIncapacidadesPendientes);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(incapacidadService.listarPendientes).toHaveBeenCalledWith(
+          expect.not.objectContaining({ auditor_asignado_id: expect.anything() })
+        );
+      });
+    });
+
+    it('debe ocultar el selector manual de "Auditor asignado" en el panel de filtros para un AUDITOR', async () => {
+      vi.mocked(useAuthStore).mockReturnValue({ user: mockAuditorUser } as ReturnType<typeof useAuthStore>);
+      vi.mocked(incapacidadService.listarPendientes).mockResolvedValue(mockIncapacidadesPendientes);
+      const user = userEvent.setup();
+
+      renderComponent();
+      await waitFor(() => screen.getByText('INC-001'));
+
+      await user.click(screen.getByRole('button', { name: /mostrar filtros/i }));
+
+      expect(screen.queryByLabelText(/auditor asignado/i)).not.toBeInTheDocument();
+    });
+
+    it('debe mantener el selector manual de "Auditor asignado" para un ADMIN', async () => {
+      vi.mocked(useAuthStore).mockReturnValue({ user: mockAdminUser } as ReturnType<typeof useAuthStore>);
+      vi.mocked(incapacidadService.listarPendientes).mockResolvedValue(mockIncapacidadesPendientes);
+      const user = userEvent.setup();
+
+      renderComponent();
+      await waitFor(() => screen.getByText('INC-001'));
+
+      await user.click(screen.getByRole('button', { name: /mostrar filtros/i }));
+
+      expect(await screen.findByLabelText(/auditor asignado/i)).toBeInTheDocument();
     });
   });
 });
