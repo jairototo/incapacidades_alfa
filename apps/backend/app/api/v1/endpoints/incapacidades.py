@@ -1380,7 +1380,8 @@ async def auditar_incapacidad(
         auditoria.accion,
         auditoria.observaciones,
         current_user.id,
-        datos_aprobados=datos_aprobados
+        datos_aprobados=datos_aprobados,
+        usuario_rol=current_user.rol,
     )
     logger.info(f"Incapacidad {incapacidad_id} auditada con acción {auditoria.accion} por usuario {current_user.id}")
     return _serialize_incapacidad(incap)
@@ -1406,7 +1407,7 @@ async def aprobar_en_auditoria(
     current_user: Usuario = Depends(get_current_user),
 ):
     result = await incapacidad_service.aprobar_en_auditoria(
-        db, incapacidad_id, body, current_user.id
+        db, incapacidad_id, body, current_user.id, usuario_rol=current_user.rol
     )
     logger.info(
         f"Incapacidad {incapacidad_id} aprobada en auditoría → {result['estado']} "

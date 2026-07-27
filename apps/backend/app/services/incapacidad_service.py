@@ -35,7 +35,8 @@ from app.utils.enums import (
     EstadoAfiliado,
     EstadoEmpresa,
     Prioridad,
-    TipoDocumentoArchivo
+    TipoDocumentoArchivo,
+    RolUsuario
 )
 from app.core.storage_core import storage_backend
 from app.schemas.siniestro import SiniestroCreate
@@ -650,11 +651,12 @@ class IncapacidadService:
         accion: str,
         observaciones: str,
         usuario_id: Optional[UUID] = None,
-        datos_aprobados: Optional[Dict[str, Any]] = None
+        datos_aprobados: Optional[Dict[str, Any]] = None,
+        usuario_rol: Optional[RolUsuario] = None,
     ) -> Incapacidad:
         """
         Audita una incapacidad con soporte para aprobación parcial.
-        
+
         Args:
             db: Sesión de base de datos
             incapacidad_id: ID de la incapacidad
@@ -662,7 +664,10 @@ class IncapacidadService:
             observaciones: Observaciones de la auditoría
             usuario_id: ID del auditor
             datos_aprobados: Dict con campos modificados (solo para aprobación parcial)
-            
+            usuario_rol: Rol del usuario que ejecuta la acción. Si es AUDITOR, solo puede
+                gestionar la incapacidad si auditor_asignado_id coincide con usuario_id.
+                ADMIN (u omitir el parámetro) no tiene esta restricción.
+
         Returns:
             Incapacidad auditada
         """
@@ -673,6 +678,11 @@ class IncapacidadService:
             raise InvalidStateException(
                 f"Solo se pueden auditar incapacidades en estado EN_AUDITORIA. "
                 f"Estado actual: {incapacidad.estado}"
+            )
+
+        if usuario_rol == RolUsuario.AUDITOR and incapacidad.auditor_asignado_id != usuario_id:
+            raise ForbiddenException(
+                "Esta incapacidad no está asignada a este auditor. No tiene permiso para gestionarla."
             )
 
         # Mandatory observation for ALL audit actions
@@ -797,6 +807,7 @@ class IncapacidadService:
         incapacidad_id: UUID,
         data: "AprobarAuditoriaRequest",
         usuario_id: UUID,
+        usuario_rol: Optional[RolUsuario] = None,
     ) -> dict:
         """
         Aprueba una incapacidad en auditoría, auto-determinando LIQUIDACION o LIQUIDACION_PARCIAL.
@@ -804,6 +815,9 @@ class IncapacidadService:
         Siempre persiste auditoria_resultado (incluso si falla).
         Si alguna regla ERROR falla → rollback del estado + 400 con lista de reglas.
         Compara solo fechas y días para determinar LIQUIDACION vs LIQUIDACION_PARCIAL.
+
+        usuario_rol: si es AUDITOR, solo puede aprobar si auditor_asignado_id coincide con
+            usuario_id. ADMIN (u omitir el parámetro) no tiene esta restricción.
         """
         from app.services.incapacidad_validation_rules import (
             validate_field_level,
@@ -836,6 +850,11 @@ class IncapacidadService:
             raise InvalidStateException(
                 f"Solo se pueden aprobar incapacidades en estado EN_AUDITORIA. "
                 f"Estado actual: {inc.estado.value}"
+            )
+
+        if usuario_rol == RolUsuario.AUDITOR and inc.auditor_asignado_id != usuario_id:
+            raise ForbiddenException(
+                "Esta incapacidad no está asignada a este auditor. No tiene permiso para gestionarla."
             )
 
         # 2. Compute dias_aprobados (inclusive: fin - inicio + 1)
