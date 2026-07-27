@@ -109,8 +109,9 @@ export interface HistorialEstado {
   estado_anterior?: string;
   estado_nuevo: string;
   observacion?: string;
-  cambiado_por: string;
-  cambiado_por_nombre: string;
+  cambiado_por_id?: string | null;
+  /** Nombre del usuario responsable del cambio; null/undefined cuando fue una transición automática. */
+  cambiado_por_nombre?: string | null;
   created_at: string;
 }
 

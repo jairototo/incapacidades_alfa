@@ -109,7 +109,7 @@ const mockHistorial = [
     entity_id: 'test-id-123',
     estado_anterior: EstadoIncapacidad.RADICADA,
     estado_nuevo: EstadoIncapacidad.EN_AUDITORIA,
-    cambiado_por: 'user-admin',
+    cambiado_por_id: 'user-admin',
     cambiado_por_nombre: 'Admin Usuario',
     observacion: 'Pasando a auditoría',
     created_at: '2024-01-10T11:00:00Z',

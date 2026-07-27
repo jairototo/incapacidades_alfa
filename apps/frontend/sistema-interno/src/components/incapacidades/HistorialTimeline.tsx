@@ -98,12 +98,11 @@ export function HistorialTimeline({ historial }: HistorialTimelineProps) {
                     </div>
                   )}
 
-                  {/* Usuario */}
-                  {item.cambiado_por && (
+                  {/* Usuario responsable del cambio */}
+                  {item.cambiado_por_nombre && (
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <span className="font-medium">
-                        {item.cambiado_por_nombre || item.cambiado_por}
-                      </span>
+                      <span className="text-slate-500">Responsable:</span>
+                      <span className="font-medium">{item.cambiado_por_nombre}</span>
                     </div>
                   )}
 
@@ -134,7 +133,7 @@ export function HistorialTimeline({ historial }: HistorialTimelineProps) {
             
             <div>
               <p className="text-lg font-bold text-blue-600">
-                {historial.filter((h) => h.cambiado_por).length}
+                {historial.filter((h) => h.cambiado_por_nombre).length}
               </p>
               <p className="text-sm text-slate-500">Con responsable</p>
             </div>

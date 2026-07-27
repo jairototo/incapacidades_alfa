@@ -10,8 +10,8 @@ const mockHistorial = [
     entity_id: 'inc-123',
     estado_anterior: null,
     estado_nuevo: EstadoIncapacidad.RADICADA,
-    cambiado_por: 'user-system', // Agregado: ID del usuario
-    cambiado_por_nombre: 'Sistema', // Nombre para mostrar
+    cambiado_por_id: 'user-system',
+    cambiado_por_nombre: 'Sistema',
     observacion: 'Incapacidad creada',
     created_at: '2024-01-10T10:00:00Z',
   },
@@ -21,7 +21,7 @@ const mockHistorial = [
     entity_id: 'inc-123',
     estado_anterior: EstadoIncapacidad.RADICADA,
     estado_nuevo: EstadoIncapacidad.EN_AUDITORIA,
-    cambiado_por: 'user-admin', // Agregado
+    cambiado_por_id: 'user-admin',
     cambiado_por_nombre: 'Admin Usuario',
     observacion: 'Pasando a auditoría para revisión',
     created_at: '2024-01-11T14:30:00Z',
@@ -32,7 +32,7 @@ const mockHistorial = [
     entity_id: 'inc-123',
     estado_anterior: EstadoIncapacidad.EN_AUDITORIA,
     estado_nuevo: EstadoIncapacidad.PENDIENTE,
-    cambiado_por: 'user-auditor', // Agregado
+    cambiado_por_id: 'user-auditor',
     cambiado_por_nombre: 'Auditor Pérez',
     observacion: 'Faltan documentos: historia clínica completa',
     created_at: '2024-01-12T09:15:00Z',
@@ -43,7 +43,7 @@ const mockHistorial = [
     entity_id: 'inc-123',
     estado_anterior: EstadoIncapacidad.PENDIENTE,
     estado_nuevo: EstadoIncapacidad.EN_AUDITORIA,
-    cambiado_por: 'user-system', // Agregado
+    cambiado_por_id: 'user-system',
     cambiado_por_nombre: 'Sistema',
     observacion: 'Documentos actualizados por el solicitante',
     created_at: '2024-01-13T16:45:00Z',
@@ -54,7 +54,7 @@ const mockHistorial = [
     entity_id: 'inc-123',
     estado_anterior: EstadoIncapacidad.EN_AUDITORIA,
     estado_nuevo: EstadoIncapacidad.LIQUIDACION,
-    cambiado_por: 'user-auditor', // Agregado
+    cambiado_por_id: 'user-auditor',
     cambiado_por_nombre: 'Auditor Pérez',
     observacion: 'Aprobado: cumple todos los requisitos',
     created_at: '2024-01-14T11:20:00Z',
@@ -150,7 +150,7 @@ describe('HistorialTimeline', () => {
         entity_id: 'inc-456',
         estado_anterior: EstadoIncapacidad.RADICADA,
         estado_nuevo: EstadoIncapacidad.EN_AUDITORIA,
-        cambiado_por: 'user-admin', // Agregado: ID del usuario
+        cambiado_por_id: 'user-admin',
         cambiado_por_nombre: 'Admin',
         observacion: null,
         created_at: '2024-01-15T10:00:00Z',
@@ -168,6 +168,37 @@ describe('HistorialTimeline', () => {
     
     // No debe mostrar el texto "Observaciones:" cuando no hay observación
     expect(screen.queryByText('Observaciones:')).not.toBeInTheDocument();
+  });
+
+  it('debe mostrar el nombre del responsable con su etiqueta, y no un id crudo', () => {
+    render(<HistorialTimeline historial={mockHistorial} />);
+
+    expect(screen.getAllByText('Responsable:').length).toBe(mockHistorial.length);
+    // El id técnico (p. ej. "user-admin") nunca debe mostrarse como texto visible.
+    expect(screen.queryByText('user-admin')).not.toBeInTheDocument();
+    expect(screen.queryByText('user-system')).not.toBeInTheDocument();
+    expect(screen.queryByText('user-auditor')).not.toBeInTheDocument();
+  });
+
+  it('no debe romper ni mostrar la sección de responsable cuando el cambio fue automático (sin usuario)', () => {
+    const historialAutomatico = [
+      {
+        id: 'hist-auto',
+        entity_type: 'incapacidad',
+        entity_id: 'inc-789',
+        estado_anterior: EstadoIncapacidad.RADICADA,
+        estado_nuevo: EstadoIncapacidad.EN_AUDITORIA,
+        cambiado_por_id: null,
+        cambiado_por_nombre: null,
+        observacion: 'Transición automática por job de auditoría',
+        created_at: '2024-01-16T10:00:00Z',
+      },
+    ] as any;
+
+    render(<HistorialTimeline historial={historialAutomatico} />);
+
+    expect(screen.queryByText('Responsable:')).not.toBeInTheDocument();
+    expect(screen.getByText(/Transición automática por job de auditoría/)).toBeInTheDocument();
   });
 
   it('debe aplicar colores diferentes según el estado', () => {
