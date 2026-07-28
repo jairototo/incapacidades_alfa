@@ -1,17 +1,20 @@
 import api from '@/lib/api';
-import type { Empresa } from '@/types/empresa';
+import type {
+  Empresa,
+  EmpresaCreatePayload,
+  EmpresaCreateResponse,
+  EmpresaUpdatePayload,
+  RegenerarPasswordResponse,
+  AnaliticaEmpresasResponse,
+} from '@/types/empresa';
 
 interface ListEmpresasParams {
   skip?: number;
   limit?: number;
+  nit?: string;
+  ciudad?: string;
+  departamento?: string;
   search?: string;
-}
-
-interface ListEmpresasResponse {
-  items: Empresa[];
-  total: number;
-  skip: number;
-  limit: number;
 }
 
 /**
@@ -20,30 +23,34 @@ interface ListEmpresasResponse {
 class EmpresaService {
   private readonly baseUrl = '/empresas/';
 
-  /**
-   * Listar empresas con paginación y búsqueda opcional
-   */
-  async list(params: ListEmpresasParams): Promise<ListEmpresasResponse> {
-    const { data } = await api.get<ListEmpresasResponse>(this.baseUrl, { params });
+  async list(params: ListEmpresasParams): Promise<Empresa[]> {
+    const { data } = await api.get<Empresa[]>(this.baseUrl, { params });
     return data;
   }
 
-  /**
-   * Obtener una empresa por ID
-   */
   async getById(id: string): Promise<Empresa> {
-    const { data } = await api.get<Empresa>(`${this.baseUrl}/${id}`);
+    const { data } = await api.get<Empresa>(`${this.baseUrl}${id}`);
     return data;
   }
 
-  /**
-   * Buscar empresas por NIT o razón social
-   */
-  async search(query: string): Promise<Empresa[]> {
-    const { data } = await api.get<ListEmpresasResponse>(this.baseUrl, {
-      params: { search: query, limit: 10 },
-    });
-    return data.items;
+  async create(payload: EmpresaCreatePayload): Promise<EmpresaCreateResponse> {
+    const { data } = await api.post<EmpresaCreateResponse>(this.baseUrl, payload);
+    return data;
+  }
+
+  async update(id: string, payload: EmpresaUpdatePayload): Promise<Empresa> {
+    const { data } = await api.put<Empresa>(`${this.baseUrl}${id}`, payload);
+    return data;
+  }
+
+  async regenerarPassword(id: string): Promise<RegenerarPasswordResponse> {
+    const { data } = await api.post<RegenerarPasswordResponse>(`${this.baseUrl}${id}/regenerar-password`);
+    return data;
+  }
+
+  async getAnalitica(): Promise<AnaliticaEmpresasResponse> {
+    const { data } = await api.get<AnaliticaEmpresasResponse>(`${this.baseUrl}analitica`);
+    return data;
   }
 }
 
