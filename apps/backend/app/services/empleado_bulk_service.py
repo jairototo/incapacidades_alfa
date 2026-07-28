@@ -109,6 +109,15 @@ async def parsear_y_validar_empleados(
     if ws is None:
         raise BadRequestException("El archivo Excel no contiene hojas activas.")
 
+    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+    headers_found = [_text(h) or "" for h in header_row]
+    if headers_found != TEMPLATE_HEADERS:
+        raise BadRequestException(
+            "El encabezado del archivo no coincide con la plantilla esperada. "
+            f"Esperado: {TEMPLATE_HEADERS}. Encontrado: {headers_found}. "
+            "Descargue la plantilla vigente y no reordene ni renombre las columnas."
+        )
+
     empresas_by_nit = {
         e.nit: e for e in (await db.execute(select(Empresa))).scalars().all()
     }

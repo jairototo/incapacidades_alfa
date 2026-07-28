@@ -164,3 +164,35 @@ async def test_bulk_upload_rejects_underage_at_hire(
     assert body["con_error"] == 1
     mensajes = [e["mensaje"] for e in body["errores"]]
     assert any("14 años" in m for m in mensajes)
+
+
+@pytest.mark.asyncio
+async def test_bulk_upload_rejects_scrambled_header_row(
+    client: AsyncClient, admin_token_headers, test_empresa
+):
+    """Column order is currently mapped positionally (dict(zip(TEMPLATE_HEADERS,
+    cells))), so a reordered/wrong header row must be rejected up front instead
+    of silently landing data in the wrong field (e.g. telefono into email).
+    """
+    wb = Workbook()
+    ws = wb.active
+    # Header row: 'telefono' and 'email' swapped relative to TEMPLATE_HEADERS.
+    ws.append([
+        "numero_documento", "tipo_documento", "nombres", "apellidos", "telefono",
+        "email", "fecha_nacimiento", "genero", "cargo", "area",
+        "fecha_ingreso", "salario_base", "nit_empresa",
+    ])
+    ws.append([
+        "6000000001", "CC", "Sara", "Lopez", "sara@correo.com", "3001234567",
+        "1990-01-01", "F", "Analista", "RRHH", "2023-01-01", "3000000", test_empresa.nit,
+    ])
+    buf = io.BytesIO()
+    wb.save(buf)
+
+    resp = await client.post(
+        "/api/v1/empleados/carga-masiva/validar",
+        headers=admin_token_headers,
+        files={"file": ("empleados.xlsx", buf.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert resp.status_code == 400
+    assert "encabezado" in resp.json()["detail"].lower()
