@@ -62,7 +62,7 @@ describe('EmpresasPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
 
-    fireEvent.change(screen.getByLabelText(/nit o razón social/i), { target: { value: '900123456' } });
+    fireEvent.change(screen.getByLabelText(/buscar por nit/i), { target: { value: '900123456' } });
     fireEvent.click(screen.getByRole('button', { name: /buscar/i }));
 
     await waitFor(() =>
@@ -70,5 +70,24 @@ describe('EmpresasPage', () => {
         expect.objectContaining({ nit: '900123456' })
       )
     );
+  });
+
+  it('creating an empresa shows the password reveal dialog with the generated credentials', async () => {
+    setUser(RolUsuario.ADMIN);
+    vi.mocked(empresaService.create).mockResolvedValue({
+      id: '2', nit: '900555555', razon_social: 'Nueva SAS', estado: 'ACTIVA',
+      email_contacto: 'nueva@empresa.com', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+      usuario_generado: { username: '900555555', password: 'GenPass123x' },
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /^crear empresa$/i }));
+    fireEvent.change(screen.getByLabelText(/^nit$/i), { target: { value: '900555555' } });
+    fireEvent.change(screen.getByLabelText(/razón social/i), { target: { value: 'Nueva SAS' } });
+    fireEvent.change(screen.getByLabelText(/correo/i), { target: { value: 'nueva@empresa.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /^guardar$/i }));
+
+    await waitFor(() => expect(screen.getByText('GenPass123x')).toBeInTheDocument());
   });
 });
