@@ -4,7 +4,7 @@ Modelo SQLAlchemy para Usuario.
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
-from sqlalchemy import String, Integer, Boolean, ForeignKey
+from sqlalchemy import String, Integer, Boolean, ForeignKey, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, TIMESTAMP
 
@@ -16,7 +16,14 @@ class Usuario(BaseModel):
     """Modelo de Usuario del sistema."""
     
     __tablename__ = "usuario"
-    
+
+    __table_args__ = (
+        CheckConstraint(
+            "rol IN ('ADMIN', 'AUDITOR', 'APROBADOR', 'EMPRESA', 'EMPLEADO', 'READONLY', 'LIQUIDADOR')",
+            name="chk_usuario_rol",
+        ),
+    )
+
     # Credenciales
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
