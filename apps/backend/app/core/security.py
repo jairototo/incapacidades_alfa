@@ -249,6 +249,7 @@ class PermissionChecker:
         ],
         "AUDITOR": [
             "ver_empresa", "ver_empleado",
+            "crear_empleado", "editar_empleado", "eliminar_empleado",
             "ver_incapacidad", "auditar_incapacidad",
             "aprobar_incapacidad", "rechazar_incapacidad",
             "generar_orden_pago", "ver_orden_pago",

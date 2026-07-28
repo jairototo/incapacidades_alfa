@@ -7,7 +7,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import get_current_user, PermissionChecker, Permissions
 from app.db.session import get_db
+from app.models.usuario import Usuario
 from app.schemas.empleado import (
     EmpleadoCreate,
     EmpleadoUpdate,
@@ -25,7 +27,8 @@ router = APIRouter()
     response_model=EmpleadoResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear empleado",
-    description="Crea un nuevo empleado con validaciones de negocio"
+    description="Crea un nuevo empleado con validaciones de negocio",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_CREATE]))],
 )
 async def create_empleado(
     empleado_data: EmpleadoCreate,
@@ -48,7 +51,8 @@ async def create_empleado(
     "/",
     response_model=List[EmpleadoListItem],
     summary="Listar empleados",
-    description="Lista empleados con filtros opcionales"
+    description="Lista empleados con filtros opcionales",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_READ]))],
 )
 async def list_empleados(
     empresa_id: Optional[UUID] = Query(None, description="Filtrar por empresa"),
@@ -86,7 +90,8 @@ async def list_empleados(
     "/{empleado_id}",
     response_model=EmpleadoResponse,
     summary="Obtener empleado",
-    description="Obtiene un empleado por su ID"
+    description="Obtiene un empleado por su ID",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_READ]))],
 )
 async def get_empleado(
     empleado_id: UUID,
@@ -108,7 +113,8 @@ async def get_empleado(
     "/{empleado_id}",
     response_model=EmpleadoResponse,
     summary="Actualizar empleado",
-    description="Actualiza los datos de un empleado"
+    description="Actualiza los datos de un empleado",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_UPDATE]))],
 )
 async def update_empleado(
     empleado_id: UUID,
@@ -132,7 +138,8 @@ async def update_empleado(
     "/{empleado_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar empleado",
-    description="Elimina un empleado (soft delete)"
+    description="Elimina un empleado (soft delete)",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_DELETE]))],
 )
 async def delete_empleado(
     empleado_id: UUID,
@@ -156,7 +163,8 @@ async def delete_empleado(
     "/{empleado_id}/activate",
     response_model=EmpleadoResponse,
     summary="Activar empleado",
-    description="Cambia el estado del empleado a ACTIVO"
+    description="Cambia el estado del empleado a ACTIVO",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_UPDATE]))],
 )
 async def activate_empleado(
     empleado_id: UUID,
@@ -176,7 +184,8 @@ async def activate_empleado(
     "/{empleado_id}/deactivate",
     response_model=EmpleadoResponse,
     summary="Desactivar empleado",
-    description="Cambia el estado del empleado a INACTIVO"
+    description="Cambia el estado del empleado a INACTIVO",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_UPDATE]))],
 )
 async def deactivate_empleado(
     empleado_id: UUID,
@@ -200,7 +209,8 @@ async def deactivate_empleado(
     "/{empleado_id}/incapacidades",
     response_model=List[dict],
     summary="Obtener incapacidades del empleado",
-    description="Lista todas las incapacidades asociadas al empleado"
+    description="Lista todas las incapacidades asociadas al empleado",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_READ]))],
 )
 async def get_incapacidades_empleado(
     empleado_id: UUID,
