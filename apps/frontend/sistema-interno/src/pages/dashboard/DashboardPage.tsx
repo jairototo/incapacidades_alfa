@@ -171,7 +171,15 @@ export function DashboardPage() {
           setFilters(newFilters);
           setPagination({ ...pagination, pageIndex: 0 }); // Reset a primera página
         }}
-        empresas={empresasData?.items || []}
+        empresas={(empresasData || []).map((e) => ({
+          id: e.id,
+          nit: e.nit,
+          razon_social: e.razon_social,
+          email_contacto: e.email_contacto ?? '',
+          telefono: e.telefono,
+          direccion: e.direccion,
+          ciudad: e.ciudad,
+        }))}
       />
 
       {/* Tabla */}
