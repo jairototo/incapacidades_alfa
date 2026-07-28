@@ -296,8 +296,44 @@ async def deactivate_empresa(
     logger.info(f"Desactivación de empresa: {empresa_id}")
     
     empresa = await empresa_service.deactivate_empresa(db, empresa_id)
-    
+
     return empresa
+
+
+@router.post(
+    "/{empresa_id}/regenerar-password",
+    summary="Regenerar contraseña del usuario-empresa",
+    description="Genera una nueva contraseña temporal para el usuario vinculado a la empresa e invalida sus sesiones activas",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_UPDATE]))],
+)
+async def regenerar_password_empresa(
+    empresa_id: UUID,
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Regenerar la contraseña del usuario vinculado a una empresa.
+
+    Genera una nueva contraseña temporal e invalida las sesiones activas
+    del usuario (incrementando su token_version).
+
+    Args:
+        empresa_id: UUID de la empresa
+        db: Sesión de base de datos
+
+    Returns:
+        Mensaje de confirmación junto con el username y la nueva contraseña generada
+
+    Raises:
+        404: Si la empresa no existe o no tiene usuario vinculado
+    """
+    logger.info(f"Regeneración de password solicitada para empresa: {empresa_id}")
+
+    resultado = await empresa_service.regenerar_password(db, empresa_id)
+
+    return {
+        "message": "Contraseña regenerada exitosamente",
+        **resultado,
+    }
 
 
 @router.get(

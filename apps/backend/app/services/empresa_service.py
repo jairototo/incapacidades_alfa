@@ -337,9 +337,39 @@ class EmpresaService:
         
         # Obtener la empresa actualizada
         empresa = await self.get_empresa(db, empresa_id)
-        
+
         return empresa
-    
+
+    async def regenerar_password(self, db: AsyncSession, empresa_id: UUID) -> dict:
+        """
+        Regenera la contraseña del usuario vinculado a una empresa e invalida sus sesiones.
+
+        Args:
+            db: Sesión de base de datos
+            empresa_id: UUID de la empresa
+
+        Returns:
+            {"username": str, "password": str}
+
+        Raises:
+            NotFoundException: Si la empresa no existe o no tiene usuario vinculado
+        """
+        await self.get_empresa(db, empresa_id)  # valida existencia de la empresa
+
+        linked_user = await usuario_repository.get_by_empresa_id(db, empresa_id)
+        if not linked_user:
+            raise NotFoundException(f"La empresa {empresa_id} no tiene un usuario asociado")
+
+        temp_password = usuario_service._generate_temp_password()
+        await usuario_repository.update(
+            db, id=linked_user.id, obj_in={'password_hash': get_password_hash(temp_password)}
+        )
+        await usuario_repository.increment_token_version(db, linked_user.id)
+
+        logger.info(f"Password regenerada para usuario de empresa: {empresa_id}")
+
+        return {"username": linked_user.username, "password": temp_password}
+
     # Métodos de validación privados
     
     def _validate_nit_format(self, nit: str) -> None:
