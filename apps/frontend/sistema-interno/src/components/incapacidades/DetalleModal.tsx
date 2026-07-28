@@ -406,7 +406,12 @@ export function DetalleModal({ open, onClose, incapacidadId }: DetalleModalProps
                           </div>
 
                           <div>
-                            <p className="text-sm font-medium">{item.cambiado_por_nombre}</p>
+                            {item.cambiado_por_nombre && (
+                              <div className="flex items-center gap-1.5 text-sm">
+                                <span className="text-muted-foreground">Responsable:</span>
+                                <span className="font-medium">{item.cambiado_por_nombre}</span>
+                              </div>
+                            )}
                             {item.observacion && (
                               <p className="text-sm text-muted-foreground mt-1">
                                 {item.observacion}
