@@ -17,7 +17,7 @@ from app.schemas.empresa import (
 from app.services.empresa_service import empresa_service
 from app.services.empleado_service import empleado_service
 from app.schemas.empleado import EmpleadoListItem
-from app.core.security import get_current_user
+from app.core.security import get_current_user, PermissionChecker, Permissions
 from app.core.exceptions import ForbiddenException
 from app.models.usuario import Usuario
 from app.utils.enums import RolUsuario, EstadoEmpleado
@@ -31,7 +31,8 @@ router = APIRouter()
     response_model=EmpresaResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear empresa",
-    description="Crear una nueva empresa con validación de NIT y razón social únicos"
+    description="Crear una nueva empresa con validación de NIT y razón social únicos",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_CREATE]))],
 )
 async def create_empresa(
     empresa_in: EmpresaCreate,
@@ -68,7 +69,8 @@ async def create_empresa(
     "/",
     response_model=List[EmpresaListItem],
     summary="Listar empresas",
-    description="Obtener listado de empresas con filtros opcionales y paginación"
+    description="Obtener listado de empresas con filtros opcionales y paginación",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_READ]))],
 )
 async def list_empresas(
     skip: int = Query(0, ge=0, description="Registros a saltar"),
@@ -126,7 +128,8 @@ async def list_empresas(
     "/{empresa_id}",
     response_model=EmpresaResponse,
     summary="Obtener empresa",
-    description="Obtener una empresa por su ID"
+    description="Obtener una empresa por su ID",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_READ]))],
 )
 async def get_empresa(
     empresa_id: UUID,
@@ -156,7 +159,8 @@ async def get_empresa(
     "/{empresa_id}",
     response_model=EmpresaResponse,
     summary="Actualizar empresa",
-    description="Actualizar datos de una empresa existente"
+    description="Actualizar datos de una empresa existente",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_UPDATE]))],
 )
 async def update_empresa(
     empresa_id: UUID,
@@ -195,7 +199,8 @@ async def update_empresa(
     "/{empresa_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar empresa",
-    description="Eliminar (desactivar) una empresa"
+    description="Eliminar (desactivar) una empresa",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_DELETE]))],
 )
 async def delete_empresa(
     empresa_id: UUID,
@@ -226,7 +231,8 @@ async def delete_empresa(
     "/{empresa_id}/activate",
     response_model=EmpresaResponse,
     summary="Activar empresa",
-    description="Activar una empresa inactiva"
+    description="Activar una empresa inactiva",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_UPDATE]))],
 )
 async def activate_empresa(
     empresa_id: UUID,
@@ -256,7 +262,8 @@ async def activate_empresa(
     "/{empresa_id}/deactivate",
     response_model=EmpresaResponse,
     summary="Desactivar empresa",
-    description="Desactivar una empresa activa"
+    description="Desactivar una empresa activa",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_UPDATE]))],
 )
 async def deactivate_empresa(
     empresa_id: UUID,
@@ -290,7 +297,8 @@ async def deactivate_empresa(
     response_model=List[EmpleadoListItem],
     summary="Obtener empleados de la empresa",
     description="Listar empleados de una empresa con búsqueda y filtros. "
-                "Los usuarios EMPRESA solo pueden consultar su propia empresa."
+                "Los usuarios EMPRESA solo pueden consultar su propia empresa.",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_READ]))],
 )
 async def get_empresa_empleados(
     empresa_id: UUID,
@@ -327,7 +335,8 @@ async def get_empresa_empleados(
     "/{empresa_id}/incapacidades",
     response_model=List[dict],  # TODO: Usar schema de Incapacidad cuando esté disponible
     summary="Obtener incapacidades de la empresa",
-    description="Listar todas las incapacidades ARL de una empresa"
+    description="Listar todas las incapacidades ARL de una empresa",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_READ]))],
 )
 async def get_empresa_incapacidades(
     empresa_id: UUID,
