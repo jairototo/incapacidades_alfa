@@ -39,6 +39,17 @@ async def test_read_empresas_forbidden_unauthenticated(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_read_empresas_forbidden_for_readonly(client: AsyncClient, db_session):
+    """Per explicit project-owner decision, READONLY no longer has ver_empresa --
+    it must get a consistent 403 across every Empresas endpoint, matching the
+    manual role check already in place on GET /empresas/{id}/empleados.
+    """
+    headers = await _headers_for(db_session, RolUsuario.READONLY, "readonly_empresas")
+    resp = await client.get("/api/v1/empresas/", headers=headers)
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("rol", [RolUsuario.AUDITOR, RolUsuario.LIQUIDADOR])
 async def test_create_empresa_forbidden_for_non_admin(client: AsyncClient, db_session, rol):
     headers = await _headers_for(db_session, rol, f"writer_{rol.value.lower()}")

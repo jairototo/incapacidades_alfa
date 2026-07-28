@@ -278,7 +278,7 @@ class PermissionChecker:
             "adjuntar_documentos_propio"
         ],
         "READONLY": [
-            "ver_empresa", "ver_empleado", "ver_incapacidad",
+            "ver_incapacidad",
             "ver_orden_pago", "documento_read",
             "ver_reportes"
         ]
