@@ -1,10 +1,12 @@
 """
 API endpoints para gestión de Empleados.
 """
+import io
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user, PermissionChecker, Permissions
@@ -17,6 +19,7 @@ from app.schemas.empleado import (
     EmpleadoListItem
 )
 from app.services.empleado_service import empleado_service
+from app.services.empleado_bulk_service import generar_plantilla_empleados
 from app.utils.enums import EstadoEmpleado
 
 router = APIRouter()
@@ -83,6 +86,21 @@ async def list_empleados(
         search=search,
         skip=skip,
         limit=limit
+    )
+
+
+@router.get(
+    "/plantilla",
+    summary="Descargar plantilla de carga masiva",
+    description="Genera un archivo Excel con los encabezados esperados para la carga masiva de empleados",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_CREATE]))],
+)
+async def descargar_plantilla_empleados():
+    content = generar_plantilla_empleados()
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=plantilla_empleados.xlsx"},
     )
 
 
