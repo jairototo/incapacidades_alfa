@@ -12,6 +12,7 @@ from app.schemas.empresa import (
     EmpresaCreate,
     EmpresaUpdate,
     EmpresaResponse,
+    EmpresaCreateResponse,
     EmpresaListItem
 )
 from app.services.empresa_service import empresa_service
@@ -28,41 +29,48 @@ router = APIRouter()
 
 @router.post(
     "/",
-    response_model=EmpresaResponse,
+    response_model=EmpresaCreateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear empresa",
-    description="Crear una nueva empresa con validación de NIT y razón social únicos",
+    description="Crear una nueva empresa con validación de NIT y razón social únicos; genera un usuario de login para la empresa",
     dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_CREATE]))],
 )
 async def create_empresa(
     empresa_in: EmpresaCreate,
     db: AsyncSession = Depends(get_db)
-) -> EmpresaResponse:
+) -> EmpresaCreateResponse:
     """
     Crear una nueva empresa.
-    
+
     Validaciones:
     - NIT único
     - Razón social única
     - Formato de NIT válido
     - Tipo de empresa válido
-    
+    - email_contacto no está en uso por otro usuario
+
+    También provisiona atómicamente un Usuario de login (rol EMPRESA) vinculado
+    a la empresa creada, y devuelve las credenciales generadas una única vez.
+
     Args:
         empresa_in: Datos de la empresa a crear
         db: Sesión de base de datos
-        
+
     Returns:
-        Empresa creada con todos sus datos
-        
+        Empresa creada con todos sus datos y las credenciales generadas
+
     Raises:
-        409: Si el NIT o razón social ya existe
+        409: Si el NIT, razón social o email ya existe
         422: Si las validaciones de negocio fallan
     """
     logger.info(f"Solicitud de creación de empresa: NIT {empresa_in.nit}")
-    
-    empresa = await empresa_service.create_empresa(db, empresa_in)
-    
-    return empresa
+
+    empresa, usuario_generado = await empresa_service.create_empresa(db, empresa_in)
+
+    return EmpresaCreateResponse(
+        **EmpresaResponse.model_validate(empresa).model_dump(),
+        usuario_generado=usuario_generado,
+    )
 
 
 @router.get(

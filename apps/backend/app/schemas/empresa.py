@@ -24,6 +24,7 @@ class EmpresaBase(BaseModel):
 
 class EmpresaCreate(EmpresaBase):
     """Schema para crear una empresa."""
+    email_contacto: EmailStr = Field(..., description="Email de contacto de la empresa; también será el login del usuario-empresa generado")
     sync_source: Optional[str] = Field(None, description="Fuente de sincronización")
     external_id: Optional[str] = Field(None, max_length=100, description="ID externo")
 
@@ -60,5 +61,16 @@ class EmpresaListItem(BaseModel):
     estado: str
     ciudad: Optional[str] = None
     created_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class UsuarioGenerado(BaseModel):
+    """Credenciales generadas al crear/regenerar el usuario-empresa. Se devuelven una sola vez."""
+    username: str
+    password: str
+
+
+class EmpresaCreateResponse(EmpresaResponse):
+    """Respuesta de creación de empresa, incluye las credenciales generadas una única vez."""
+    usuario_generado: UsuarioGenerado

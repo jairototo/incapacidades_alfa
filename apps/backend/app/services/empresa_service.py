@@ -13,9 +13,13 @@ from app.core.exceptions import (
     DuplicateException
 )
 from app.core.logging import logger
+from app.core.security import get_password_hash
 from app.db.repositories.empresa_repository import empresa_repository
+from app.db.repositories.usuario_repository import usuario_repository
 from app.models.empresa import Empresa
 from app.schemas.empresa import EmpresaCreate, EmpresaUpdate
+from app.services.usuario_service import usuario_service
+from app.utils.enums import RolUsuario, EstadoUsuario
 
 
 class EmpresaService:
@@ -34,25 +38,21 @@ class EmpresaService:
         self,
         db: AsyncSession,
         empresa_in: EmpresaCreate
-    ) -> Empresa:
+    ) -> tuple[Empresa, dict]:
         """
-        Crear una nueva empresa.
-        
+        Crear una nueva empresa junto con su usuario de login (transacción única).
+
         Valida:
         - NIT único
         - Razón social única
         - Tipo de empresa válido
-        - Estado válido
-        
-        Args:
-            db: Sesión de base de datos
-            empresa_in: Datos de la empresa a crear
-            
+        - email_contacto no está en uso por otro Usuario
+
         Returns:
-            Empresa creada
-            
+            Tupla (Empresa creada, {"username": ..., "password": ...})
+
         Raises:
-            DuplicateException: Si NIT o razón social ya existe
+            DuplicateException: Si NIT, razón social o email ya existen
             ValidationException: Si los datos son inválidos
         """
         # Validar NIT único
@@ -62,7 +62,7 @@ class EmpresaService:
             raise DuplicateException(
                 f"Ya existe una empresa con NIT {empresa_in.nit}"
             )
-        
+
         # Validar razón social única
         existing_razon = await self.repository.get_by_razon_social(
             db, empresa_in.razon_social
@@ -74,24 +74,48 @@ class EmpresaService:
             raise DuplicateException(
                 f"Ya existe una empresa con razón social '{empresa_in.razon_social}'"
             )
-        
+
+        # Validar que el email de contacto no esté en uso por otro usuario
+        existing_user = await usuario_repository.get_by_email(db, empresa_in.email_contacto)
+        if existing_user:
+            raise DuplicateException(
+                f"El correo '{empresa_in.email_contacto}' ya está en uso por otro usuario"
+            )
+
         # Validar formato de NIT (debe ser numérico con dígito de verificación)
         self._validate_nit_format(empresa_in.nit)
-        
+
         # Validar tipo de empresa si se proporciona
         if empresa_in.tipo_empresa:
             self._validate_tipo_empresa(empresa_in.tipo_empresa)
-        
-        # Crear empresa
+
+        # Crear empresa (flush, no commit todavía: transacción única con el Usuario)
         empresa_data = empresa_in.model_dump()
-        empresa = await self.repository.create(db, empresa_data)
-        
+        empresa = await self.repository.create_flushed(db, empresa_data)
+
+        # Crear el usuario de login vinculado a la empresa
+        temp_password = usuario_service._generate_temp_password()
+        usuario_dict = {
+            "username": empresa.nit,
+            "email": empresa.email_contacto,
+            "password_hash": get_password_hash(temp_password),
+            "nombre_completo": empresa.razon_social,
+            "rol": RolUsuario.EMPRESA,
+            "estado": EstadoUsuario.ACTIVO,
+            "empresa_id": empresa.id,
+            "must_change_password": False,
+        }
+        await usuario_repository.create_flushed(db, usuario_dict)
+
+        await db.commit()
+        await db.refresh(empresa)
+
         logger.info(
             f"Empresa creada exitosamente: {empresa.id} - "
             f"NIT: {empresa.nit}, Razón Social: {empresa.razon_social}"
         )
-        
-        return empresa
+
+        return empresa, {"username": empresa.nit, "password": temp_password}
     
     async def get_empresa(self, db: AsyncSession, empresa_id: UUID) -> Empresa:
         """
