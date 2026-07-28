@@ -298,7 +298,6 @@ async def deactivate_empresa(
     summary="Obtener empleados de la empresa",
     description="Listar empleados de una empresa con búsqueda y filtros. "
                 "Los usuarios EMPRESA solo pueden consultar su propia empresa.",
-    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_READ]))],
 )
 async def get_empresa_empleados(
     empresa_id: UUID,
@@ -315,11 +314,14 @@ async def get_empresa_empleados(
     Lista los empleados de una empresa con búsqueda + filtros + paginación.
 
     Scoping: un usuario con rol EMPRESA solo puede consultar los empleados de su
-    propia empresa (403 en caso contrario). Roles internos (ADMIN/AUDITOR/...) pueden
-    consultar cualquier empresa.
+    propia empresa (403 en caso contrario). Roles internos ADMIN/AUDITOR/LIQUIDADOR
+    pueden consultar cualquier empresa. Cualquier otro rol es rechazado.
     """
-    if current_user.rol == RolUsuario.EMPRESA and current_user.empresa_id != empresa_id:
-        raise ForbiddenException("No puede consultar empleados de otra empresa")
+    if current_user.rol == RolUsuario.EMPRESA:
+        if current_user.empresa_id != empresa_id:
+            raise ForbiddenException("No puede consultar empleados de otra empresa")
+    elif current_user.rol not in (RolUsuario.ADMIN, RolUsuario.AUDITOR, RolUsuario.LIQUIDADOR):
+        raise ForbiddenException("No tiene permisos para consultar empleados")
 
     return await empleado_service.list_empleados(
         db,
