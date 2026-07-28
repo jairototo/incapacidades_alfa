@@ -122,10 +122,11 @@ async def validar_carga_masiva_empleados(
 ) -> ValidacionMasivaResponse:
     content = await file.read()
     filas_validas, errores = await parsear_y_validar_empleados(db, content)
+    filas_con_error = {e.fila for e in errores}
     return ValidacionMasivaResponse(
-        total_filas=len(filas_validas) + len(errores),
+        total_filas=len(filas_validas) + len(filas_con_error),
         validas=len(filas_validas),
-        con_error=len(errores),
+        con_error=len(filas_con_error),
         errores=errores,
     )
 

@@ -122,3 +122,30 @@ async def test_confirmar_carga_masiva_insert_failure_does_not_cascade(
         select(Empleado).where(Empleado.numero_documento == "3000000003")
     )
     assert result.scalar_one_or_none() is not None
+
+
+@pytest.mark.asyncio
+async def test_confirmar_con_error_counts_rows_not_errors(
+    client: AsyncClient, admin_token_headers, test_empresa
+):
+    """Same row-vs-error-count regression as the /validar endpoint, but for
+    /confirmar's own total_filas/con_error computation.
+    """
+    content = _build_xlsx([
+        ["4000000001", "CC", "Carlos", "Ruiz", "", "", "", "", "", "", "2023-01-01", "", test_empresa.nit],
+        # Row failing 3 independent checks at once.
+        ["", "", "", "Sin Datos", "", "", "", "", "", "", "2023-01-01", "", test_empresa.nit],
+    ])
+
+    resp = await client.post(
+        "/api/v1/empleados/carga-masiva/confirmar",
+        headers=admin_token_headers,
+        files={"file": ("empleados.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["insertadas"] == 1
+    assert body["con_error"] == 1
+    assert body["total_filas"] == 2
+    assert len(body["errores"]) == 3

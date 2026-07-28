@@ -229,7 +229,7 @@ async def parsear_y_validar_empleados(
 async def confirmar_carga_empleados(db: AsyncSession, file_bytes: bytes) -> ConfirmacionMasivaResponse:
     """Re-valida el archivo desde cero e inserta únicamente las filas válidas (inserción parcial)."""
     filas_validas, errores = await parsear_y_validar_empleados(db, file_bytes)
-    total_filas = len(filas_validas) + len(errores)
+    total_filas = len(filas_validas) + len({e.fila for e in errores})
 
     insertadas = 0
     for fila_excel, data in filas_validas:
@@ -246,6 +246,6 @@ async def confirmar_carga_empleados(db: AsyncSession, file_bytes: bytes) -> Conf
     return ConfirmacionMasivaResponse(
         total_filas=total_filas,
         insertadas=insertadas,
-        con_error=len(errores),
+        con_error=len({e.fila for e in errores}),
         errores=errores,
     )

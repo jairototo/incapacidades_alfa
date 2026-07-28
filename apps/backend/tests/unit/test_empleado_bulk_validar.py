@@ -62,3 +62,37 @@ async def test_validar_carga_masiva_detects_errors_and_writes_nothing(
         select(Empleado).where(Empleado.numero_documento == "1000000001")
     )
     assert result.scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_con_error_and_total_filas_count_rows_not_errors(
+    client: AsyncClient, admin_token_headers, test_empresa
+):
+    """A single row that fails multiple checks must count as ONE row, not one
+    per validation error. Regression for con_error/total_filas being computed
+    as len(errores) (error count) instead of the distinct number of failing
+    rows -- a 2-row file where row 2 fails 3 checks used to report
+    total_filas=4 (more rows than the file actually has).
+    """
+    content = _build_xlsx([
+        # Valid row
+        ["1000000010", "CC", "Ana", "Gómez", "ana@correo.com", "3001111111",
+         "1992-04-10", "F", "Analista", "RRHH", "2023-01-01", "3500000", test_empresa.nit],
+        # Row failing 3 independent checks at once: missing numero_documento,
+        # missing tipo_documento, missing nombres.
+        ["", "", "", "Ramírez", "", "", "", "", "", "", "2023-01-01", "", test_empresa.nit],
+    ])
+
+    resp = await client.post(
+        "/api/v1/empleados/carga-masiva/validar",
+        headers=admin_token_headers,
+        files={"file": ("empleados.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["validas"] == 1
+    assert body["con_error"] == 1
+    assert body["total_filas"] == 2
+    # But no error granularity is lost -- all 3 individual errors are still reported.
+    assert len(body["errores"]) == 3
