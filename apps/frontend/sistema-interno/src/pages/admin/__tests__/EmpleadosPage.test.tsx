@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EmpleadosPage } from '../EmpleadosPage';
@@ -71,5 +71,26 @@ describe('EmpleadosPage', () => {
     await waitFor(() => expect(screen.getByText('Ana')).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: /crear empleado/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /cargar masivo/i })).not.toBeInTheDocument();
+  });
+
+  it('creates an employee via the modal form', async () => {
+    setUser(RolUsuario.ADMIN);
+    vi.mocked(empleadoService.create).mockResolvedValue({
+      id: '2', empresa_id: 'e1', numero_documento: '999', tipo_documento: 'CC',
+      nombres: 'Luis', apellidos: 'Ramírez', fecha_ingreso: '2024-01-01', estado: 'ACTIVO', created_at: '2026-01-01T00:00:00Z',
+    });
+    renderPage('/empleados?empresa_id=e1');
+    await waitFor(() => expect(screen.getByText('Ana')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /^crear empleado$/i }));
+    fireEvent.change(screen.getByLabelText(/número de documento/i), { target: { value: '999' } });
+    fireEvent.change(screen.getByLabelText(/^nombres$/i), { target: { value: 'Luis' } });
+    fireEvent.change(screen.getByLabelText(/^apellidos$/i), { target: { value: 'Ramírez' } });
+    fireEvent.change(screen.getByLabelText(/fecha de ingreso/i), { target: { value: '2024-01-01' } });
+    fireEvent.click(screen.getByRole('button', { name: /^guardar$/i }));
+
+    await waitFor(() => expect(empleadoService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ numero_documento: '999', nombres: 'Luis', apellidos: 'Ramírez', empresa_id: 'e1' })
+    ));
   });
 });
