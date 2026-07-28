@@ -229,6 +229,7 @@ async def parsear_y_validar_empleados(
 async def confirmar_carga_empleados(db: AsyncSession, file_bytes: bytes) -> ConfirmacionMasivaResponse:
     """Re-valida el archivo desde cero e inserta únicamente las filas válidas (inserción parcial)."""
     filas_validas, errores = await parsear_y_validar_empleados(db, file_bytes)
+    total_filas = len(filas_validas) + len(errores)
 
     insertadas = 0
     for fila_excel, data in filas_validas:
@@ -236,13 +237,14 @@ async def confirmar_carga_empleados(db: AsyncSession, file_bytes: bytes) -> Conf
             await empleado_repository.create(db, data)
             insertadas += 1
         except Exception as e:
+            await db.rollback()
             errores.append(FilaError(
                 fila=fila_excel,
                 mensaje=f"Error al insertar documento {data['numero_documento']}: {e}",
             ))
 
     return ConfirmacionMasivaResponse(
-        total_filas=len(filas_validas) + len(errores),
+        total_filas=total_filas,
         insertadas=insertadas,
         con_error=len(errores),
         errores=errores,
