@@ -92,6 +92,7 @@ class RolUsuario(str, Enum):
     EMPRESA = "EMPRESA"
     EMPLEADO = "EMPLEADO"
     READONLY = "READONLY"
+    LIQUIDADOR = "LIQUIDADOR"
 
 
 class EstadoUsuario(str, Enum):

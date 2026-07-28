@@ -260,6 +260,10 @@ class PermissionChecker:
             "registrar_pago", "documento_read",
             "ver_reportes"
         ],
+        "LIQUIDADOR": [
+            "ver_empresa", "ver_empleado",
+            "ver_reportes"
+        ],
         "EMPRESA": [
             "ver_empleado_propio", "crear_empleado_propio",
             "editar_empleado_propio",
