@@ -17,6 +17,8 @@ import { CreacionSiniestroPage } from '@/pages/incapacidades/CreacionSiniestroPa
 import { BandejaSiniestroPage } from '@/pages/incapacidades/BandejaSiniestroPage';
 import { BandejaLiquidacionPage } from '@/pages/incapacidades/BandejaLiquidacionPage';
 import { AuditoresPage } from '@/pages/admin/AuditoresPage';
+import { EmpresasPage } from '@/pages/admin/EmpresasPage';
+import { EmpleadosPage } from '@/pages/admin/EmpleadosPage';
 
 /**
  * Configuración de rutas del sistema
@@ -125,18 +127,30 @@ export const router = createBrowserRouter([
             ],
           },
           
-          // Empresas - Solo ADMIN
+          // Empresas - ADMIN, AUDITOR, LIQUIDADOR (lectura); escritura gateada por botón
           {
             path: '/empresas',
-            element: <ProtectedRoute allowedRoles={[RolUsuario.ADMIN]} />,
+            element: <ProtectedRoute allowedRoles={[RolUsuario.ADMIN, RolUsuario.AUDITOR, RolUsuario.LIQUIDADOR]} />,
             children: [
               {
                 index: true,
-                element: <div className="p-6">Módulo Empresas (Placeholder)</div>,
+                element: <EmpresasPage />,
               },
             ],
           },
-          
+
+          // Empleados - ADMIN, AUDITOR, LIQUIDADOR (lectura); escritura gateada por botón
+          {
+            path: '/empleados',
+            element: <ProtectedRoute allowedRoles={[RolUsuario.ADMIN, RolUsuario.AUDITOR, RolUsuario.LIQUIDADOR]} />,
+            children: [
+              {
+                index: true,
+                element: <EmpleadosPage />,
+              },
+            ],
+          },
+
           // Afiliados - Solo ADMIN
           {
             path: '/afiliados',

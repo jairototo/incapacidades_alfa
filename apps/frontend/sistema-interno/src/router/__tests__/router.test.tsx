@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { router } from '../index';
 import * as authStoreModule from '@/store/authStore';
@@ -34,6 +34,18 @@ const mockUserAuditor: Usuario = {
   nombres: 'Auditor',
   apellidos: 'Test',
   rol: RolUsuario.AUDITOR,
+  estado: EstadoUsuario.ACTIVO,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
+
+const mockUserLiquidador: Usuario = {
+  id: '423e4567-e89b-12d3-a456-426614174000',
+  username: 'liquidador',
+  email: 'liquidador@test.com',
+  nombres: 'Liquidador',
+  apellidos: 'Test',
+  rol: RolUsuario.LIQUIDADOR,
   estado: EstadoUsuario.ACTIVO,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -282,7 +294,7 @@ describe('Router - Integración', () => {
       render(<RouterProvider router={testRouter} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Módulo Empresas/i)).toBeInTheDocument();
+        expect(screen.getByText(/Cargando módulo de Empresas/i)).toBeInTheDocument();
       });
     });
 
@@ -328,6 +340,64 @@ describe('Router - Integración', () => {
       await waitFor(() => {
         expect(screen.getByText(/Módulo Configuración/i)).toBeInTheDocument();
       });
+    });
+
+    it('renders EmpresasPage at /empresas for ADMIN, AUDITOR, and LIQUIDADOR', async () => {
+      const usuariosConAcceso = [mockUserAdmin, mockUserAuditor, mockUserLiquidador];
+
+      for (const user of usuariosConAcceso) {
+        vi.spyOn(authStoreModule, 'useAuthStore').mockReturnValue({
+          isAuthenticated: true,
+          user,
+          accessToken: 'token123',
+          refreshToken: 'refresh123',
+          login: vi.fn(),
+          logout: vi.fn(),
+          refreshAccessToken: vi.fn(),
+        });
+
+        const testRouter = createMemoryRouter(router.routes, {
+          initialEntries: ['/empresas'],
+        });
+
+        render(<RouterProvider router={testRouter} />);
+
+        await waitFor(() => {
+          expect(screen.getByText(/Cargando módulo de Empresas/i)).toBeInTheDocument();
+          expect(screen.queryByText(/Acceso Denegado/i)).not.toBeInTheDocument();
+        });
+
+        cleanup();
+      }
+    });
+
+    it('renders EmpleadosPage at /empleados for ADMIN, AUDITOR, and LIQUIDADOR', async () => {
+      const usuariosConAcceso = [mockUserAdmin, mockUserAuditor, mockUserLiquidador];
+
+      for (const user of usuariosConAcceso) {
+        vi.spyOn(authStoreModule, 'useAuthStore').mockReturnValue({
+          isAuthenticated: true,
+          user,
+          accessToken: 'token123',
+          refreshToken: 'refresh123',
+          login: vi.fn(),
+          logout: vi.fn(),
+          refreshAccessToken: vi.fn(),
+        });
+
+        const testRouter = createMemoryRouter(router.routes, {
+          initialEntries: ['/empleados'],
+        });
+
+        render(<RouterProvider router={testRouter} />);
+
+        await waitFor(() => {
+          expect(screen.getByText(/Cargando módulo de Empleados/i)).toBeInTheDocument();
+          expect(screen.queryByText(/Acceso Denegado/i)).not.toBeInTheDocument();
+        });
+
+        cleanup();
+      }
     });
   });
 });
