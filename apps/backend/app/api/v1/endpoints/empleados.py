@@ -18,9 +18,13 @@ from app.schemas.empleado import (
     EmpleadoResponse,
     EmpleadoListItem
 )
-from app.schemas.empleado_bulk import ValidacionMasivaResponse
+from app.schemas.empleado_bulk import ValidacionMasivaResponse, ConfirmacionMasivaResponse
 from app.services.empleado_service import empleado_service
-from app.services.empleado_bulk_service import generar_plantilla_empleados, parsear_y_validar_empleados
+from app.services.empleado_bulk_service import (
+    generar_plantilla_empleados,
+    parsear_y_validar_empleados,
+    confirmar_carga_empleados,
+)
 from app.utils.enums import EstadoEmpleado
 
 router = APIRouter()
@@ -124,6 +128,21 @@ async def validar_carga_masiva_empleados(
         con_error=len(errores),
         errores=errores,
     )
+
+
+@router.post(
+    "/carga-masiva/confirmar",
+    response_model=ConfirmacionMasivaResponse,
+    summary="Confirmar carga masiva de empleados",
+    description="Re-valida el archivo Excel e inserta únicamente las filas válidas",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_CREATE]))],
+)
+async def confirmar_carga_masiva_empleados(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+) -> ConfirmacionMasivaResponse:
+    content = await file.read()
+    return await confirmar_carga_empleados(db, content)
 
 
 @router.get(

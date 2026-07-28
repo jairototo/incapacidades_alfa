@@ -8,9 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestException
+from app.db.repositories.empleado_repository import empleado_repository
 from app.models.empleado import Empleado
 from app.models.empresa import Empresa
-from app.schemas.empleado_bulk import FilaError
+from app.schemas.empleado_bulk import ConfirmacionMasivaResponse, FilaError
 from app.utils.enums import EstadoEmpleado, Genero, TipoDocumento
 
 TEMPLATE_HEADERS = [
@@ -223,3 +224,26 @@ async def parsear_y_validar_empleados(
         }))
 
     return filas_validas, errores
+
+
+async def confirmar_carga_empleados(db: AsyncSession, file_bytes: bytes) -> ConfirmacionMasivaResponse:
+    """Re-valida el archivo desde cero e inserta únicamente las filas válidas (inserción parcial)."""
+    filas_validas, errores = await parsear_y_validar_empleados(db, file_bytes)
+
+    insertadas = 0
+    for fila_excel, data in filas_validas:
+        try:
+            await empleado_repository.create(db, data)
+            insertadas += 1
+        except Exception as e:
+            errores.append(FilaError(
+                fila=fila_excel,
+                mensaje=f"Error al insertar documento {data['numero_documento']}: {e}",
+            ))
+
+    return ConfirmacionMasivaResponse(
+        total_filas=len(filas_validas) + len(errores),
+        insertadas=insertadas,
+        con_error=len(errores),
+        errores=errores,
+    )
