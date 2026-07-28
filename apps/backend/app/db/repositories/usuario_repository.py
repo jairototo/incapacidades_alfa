@@ -58,6 +58,27 @@ class UsuarioRepository(BaseRepository[Usuario]):
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
+    async def get_by_empresa_id(
+        self,
+        db: AsyncSession,
+        empresa_id
+    ) -> Optional[Usuario]:
+        """
+        Obtiene el usuario de rol EMPRESA vinculado a una empresa.
+
+        Args:
+            db: Sesión de base de datos
+            empresa_id: UUID de la empresa
+
+        Returns:
+            Usuario si existe, None si no
+        """
+        query = select(Usuario).where(
+            and_(Usuario.empresa_id == empresa_id, Usuario.rol == RolUsuario.EMPRESA)
+        )
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
     async def list_by_rol(
         self,
         db: AsyncSession,

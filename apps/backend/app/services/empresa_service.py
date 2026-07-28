@@ -182,7 +182,15 @@ class EmpresaService:
                 raise DuplicateException(
                     f"Ya existe una empresa con razón social '{update_data['razon_social']}'"
                 )
-        
+
+        # Validar email único (contra Usuario.email) si se está actualizando
+        if 'email_contacto' in update_data and update_data['email_contacto'] != empresa.email_contacto:
+            existing_user = await usuario_repository.get_by_email(db, update_data['email_contacto'])
+            if existing_user and existing_user.empresa_id != empresa_id:
+                raise DuplicateException(
+                    f"El correo '{update_data['email_contacto']}' ya está en uso por otro usuario"
+                )
+
         # Validar tipo de empresa si se está actualizando
         if 'tipo_empresa' in update_data and update_data['tipo_empresa']:
             self._validate_tipo_empresa(update_data['tipo_empresa'])
@@ -195,7 +203,14 @@ class EmpresaService:
         updated_empresa = await self.repository.update(
             db, id=empresa_id, obj_in=update_data
         )
-        
+
+        if 'email_contacto' in update_data:
+            linked_user = await usuario_repository.get_by_empresa_id(db, empresa_id)
+            if linked_user:
+                await usuario_repository.update(
+                    db, id=linked_user.id, obj_in={'email': update_data['email_contacto']}
+                )
+
         logger.info(
             f"Empresa actualizada: {empresa_id} - "
             f"NIT: {updated_empresa.nit}"
