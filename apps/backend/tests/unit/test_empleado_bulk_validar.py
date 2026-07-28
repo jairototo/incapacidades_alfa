@@ -7,6 +7,8 @@ from openpyxl import Workbook
 from sqlalchemy import select
 
 from app.models.empleado import Empleado
+from app.models.empresa import Empresa
+from app.utils.enums import EstadoEmpresa
 
 
 def _build_xlsx(rows: list[list]) -> bytes:
@@ -96,3 +98,69 @@ async def test_con_error_and_total_filas_count_rows_not_errors(
     assert body["total_filas"] == 2
     # But no error granularity is lost -- all 3 individual errors are still reported.
     assert len(body["errores"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_bulk_upload_rejects_row_for_inactive_empresa(
+    client: AsyncClient, db_session, admin_token_headers
+):
+    """Bulk upload must enforce the same empresa-ACTIVA rule EmpleadoService.create_empleado
+    does for individual creation, per explicit project-owner decision -- the two
+    creation paths must not silently diverge.
+    """
+    empresa_inactiva = Empresa(
+        nit="900777777",
+        razon_social="Empresa Inactiva SAS",
+        direccion="Calle 1 #2-3",
+        ciudad="Bogotá",
+        telefono="3009998888",
+        email_contacto="inactiva@empresa.com",
+        estado=EstadoEmpresa.INACTIVA,
+    )
+    db_session.add(empresa_inactiva)
+    await db_session.commit()
+    await db_session.refresh(empresa_inactiva)
+
+    content = _build_xlsx([
+        ["5000000001", "CC", "Pedro", "Nel", "", "", "", "", "", "", "2023-01-01", "", empresa_inactiva.nit],
+    ])
+
+    resp = await client.post(
+        "/api/v1/empleados/carga-masiva/validar",
+        headers=admin_token_headers,
+        files={"file": ("empleados.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["validas"] == 0
+    assert body["con_error"] == 1
+    mensajes = [e["mensaje"] for e in body["errores"]]
+    assert any("no está activa" in m for m in mensajes)
+
+
+@pytest.mark.asyncio
+async def test_bulk_upload_rejects_underage_at_hire(
+    client: AsyncClient, admin_token_headers, test_empresa
+):
+    """Bulk upload must enforce the 14-year minimum-age-at-hire rule (Colombian
+    labor law) that EmpleadoService._validate_fechas already applies to individual
+    employee creation.
+    """
+    content = _build_xlsx([
+        # Born 2015-01-01, hired 2023-01-01 -> 8 years old at hire.
+        ["5000000002", "CC", "Nino", "Menor", "", "", "2015-01-01", "", "", "", "2023-01-01", "", test_empresa.nit],
+    ])
+
+    resp = await client.post(
+        "/api/v1/empleados/carga-masiva/validar",
+        headers=admin_token_headers,
+        files={"file": ("empleados.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["validas"] == 0
+    assert body["con_error"] == 1
+    mensajes = [e["mensaje"] for e in body["errores"]]
+    assert any("14 años" in m for m in mensajes)

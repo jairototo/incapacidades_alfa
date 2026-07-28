@@ -12,7 +12,8 @@ from app.db.repositories.empleado_repository import empleado_repository
 from app.models.empleado import Empleado
 from app.models.empresa import Empresa
 from app.schemas.empleado_bulk import ConfirmacionMasivaResponse, FilaError
-from app.utils.enums import EstadoEmpleado, Genero, TipoDocumento
+from app.services.empleado_service import empleado_service
+from app.utils.enums import EstadoEmpleado, EstadoEmpresa, Genero, TipoDocumento
 
 TEMPLATE_HEADERS = [
     "numero_documento", "tipo_documento", "nombres", "apellidos", "email",
@@ -156,24 +157,43 @@ async def parsear_y_validar_empleados(
             empresa = empresas_by_nit.get(nit_empresa)
             if empresa is None:
                 fila_errores.append(FilaError(fila=idx, columna="nit_empresa", mensaje=f"No existe una empresa con NIT {nit_empresa}"))
+            elif empresa.estado != EstadoEmpresa.ACTIVA:
+                fila_errores.append(FilaError(
+                    fila=idx, columna="nit_empresa",
+                    mensaje=f"La empresa {nit_empresa} no está activa (estado: {empresa.estado})",
+                ))
 
         fecha_ingreso_raw = data.get("fecha_ingreso")
         fecha_ingreso = None
+        fecha_ingreso_ok = False
         if fecha_ingreso_raw in (None, ""):
             fila_errores.append(FilaError(fila=idx, columna="fecha_ingreso", mensaje="Campo obligatorio"))
         else:
             try:
                 fecha_ingreso = _parse_date(fecha_ingreso_raw)
+                fecha_ingreso_ok = True
             except ValueError as e:
                 fila_errores.append(FilaError(fila=idx, columna="fecha_ingreso", mensaje=str(e)))
 
         fecha_nacimiento_raw = data.get("fecha_nacimiento")
         fecha_nacimiento = None
+        fecha_nacimiento_ok = True
         if fecha_nacimiento_raw not in (None, ""):
             try:
                 fecha_nacimiento = _parse_date(fecha_nacimiento_raw)
             except ValueError as e:
+                fecha_nacimiento_ok = False
                 fila_errores.append(FilaError(fila=idx, columna="fecha_nacimiento", mensaje=str(e)))
+
+        # Reuse the same date-coherence/minimum-age rules individual employee
+        # creation enforces (EmpleadoService._validate_fechas), so the two
+        # creation paths don't silently diverge. Bulk upload never collects
+        # fecha_retiro, so it's always None here (already optional upstream).
+        if fecha_ingreso_ok and fecha_nacimiento_ok:
+            try:
+                empleado_service._validate_fechas(fecha_ingreso, None, fecha_nacimiento)
+            except BadRequestException as e:
+                fila_errores.append(FilaError(fila=idx, columna="fecha_ingreso", mensaje=str(e)))
 
         genero = _text(data.get("genero"))
         if genero and genero not in {g.value for g in Genero}:
