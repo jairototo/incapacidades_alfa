@@ -5,7 +5,7 @@ import io
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, UploadFile, File, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,8 +18,9 @@ from app.schemas.empleado import (
     EmpleadoResponse,
     EmpleadoListItem
 )
+from app.schemas.empleado_bulk import ValidacionMasivaResponse
 from app.services.empleado_service import empleado_service
-from app.services.empleado_bulk_service import generar_plantilla_empleados
+from app.services.empleado_bulk_service import generar_plantilla_empleados, parsear_y_validar_empleados
 from app.utils.enums import EstadoEmpleado
 
 router = APIRouter()
@@ -101,6 +102,27 @@ async def descargar_plantilla_empleados():
         io.BytesIO(content),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=plantilla_empleados.xlsx"},
+    )
+
+
+@router.post(
+    "/carga-masiva/validar",
+    response_model=ValidacionMasivaResponse,
+    summary="Validar archivo de carga masiva (dry-run)",
+    description="Valida el archivo Excel de empleados fila por fila sin insertar nada en la base de datos",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPLEADO_CREATE]))],
+)
+async def validar_carga_masiva_empleados(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+) -> ValidacionMasivaResponse:
+    content = await file.read()
+    filas_validas, errores = await parsear_y_validar_empleados(db, content)
+    return ValidacionMasivaResponse(
+        total_filas=len(filas_validas) + len(errores),
+        validas=len(filas_validas),
+        con_error=len(errores),
+        errores=errores,
     )
 
 
