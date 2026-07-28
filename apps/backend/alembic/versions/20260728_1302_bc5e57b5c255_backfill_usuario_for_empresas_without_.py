@@ -37,11 +37,25 @@ def _generate_temp_password() -> str:
 def upgrade() -> None:
     conn = op.get_bind()
 
+    # DISTINCT ON (e.email_contacto) both dedupes empresas that share the same
+    # email_contacto with each other (only the first per email, by nit, is
+    # processed in this run -- inserting two Usuario rows with the same email
+    # in the same migration run would collide just as badly) and the
+    # NOT EXISTS guard skips any empresa whose nit or email_contacto already
+    # matches an existing usuario.username/usuario.email (both columns are
+    # UNIQUE, so either collision would otherwise abort the whole transaction).
     empresas_sin_usuario = conn.execute(sa.text("""
-        SELECT e.id, e.nit, e.razon_social, e.email_contacto
+        SELECT DISTINCT ON (e.email_contacto)
+            e.id, e.nit, e.razon_social, e.email_contacto
         FROM empresa e
         LEFT JOIN usuario u ON u.empresa_id = e.id AND u.rol = 'EMPRESA'
-        WHERE u.id IS NULL AND e.email_contacto IS NOT NULL
+        WHERE u.id IS NULL
+          AND e.email_contacto IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM usuario u2
+              WHERE u2.username = e.nit OR u2.email = e.email_contacto
+          )
+        ORDER BY e.email_contacto, e.nit
     """)).fetchall()
 
     report_rows = []
@@ -88,6 +102,29 @@ def upgrade() -> None:
         print(
             f"[backfill] AVISO: {total_sin_email} empresas sin email_contacto fueron "
             f"omitidas (no se les pudo crear usuario; requieren email_contacto primero)."
+        )
+
+    total_colision = conn.execute(sa.text("""
+        SELECT COUNT(*) FROM (
+            SELECT
+                e.id,
+                ROW_NUMBER() OVER (PARTITION BY e.email_contacto ORDER BY e.nit) AS rn,
+                EXISTS (
+                    SELECT 1 FROM usuario u2
+                    WHERE u2.username = e.nit OR u2.email = e.email_contacto
+                ) AS colisiona_con_usuario_existente
+            FROM empresa e
+            LEFT JOIN usuario u ON u.empresa_id = e.id AND u.rol = 'EMPRESA'
+            WHERE u.id IS NULL AND e.email_contacto IS NOT NULL
+        ) sub
+        WHERE colisiona_con_usuario_existente OR rn > 1
+    """)).scalar()
+    if total_colision:
+        print(
+            f"[backfill] AVISO: {total_colision} empresas fueron omitidas por colisión "
+            f"de username/email con un usuario ya existente, o por compartir "
+            f"email_contacto con otra empresa procesada en esta misma corrida "
+            f"(username/email son UNIQUE en usuario; requieren resolución manual)."
         )
 
 
