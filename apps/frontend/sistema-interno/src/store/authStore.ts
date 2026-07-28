@@ -117,6 +117,11 @@ export const useCanPerform = (action: string) => {
       'incapacidad.update',
       'incapacidad.cambiar_estado',
       'incapacidad.observar',
+      'empresa.read',
+      'empleado.read',
+      'empleado.create',
+      'empleado.update',
+      'empleado.delete',
     ],
     APROBADOR: [
       'incapacidad.read',
@@ -127,6 +132,7 @@ export const useCanPerform = (action: string) => {
     READONLY: ['incapacidad.read'],
     EMPRESA: ['incapacidad.read', 'incapacidad.create'],
     EMPLEADO: ['incapacidad.read'],
+    LIQUIDADOR: ['empresa.read', 'empleado.read'],
   };
   
   const userPermissions = permissions[user.rol] || [];
