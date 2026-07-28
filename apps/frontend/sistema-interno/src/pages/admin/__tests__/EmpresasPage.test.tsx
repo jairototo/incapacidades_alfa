@@ -7,6 +7,13 @@ import { empresaService } from '@/services/empresaService';
 import { useAuthStore } from '@/store/authStore';
 import { RolUsuario } from '@/types/enums';
 
+// Capture mockToast BEFORE vi.mock hoisting via vi.hoisted, so we can assert on it.
+const mockToast = vi.hoisted(() => vi.fn());
+
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
+
 vi.mock('@/services/empresaService');
 
 function renderPage() {
@@ -89,5 +96,24 @@ describe('EmpresasPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^guardar$/i }));
 
     await waitFor(() => expect(screen.getByText('GenPass123x')).toBeInTheDocument());
+  });
+
+  it('shows a destructive toast when regenerating the password fails', async () => {
+    setUser(RolUsuario.ADMIN);
+    vi.mocked(empresaService.regenerarPassword).mockRejectedValue({
+      response: { data: { detail: 'No se pudo contactar el servicio de usuarios' } },
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /regenerar contraseña/i }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Error',
+        description: 'No se pudo contactar el servicio de usuarios',
+        variant: 'destructive',
+      })
+    );
   });
 });

@@ -15,6 +15,7 @@ import { TablePagination } from '@/components/shared/TablePagination';
 import { PasswordRevealDialog } from '@/components/empresas/PasswordRevealDialog';
 import { empresaService } from '@/services/empresaService';
 import { useCanPerform } from '@/store/authStore';
+import { useToast } from '@/hooks/use-toast';
 import type { Empresa, UsuarioGenerado } from '@/types/empresa';
 
 const PAGE_SIZE = 20;
@@ -43,6 +44,7 @@ export function EmpresasPage() {
   const canCreate = useCanPerform('empresa.create');
   const canUpdate = useCanPerform('empresa.update');
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [skip, setSkip] = useState(0);
   const [nitFilter, setNitFilter] = useState('');
@@ -113,7 +115,11 @@ export function EmpresasPage() {
   const regenerarPasswordMutation = useMutation({
     mutationFn: (id: string) => empresaService.regenerarPassword(id),
     onSuccess: (data) => setCredenciales({ username: data.username, password: data.password }),
-    onError: (error: unknown) => setErrorMessage(extractErrorMessage(error, 'No se pudo regenerar la contraseña')),
+    onError: (error: unknown) => {
+      const message = extractErrorMessage(error, 'No se pudo regenerar la contraseña');
+      setErrorMessage(message);
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    },
   });
 
   const openCreate = () => {
