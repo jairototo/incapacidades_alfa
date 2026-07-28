@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { PasswordRevealDialog } from '@/components/empresas/PasswordRevealDialog';
+import { AnaliticaPanel } from '@/components/empresas/AnaliticaPanel';
 import { empresaService } from '@/services/empresaService';
 import { useCanPerform } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
@@ -163,6 +164,7 @@ export function EmpresasPage() {
 
   return (
     <div className="space-y-4 p-6">
+      <AnaliticaPanel />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Gestión de Empresas</h1>
