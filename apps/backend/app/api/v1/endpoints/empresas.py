@@ -18,6 +18,8 @@ from app.schemas.empresa import (
 from app.services.empresa_service import empresa_service
 from app.services.empleado_service import empleado_service
 from app.schemas.empleado import EmpleadoListItem
+from app.schemas.analitica import AnaliticaEmpresasResponse
+from app.services.analitica_service import analitica_service
 from app.core.security import get_current_user, PermissionChecker, Permissions
 from app.core.exceptions import ForbiddenException
 from app.models.usuario import Usuario
@@ -130,6 +132,19 @@ async def list_empresas(
     )
     
     return empresas
+
+
+@router.get(
+    "/analitica",
+    response_model=AnaliticaEmpresasResponse,
+    summary="Analítica de empresas",
+    description="Top 10 empresas por incapacidades radicadas y tendencia mensual de los últimos 12 meses (agregado en servidor)",
+    dependencies=[Depends(PermissionChecker([Permissions.EMPRESA_READ]))],
+)
+async def get_analitica_empresas(
+    db: AsyncSession = Depends(get_db)
+) -> AnaliticaEmpresasResponse:
+    return await analitica_service.get_analitica_empresas(db)
 
 
 @router.get(
