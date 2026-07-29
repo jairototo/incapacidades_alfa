@@ -34,6 +34,10 @@ from app.db.repositories.pre_incapacidad_repository import (
 from app.db.repositories.validation_inconsistencia_repository import (
     ValidationInconsistenciaRepository
 )
+from app.db.repositories.smlmv_parametros_repository import (
+    SmlmvParametrosRepository,
+    smlmv_parametros_repository
+)
 
 __all__ = [
     "BaseRepository",
@@ -51,4 +55,6 @@ __all__ = [
     "historial_estado_repository",
     "PreIncapacidadRepository",
     "ValidationInconsistenciaRepository",
+    "SmlmvParametrosRepository",
+    "smlmv_parametros_repository",
 ]

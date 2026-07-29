@@ -24,6 +24,7 @@ from app.models.communication_log import CommunicationLog
 from app.models.auditoria_resultado import AuditoriaResultado
 from app.models.plantilla_auditoria import PlantillaAuditoria
 from app.models.ibl_parametros import IblParametros
+from app.models.previsionales.smlmv_parametros import SmlmvParametros
 from app.models.liquidacion import Liquidacion
 
 __all__ = [
@@ -50,5 +51,6 @@ __all__ = [
     "AuditoriaResultado",
     "PlantillaAuditoria",
     "IblParametros",
+    "SmlmvParametros",
     "Liquidacion",
 ]
