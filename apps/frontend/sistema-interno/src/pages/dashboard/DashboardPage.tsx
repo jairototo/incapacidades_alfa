@@ -175,9 +175,8 @@ export function DashboardPage() {
           id: e.id,
           nit: e.nit,
           razon_social: e.razon_social,
-          email_contacto: e.email_contacto ?? '',
-          telefono: e.telefono,
-          direccion: e.direccion,
+          // GET /empresas (list) doesn't return contact fields — see EmpresaListItem.
+          email_contacto: '',
           ciudad: e.ciudad,
         }))}
       />

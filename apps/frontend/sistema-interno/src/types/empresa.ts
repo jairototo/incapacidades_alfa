@@ -19,6 +19,16 @@ export interface Empresa {
   updated_at?: string;
 }
 
+/** Shape actually returned by GET /empresas (list) — see backend EmpresaListItem, apps/backend/app/schemas/empresa.py. */
+export interface EmpresaListItem {
+  id: string;
+  nit: string;
+  razon_social: string;
+  estado: string;
+  ciudad?: string;
+  created_at: string;
+}
+
 export interface EmpresaCreatePayload {
   nit: string;
   razon_social: string;

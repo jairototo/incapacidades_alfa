@@ -1,6 +1,7 @@
 import api from '@/lib/api';
 import type {
   Empresa,
+  EmpresaListItem,
   EmpresaCreatePayload,
   EmpresaCreateResponse,
   EmpresaUpdatePayload,
@@ -23,8 +24,8 @@ interface ListEmpresasParams {
 class EmpresaService {
   private readonly baseUrl = '/empresas/';
 
-  async list(params: ListEmpresasParams): Promise<Empresa[]> {
-    const { data } = await api.get<Empresa[]>(this.baseUrl, { params });
+  async list(params: ListEmpresasParams): Promise<EmpresaListItem[]> {
+    const { data } = await api.get<EmpresaListItem[]>(this.baseUrl, { params });
     return data;
   }
 
