@@ -9,6 +9,7 @@ import {
   Building2,
   Users,
   UserCircle,
+  UserCog,
   BarChart3,
   Settings,
   ChevronDown,
@@ -86,7 +87,13 @@ const menuItems: MenuItem[] = [
     label: 'Empresas',
     icon: Building2,
     href: '/empresas',
-    roles: ['ADMIN'],
+    roles: ['ADMIN', 'AUDITOR', 'LIQUIDADOR'],
+  },
+  {
+    label: 'Empleados',
+    icon: UserCog,
+    href: '/empleados',
+    roles: ['ADMIN', 'AUDITOR', 'LIQUIDADOR'],
   },
   {
     label: 'Afiliados',
