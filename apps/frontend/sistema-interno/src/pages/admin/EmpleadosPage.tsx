@@ -15,6 +15,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from '@/components/ui/dialog';
 import { TablePagination } from '@/components/shared/TablePagination';
+import { CargaMasivaWizard } from '@/components/empleados/CargaMasivaWizard';
 import { empleadoService } from '@/services/empleadoService';
 import { empresaService } from '@/services/empresaService';
 import { useCanPerform } from '@/store/authStore';
@@ -59,6 +60,7 @@ export function EmpleadosPage() {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [empresaId, setEmpresaId] = useState(searchParams.get('empresa_id') ?? ALL_EMPRESAS);
 
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EmpleadoListItem | null>(null);
   const [form, setForm] = useState<EmpleadoFormState>(emptyEmpleadoForm);
@@ -177,7 +179,7 @@ export function EmpleadosPage() {
         </div>
         {canCreate && (
           <div className="space-x-2">
-            <Button variant="outline">Cargar masivo</Button>
+            <Button variant="outline" onClick={() => setWizardOpen(true)}>Cargar masivo</Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={openCreate}>Crear empleado</Button>
@@ -283,6 +285,14 @@ export function EmpleadosPage() {
           />
         </div>
       </div>
+
+      <CargaMasivaWizard
+        open={wizardOpen}
+        onClose={() => {
+          setWizardOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['empleados-admin'] });
+        }}
+      />
     </div>
   );
 }
