@@ -1,4 +1,4 @@
-.PHONY: help install dev test lint format migrate upgrade-db downgrade-db run docker-build docker-up docker-down docker-logs shell create-superuser seed-auditores
+.PHONY: help install dev test lint format migrate upgrade-db downgrade-db run docker-build docker-up docker-down docker-logs shell create-superuser seed-auditores seed-auditores-previsionales
 
 help:
 	@echo "Comandos disponibles:"
@@ -18,6 +18,7 @@ help:
 	@echo "  make shell         - Shell de Python"
 	@echo "  make create-superuser - Crear superusuario"
 	@echo "  make seed-auditores - Crear auditores ficticios + auditor_default (requerido antes de auditar incapacidades)"
+	@echo "  make seed-auditores-previsionales - Crear auditores previsionales/jurídicos ficticios"
 
 install:
 	pip install --upgrade pip
@@ -86,6 +87,9 @@ create-superuser:
 
 seed-auditores:
 	python scripts/seed_auditores.py
+
+seed-auditores-previsionales:
+	python scripts/seed_auditores_previsionales.py
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +

@@ -19,7 +19,7 @@ class Usuario(BaseModel):
 
     __table_args__ = (
         CheckConstraint(
-            "rol IN ('ADMIN', 'AUDITOR', 'APROBADOR', 'EMPRESA', 'EMPLEADO', 'READONLY', 'LIQUIDADOR')",
+            "rol IN ('ADMIN', 'AUDITOR', 'APROBADOR', 'EMPRESA', 'EMPLEADO', 'READONLY', 'LIQUIDADOR', 'AUDITOR_PREVISIONALES', 'AUDITOR_JURIDICO')",
             name="chk_usuario_rol",
         ),
     )

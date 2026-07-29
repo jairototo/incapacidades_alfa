@@ -172,6 +172,14 @@ class Permissions:
     EXPORT_DATA = "exportar_datos"
     CONFIGURE_SYSTEM = "configurar_sistema"
 
+    # Previsionales
+    PREVISIONAL_READ = "ver_previsional"
+    PREVISIONAL_LOAD = "cargar_previsional"
+    PREVISIONAL_AUDIT = "auditar_previsional"
+    PREVISIONAL_LIQUIDATE = "liquidar_previsional"
+    PREVISIONAL_EXPORT = "exportar_previsional"
+    PREVISIONAL_LEGAL_REVIEW = "revisar_juridico_previsional"
+
 
 # Dependencies para FastAPI
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
@@ -245,7 +253,9 @@ class PermissionChecker:
             "generar_orden_pago", "aprobar_orden_pago", "registrar_pago", "ver_orden_pago",
             "crear_usuario", "editar_usuario", "eliminar_usuario", "ver_usuario",
             "documento_create", "documento_read", "documento_update", "documento_delete",
-            "ver_reportes", "exportar_datos", "configurar_sistema"
+            "ver_reportes", "exportar_datos", "configurar_sistema",
+            "ver_previsional", "cargar_previsional", "auditar_previsional",
+            "liquidar_previsional", "exportar_previsional", "revisar_juridico_previsional"
         ],
         "AUDITOR": [
             "ver_empresa", "ver_empleado",
@@ -263,6 +273,15 @@ class PermissionChecker:
         ],
         "LIQUIDADOR": [
             "ver_empresa", "ver_empleado",
+            "ver_reportes"
+        ],
+        "AUDITOR_PREVISIONALES": [
+            "ver_previsional", "cargar_previsional", "auditar_previsional",
+            "liquidar_previsional", "exportar_previsional",
+            "ver_reportes"
+        ],
+        "AUDITOR_JURIDICO": [
+            "ver_previsional", "revisar_juridico_previsional", "exportar_previsional",
             "ver_reportes"
         ],
         "EMPRESA": [
