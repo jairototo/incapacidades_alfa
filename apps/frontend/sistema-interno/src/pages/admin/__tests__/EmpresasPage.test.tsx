@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EmpresasPage } from '../EmpresasPage';
@@ -64,6 +64,17 @@ describe('EmpresasPage', () => {
     expect(screen.queryByRole('button', { name: /crear empresa/i })).not.toBeInTheDocument();
   });
 
+  it('does not render a Departamento table column, only the filter input (Fix 3)', async () => {
+    setUser(RolUsuario.ADMIN);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
+
+    const table = within(screen.getByRole('table'));
+    expect(table.queryByText('Departamento')).not.toBeInTheDocument();
+    // The filter input still exists outside the table.
+    expect(screen.getByLabelText(/^departamento$/i)).toBeInTheDocument();
+  });
+
   it('filters by NIT and re-fetches', async () => {
     setUser(RolUsuario.ADMIN);
     renderPage();
@@ -106,6 +117,7 @@ describe('EmpresasPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
 
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /regenerar contraseña/i }));
 
     await waitFor(() =>
@@ -115,5 +127,79 @@ describe('EmpresasPage', () => {
         variant: 'destructive',
       })
     );
+    confirmSpy.mockRestore();
+  });
+
+  it('opening the edit dialog fetches the full empresa record and prefills the form (Fix 1)', async () => {
+    setUser(RolUsuario.ADMIN);
+    vi.mocked(empresaService.getById).mockResolvedValue({
+      id: '1',
+      nit: '900123456',
+      razon_social: 'Empresa Uno',
+      estado: 'ACTIVA',
+      email_contacto: 'contacto@empresauno.com',
+      telefono: '3001234567',
+      direccion: 'Calle 1 # 2-3',
+      ciudad: 'Bogotá',
+      departamento: 'Cundinamarca',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /^editar$/i }));
+
+    await waitFor(() => expect(empresaService.getById).toHaveBeenCalledWith('1'));
+
+    const dialog = within(screen.getByRole('dialog'));
+    await waitFor(() => expect(dialog.getByLabelText(/correo de contacto/i)).toHaveValue('contacto@empresauno.com'));
+    expect(dialog.getByLabelText(/teléfono/i)).toHaveValue('3001234567');
+    expect(dialog.getByLabelText(/dirección/i)).toHaveValue('Calle 1 # 2-3');
+    expect(dialog.getByLabelText(/^ciudad$/i)).toHaveValue('Bogotá');
+    expect(dialog.getByLabelText(/departamento/i)).toHaveValue('Cundinamarca');
+  });
+
+  it('does not send the update when the full empresa record fails to load, and shows an error instead', async () => {
+    setUser(RolUsuario.ADMIN);
+    vi.mocked(empresaService.getById).mockRejectedValue(new Error('network error'));
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /^editar$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText('No se pudo cargar la información completa de la empresa')).toBeInTheDocument()
+    );
+  });
+
+  it('asks for confirmation before regenerating a password and skips it when cancelled (Fix 6)', async () => {
+    setUser(RolUsuario.ADMIN);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /regenerar contraseña/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Empresa Uno'));
+    expect(empresaService.regenerarPassword).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it('regenerates the password once the confirmation is accepted (Fix 6)', async () => {
+    setUser(RolUsuario.ADMIN);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(empresaService.regenerarPassword).mockResolvedValue({
+      message: 'ok', username: '900123456', password: 'NewTemp123x',
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Empresa Uno')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /regenerar contraseña/i }));
+
+    await waitFor(() => expect(empresaService.regenerarPassword).toHaveBeenCalledWith('1'));
+
+    confirmSpy.mockRestore();
   });
 });

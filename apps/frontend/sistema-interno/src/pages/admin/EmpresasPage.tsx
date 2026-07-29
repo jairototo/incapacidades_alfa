@@ -17,7 +17,7 @@ import { AnaliticaPanel } from '@/components/empresas/AnaliticaPanel';
 import { empresaService } from '@/services/empresaService';
 import { useCanPerform } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
-import type { Empresa, UsuarioGenerado } from '@/types/empresa';
+import type { EmpresaListItem, UsuarioGenerado } from '@/types/empresa';
 
 const PAGE_SIZE = 20;
 
@@ -54,7 +54,7 @@ export function EmpresasPage() {
   const [appliedFilters, setAppliedFilters] = useState({ nit: '', ciudad: '', departamento: '' });
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Empresa | null>(null);
+  const [editing, setEditing] = useState<EmpresaListItem | null>(null);
   const [form, setForm] = useState<EmpresaFormState>(emptyEmpresaForm);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [credenciales, setCredenciales] = useState<UsuarioGenerado | null>(null);
@@ -96,7 +96,7 @@ export function EmpresasPage() {
       if (!editing) throw new Error('No hay empresa en edición');
       return empresaService.update(editing.id, {
         razon_social: form.razon_social,
-        email_contacto: form.email_contacto,
+        email_contacto: form.email_contacto || undefined,
         telefono: form.telefono || undefined,
         direccion: form.direccion || undefined,
         ciudad: form.ciudad || undefined,
@@ -130,19 +130,24 @@ export function EmpresasPage() {
     setDialogOpen(true);
   };
 
-  const openEdit = (empresa: Empresa) => {
+  const openEdit = async (empresa: EmpresaListItem) => {
     setEditing(empresa);
-    setForm({
-      nit: empresa.nit,
-      razon_social: empresa.razon_social,
-      email_contacto: empresa.email_contacto ?? '',
-      telefono: empresa.telefono ?? '',
-      direccion: empresa.direccion ?? '',
-      ciudad: empresa.ciudad ?? '',
-      departamento: empresa.departamento ?? '',
-    });
     setErrorMessage(null);
     setDialogOpen(true);
+    try {
+      const fullEmpresa = await empresaService.getById(empresa.id);
+      setForm({
+        nit: fullEmpresa.nit,
+        razon_social: fullEmpresa.razon_social,
+        email_contacto: fullEmpresa.email_contacto ?? '',
+        telefono: fullEmpresa.telefono ?? '',
+        direccion: fullEmpresa.direccion ?? '',
+        ciudad: fullEmpresa.ciudad ?? '',
+        departamento: fullEmpresa.departamento ?? '',
+      });
+    } catch {
+      setErrorMessage('No se pudo cargar la información completa de la empresa');
+    }
   };
 
   const handleSubmit = () => {
@@ -158,8 +163,17 @@ export function EmpresasPage() {
     setAppliedFilters({ nit: nitFilter, ciudad: ciudadFilter, departamento: departamentoFilter });
   };
 
-  const handleVerEmpleados = (empresa: Empresa) => {
+  const handleVerEmpleados = (empresa: EmpresaListItem) => {
     navigate(`/empleados?empresa_id=${empresa.id}`);
+  };
+
+  const handleRegenerarPassword = (empresa: EmpresaListItem) => {
+    const confirmed = window.confirm(
+      `¿Seguro que deseas regenerar la contraseña de ${empresa.razon_social}? Esto invalidará su sesión activa.`
+    );
+    if (confirmed) {
+      regenerarPasswordMutation.mutate(empresa.id);
+    }
   };
 
   return (
@@ -245,7 +259,6 @@ export function EmpresasPage() {
               <TableHead>NIT</TableHead>
               <TableHead>Razón social</TableHead>
               <TableHead>Ciudad</TableHead>
-              <TableHead>Departamento</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
@@ -256,7 +269,6 @@ export function EmpresasPage() {
                 <TableCell>{empresa.nit}</TableCell>
                 <TableCell className="font-medium">{empresa.razon_social}</TableCell>
                 <TableCell>{empresa.ciudad ?? <span className="text-slate-400">—</span>}</TableCell>
-                <TableCell>{empresa.departamento ?? <span className="text-slate-400">—</span>}</TableCell>
                 <TableCell>
                   <Badge variant={empresa.estado === 'ACTIVA' ? 'default' : 'secondary'}>{empresa.estado}</Badge>
                 </TableCell>
@@ -270,7 +282,7 @@ export function EmpresasPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => regenerarPasswordMutation.mutate(empresa.id)}
+                        onClick={() => handleRegenerarPassword(empresa)}
                         disabled={regenerarPasswordMutation.isPending}
                       >
                         Regenerar contraseña
