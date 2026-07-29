@@ -133,6 +133,18 @@ export const useCanPerform = (action: string) => {
     EMPRESA: ['incapacidad.read', 'incapacidad.create'],
     EMPLEADO: ['incapacidad.read'],
     LIQUIDADOR: ['empresa.read', 'empleado.read'],
+    AUDITOR_PREVISIONALES: [
+      'previsional.read',
+      'previsional.load',
+      'previsional.audit',
+      'previsional.liquidate',
+      'previsional.export',
+    ],
+    AUDITOR_JURIDICO: [
+      'previsional.read',
+      'previsional.legal_review',
+      'previsional.export',
+    ],
   };
   
   const userPermissions = permissions[user.rol] || [];

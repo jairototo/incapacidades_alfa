@@ -15,6 +15,8 @@ export const RolUsuario = {
   EMPLEADO: 'EMPLEADO',
   READONLY: 'READONLY',
   LIQUIDADOR: 'LIQUIDADOR',
+  AUDITOR_PREVISIONALES: 'AUDITOR_PREVISIONALES',
+  AUDITOR_JURIDICO: 'AUDITOR_JURIDICO',
 } as const;
 
 export type RolUsuario = (typeof RolUsuario)[keyof typeof RolUsuario];

@@ -162,7 +162,27 @@ export const router = createBrowserRouter([
               },
             ],
           },
-          
+
+          // Previsionales - ADMIN, AUDITOR_PREVISIONALES y AUDITOR_JURIDICO
+          {
+            path: '/previsionales',
+            element: (
+              <ProtectedRoute
+                allowedRoles={[
+                  RolUsuario.ADMIN,
+                  RolUsuario.AUDITOR_PREVISIONALES,
+                  RolUsuario.AUDITOR_JURIDICO,
+                ]}
+              />
+            ),
+            children: [
+              {
+                index: true,
+                element: <div className="p-6">Módulo Previsionales (Placeholder)</div>,
+              },
+            ],
+          },
+
           // Usuarios (Gestión de Auditores) - Solo ADMIN
           {
             path: '/usuarios',

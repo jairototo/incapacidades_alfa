@@ -19,6 +19,7 @@ import {
   Inbox,
   Link2,
   Calculator,
+  Scale,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -100,6 +101,12 @@ const menuItems: MenuItem[] = [
     icon: Users,
     href: '/afiliados',
     roles: ['ADMIN'],
+  },
+  {
+    label: 'Previsionales',
+    icon: Scale,
+    href: '/previsionales',
+    roles: ['ADMIN', 'AUDITOR_PREVISIONALES', 'AUDITOR_JURIDICO'],
   },
   {
     label: 'Usuarios',
