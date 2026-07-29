@@ -182,7 +182,13 @@ export function EmpleadosPage() {
             <Button variant="outline" onClick={() => setWizardOpen(true)}>Cargar masivo</Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={openCreate}>Crear empleado</Button>
+                <Button
+                  onClick={openCreate}
+                  disabled={empresaId === ALL_EMPRESAS}
+                  title={empresaId === ALL_EMPRESAS ? 'Selecciona una empresa específica para crear un empleado' : undefined}
+                >
+                  Crear empleado
+                </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>

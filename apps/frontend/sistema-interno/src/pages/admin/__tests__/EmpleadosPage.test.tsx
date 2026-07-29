@@ -73,6 +73,22 @@ describe('EmpleadosPage', () => {
     expect(screen.queryByRole('button', { name: /cargar masivo/i })).not.toBeInTheDocument();
   });
 
+  it('disables "Crear empleado" when "Todas las empresas" is selected (Fix 7)', async () => {
+    setUser(RolUsuario.ADMIN);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Ana')).toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: /^crear empleado$/i })).toBeDisabled();
+  });
+
+  it('enables "Crear empleado" once a specific empresa is selected via the filter (Fix 7)', async () => {
+    setUser(RolUsuario.ADMIN);
+    renderPage('/empleados?empresa_id=e1');
+    await waitFor(() => expect(screen.getByText('Ana')).toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: /^crear empleado$/i })).not.toBeDisabled();
+  });
+
   it('creates an employee via the modal form', async () => {
     setUser(RolUsuario.ADMIN);
     vi.mocked(empleadoService.create).mockResolvedValue({
