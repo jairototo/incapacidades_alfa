@@ -49,10 +49,12 @@ async def create_admin_user():
             text("""
                 INSERT INTO usuario (
                     id, username, email, password_hash, nombre_completo,
-                    rol, estado, intentos_fallidos, created_at, updated_at
+                    rol, estado, intentos_fallidos, created_at, updated_at, 
+                    token_version, must_change_password
                 ) VALUES (
                     :id, :username, :email, :password_hash, :nombre_completo,
-                    :rol, :estado, :intentos_fallidos, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    :rol, :estado, :intentos_fallidos, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 
+                    :token_version, :must_change_password
                 )
             """),
             {
@@ -63,7 +65,9 @@ async def create_admin_user():
                 "nombre_completo": "Administrador del Sistema",
                 "rol": RolUsuario.ADMIN.value,
                 "estado": EstadoUsuario.ACTIVO.value,
-                "intentos_fallidos": 0
+                "intentos_fallidos": 0,
+                "token_version":0,
+                "must_change_password":False
             }
         )
         

@@ -21,24 +21,24 @@ help:
 	@echo "  make seed-auditores-previsionales - Crear auditores previsionales/jurídicos ficticios"
 
 install:
-	pip install --upgrade pip
-	pip install -r requirements.txt
-	pip install -r requirements-dev.txt
+	docker compose exec api pip install --upgrade pip
+	docker compose exec api pip install -r requirements.txt
+	docker compose exec api pip install -r requirements-dev.txt
 
 dev:
-	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	docker compose exec api uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+	docker compose exec api python -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
 test-unit:
-	pytest tests/unit/ -v
+	docker compose exec api python -m pytest tests/unit/ -v
 
 test-integration:
-	pytest tests/integration/ -v
+	docker compose exec api python -m pytest tests/integration/ -v
 
 test-e2e:
-	pytest tests/e2e/ -v
+	docker compose exec api python -m pytest tests/e2e/ -v
 
 lint:
 	ruff check app/
@@ -53,13 +53,13 @@ migrate:
 		echo "Error: Debes proporcionar un mensaje. Uso: make migrate msg='descripción'"; \
 		exit 1; \
 	fi
-	alembic revision --autogenerate -m "$(msg)"
+	docker compose exec api alembic revision --autogenerate -m "$(msg)"
 
 upgrade-db:
-	alembic upgrade head
+	docker compose exec api alembic upgrade head
 
 downgrade-db:
-	alembic downgrade -1
+	docker compose exec api alembic downgrade -1
 
 run:
 	gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
@@ -83,13 +83,13 @@ shell:
 	python -c "from app.db.session import SessionLocal; from app.models import *; db = SessionLocal(); print('Database session available as db')"
 
 create-superuser:
-	python scripts/create_superuser.py
+	docker compose exec api python scripts/seed_admin.py
 
 seed-auditores:
-	python scripts/seed_auditores.py
+	docker compose exec api python scripts/seed_auditores.py
 
 seed-auditores-previsionales:
-	python scripts/seed_auditores_previsionales.py
+	docker compose exec api python scripts/seed_auditores_previsionales.py
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
