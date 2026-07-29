@@ -42,7 +42,7 @@
 | `src/components/empresas/TopEmpresasChart.tsx` | Gráfica 1: barras horizontales |
 | `src/components/empresas/TendenciaRadicacionesChart.tsx` | Gráfica 2: línea/área mensual |
 | `src/components/empleados/CargaMasivaWizard.tsx` | Dialog de 3 pasos |
-| `src/components/shared/TablePagination.tsx` | Paginación anterior/siguiente reutilizable |
+| `src/components/shared/TablePagination.tsx` | Paginación anterior/siguiente reutilizable (sin conteo total — ver nota abajo) |
 
 ### Archivos modificados
 | Archivo | Cambio |
@@ -69,7 +69,7 @@ Las acciones de escritura sobre Empresas (`'empresa.create'`, `'empresa.update'`
 1. `AnaliticaPanel` colapsable arriba de todo (ver §6).
 2. Barra de filtros: NIT/razón social (texto), ciudad (texto), departamento (texto) — todos opcionales, combinables, enviados a `empresaService.list({ nit, ciudad, departamento, skip, limit })`. Visible para los tres roles con acceso de lectura.
 3. Tabla (shadcn `Table` manual, no `DataTable`, por la columna de acciones condicionales): NIT, razón social, ciudad, departamento, estado, acciones.
-4. `TablePagination` al pie.
+4. `TablePagination` al pie. **Nota (descubierta al escribir el plan de implementación)**: `GET /empresas` y `GET /empleados` devuelven un arreglo plano (`List[EmpresaListItem]`/`List[EmpleadoListItem]`), sin conteo total — no hay `total`/`count` en la respuesta del backend. `TablePagination` no muestra "de N"; "Siguiente" se habilita solo si la página actual vino completa (`resultados.length === limit`), se deshabilita si vino incompleta o vacía. No se reabre el backend (ya revisado y en `origin`) para agregar el conteo.
 5. Botón "Crear empresa" — solo si `useCanPerform('empresa.create')` es verdadero (ADMIN). AUDITOR/LIQUIDADOR nunca lo ven (no aplica deshabilitar-con-tooltip, ya que no tienen ninguna vía de acción sobre este recurso).
 6. Acciones por fila: "Editar" (ADMIN), "Ver empleados" (los tres roles — navega a `/empleados?empresa_id=<id>`), "Regenerar contraseña" (ADMIN).
 
