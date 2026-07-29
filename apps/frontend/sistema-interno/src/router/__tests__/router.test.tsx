@@ -294,7 +294,7 @@ describe('Router - Integración', () => {
       render(<RouterProvider router={testRouter} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Cargando módulo de Empresas/i)).toBeInTheDocument();
+        expect(screen.getByText(/Gestión de Empresas/i)).toBeInTheDocument();
       });
     });
 
@@ -363,7 +363,7 @@ describe('Router - Integración', () => {
         render(<RouterProvider router={testRouter} />);
 
         await waitFor(() => {
-          expect(screen.getByText(/Cargando módulo de Empresas/i)).toBeInTheDocument();
+          expect(screen.getByText(/Gestión de Empresas/i)).toBeInTheDocument();
           expect(screen.queryByText(/Acceso Denegado/i)).not.toBeInTheDocument();
         });
 
@@ -392,7 +392,7 @@ describe('Router - Integración', () => {
         render(<RouterProvider router={testRouter} />);
 
         await waitFor(() => {
-          expect(screen.getByText(/Cargando módulo de Empleados/i)).toBeInTheDocument();
+          expect(screen.getByText(/Gestión de Empleados/i)).toBeInTheDocument();
           expect(screen.queryByText(/Acceso Denegado/i)).not.toBeInTheDocument();
         });
 
