@@ -24,6 +24,7 @@ import { RadicacionLotePage } from '@/pages/previsionales/RadicacionLotePage';
 import { SiniestroManualPage } from '@/pages/previsionales/SiniestroManualPage';
 import { AuditoriaPrevisionalPage } from '@/pages/previsionales/AuditoriaPrevisionalPage';
 import { LiquidacionPrevisionalPage } from '@/pages/previsionales/LiquidacionPrevisionalPage';
+import { RespuestaAfpPage } from '@/pages/previsionales/RespuestaAfpPage';
 
 /**
  * Configuración de rutas del sistema
@@ -170,12 +171,11 @@ export const router = createBrowserRouter([
 
           // Previsionales - ADMIN, AUDITOR_PREVISIONALES y AUDITOR_JURIDICO
           //
-          // Esqueleto de rutas de la Fase 5 (Task 5.1). Las 6 pantallas reales
-          // (Tasks 5.2-5.7) todavía no existen -- cada hijo abajo es un
-          // placeholder mínimo que la tarea correspondiente reemplazará por
-          // una página real, uno a la vez. `index` no tiene tarea propia: en
-          // vez de un placeholder huérfano, redirige al punto de entrada
-          // natural del flujo (carga de lote, Task 5.2).
+          // Rutas de la Fase 5 (Task 5.1). Las 6 pantallas reales (Tasks
+          // 5.2-5.7) están completas -- ya no quedan placeholders bajo este
+          // árbol. `index` no tiene tarea propia: en vez de un placeholder
+          // huérfano, redirige al punto de entrada natural del flujo (carga
+          // de lote, Task 5.2).
           {
             path: '/previsionales',
             element: (
@@ -220,7 +220,7 @@ export const router = createBrowserRouter([
               {
                 // Task 5.7 - Exportación de la respuesta AFP de un lote.
                 path: 'lotes/:loteId/respuesta',
-                element: <div className="p-6">Respuesta AFP (Placeholder — Task 5.7)</div>,
+                element: <RespuestaAfpPage />,
               },
             ],
           },
