@@ -224,7 +224,7 @@ class IncapacidadPrevisional(BaseModel):
     # Errores de carga
     # -------------------------------------------------------------------------
     errores_carga: Mapped[Optional[dict]] = mapped_column(
-        JSONB,
+        JSONB(none_as_null=True),
         nullable=True,
         comment="Errores de parseo tolerante capturados durante la carga (CeldaInvalidaError por columna)",
     )

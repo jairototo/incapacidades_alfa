@@ -38,6 +38,22 @@ from app.db.repositories.smlmv_parametros_repository import (
     SmlmvParametrosRepository,
     smlmv_parametros_repository
 )
+from app.db.repositories.previsionales import (
+    LotePrevisionalRepository,
+    lote_previsional_repository,
+    IncapacidadPrevisionalRepository,
+    incapacidad_previsional_repository,
+    PeriodoPrevisionalRepository,
+    periodo_previsional_repository,
+    SiniestroPrevisionalRepository,
+    siniestro_previsional_repository,
+    SolicitudPrevisionalRepository,
+    solicitud_previsional_repository,
+    IteHistoricoRepository,
+    ite_historico_repository,
+    SenalAuditoriaPrevisionalRepository,
+    senal_auditoria_previsional_repository,
+)
 
 __all__ = [
     "BaseRepository",
@@ -57,4 +73,18 @@ __all__ = [
     "ValidationInconsistenciaRepository",
     "SmlmvParametrosRepository",
     "smlmv_parametros_repository",
+    "LotePrevisionalRepository",
+    "lote_previsional_repository",
+    "IncapacidadPrevisionalRepository",
+    "incapacidad_previsional_repository",
+    "PeriodoPrevisionalRepository",
+    "periodo_previsional_repository",
+    "SiniestroPrevisionalRepository",
+    "siniestro_previsional_repository",
+    "SolicitudPrevisionalRepository",
+    "solicitud_previsional_repository",
+    "IteHistoricoRepository",
+    "ite_historico_repository",
+    "SenalAuditoriaPrevisionalRepository",
+    "senal_auditoria_previsional_repository",
 ]
