@@ -1,8 +1,11 @@
 """Tests para parsers de Excel tolerantes (Previsionales)."""
+import io
 import pytest
 from datetime import date, datetime
 from decimal import Decimal
+from openpyxl import Workbook
 
+from app.core.exceptions import BadRequestException
 from app.services.previsionales.excel_common import (
     CeldaInvalidaError,
     parse_fecha,
@@ -12,6 +15,7 @@ from app.services.previsionales.excel_common import (
     texto,
     es_vacio,
     normalizar_encabezado,
+    validar_encabezados,
 )
 
 
@@ -236,3 +240,151 @@ class TestNormalizarEncabezado:
     def test_encabezado_special_chars(self):
         """Debe manejar caracteres especiales españoles."""
         assert normalizar_encabezado("Ñiño Año") == "nino ano"
+
+
+# ============================================================================
+# Tests para validar_encabezados
+# ============================================================================
+
+class TestValidarEncabezados:
+    """Pruebas para validar_encabezados con openpyxl."""
+
+    def _build_worksheet(self, headers: list, fila: int = 1, data_rows: list = None) -> object:
+        """Helper para crear un Workbook con encabezados en fila especificada."""
+        wb = Workbook()
+        ws = wb.active
+
+        # Insertar encabezados en la fila especificada
+        if fila > 1:
+            # Insertar filas vacías antes
+            for _ in range(fila - 1):
+                ws.append([])
+
+        ws.append(headers)
+
+        # Insertar datos si se proporcionan
+        if data_rows:
+            for row in data_rows:
+                ws.append(row)
+
+        return ws
+
+    def test_validar_encabezados_exact_match(self):
+        """Encabezados exactos (sin normalización) deben pasar sin excepción."""
+        ws = self._build_worksheet(["ID", "Nombre", "Fecha"])
+        esperados = {"A": "ID", "B": "Nombre", "C": "Fecha"}
+
+        # No debe lanzar excepción
+        validar_encabezados(ws, esperados, fila=1)
+
+    def test_validar_encabezados_with_normalization(self):
+        """Encabezados con accents/espacios deben normalizarse correctamente."""
+        ws = self._build_worksheet(
+            [" OBSERVACIÓN ", "  INFORMACIÓN  ", "ÑIÑO"]
+        )
+        esperados = {
+            "A": "observacion",
+            "B": "informacion",
+            "C": "nino",
+        }
+
+        # No debe lanzar excepción (normalizados coinciden)
+        validar_encabezados(ws, esperados, fila=1)
+
+    def test_validar_encabezados_case_insensitive(self):
+        """Encabezados con diferentes mayúsculas deben pasar."""
+        ws = self._build_worksheet(["ID", "NOMBRE", "fecha"])
+        esperados = {"A": "id", "B": "nombre", "C": "FECHA"}
+
+        # No debe lanzar excepción (normalizados son iguales)
+        validar_encabezados(ws, esperados, fila=1)
+
+    def test_validar_encabezados_mismatch_raises_exception(self):
+        """Encabezado que no coincide debe lanzar BadRequestException."""
+        ws = self._build_worksheet(["ID", "Nombre", "Correo"])
+        esperados = {"A": "ID", "B": "Nombre", "C": "Fecha"}  # "Fecha" != "Correo"
+
+        with pytest.raises(BadRequestException) as exc_info:
+            validar_encabezados(ws, esperados, fila=1)
+
+        # Verificar que el mensaje menciona la columna y lo esperado/encontrado
+        msg = str(exc_info.value)
+        assert "C" in msg
+        assert "Fecha" in msg
+        assert "Correo" in msg
+
+    def test_validar_encabezados_row_out_of_range_raises_exception(self):
+        """Si fila no existe en la hoja, debe lanzar BadRequestException, no IndexError."""
+        ws = self._build_worksheet(["ID", "Nombre"])
+        # Solo 1 fila de datos, pero pedimos validar fila 5
+        esperados = {"A": "ID", "B": "Nombre"}
+
+        with pytest.raises(BadRequestException) as exc_info:
+            validar_encabezados(ws, esperados, fila=5)
+
+        # Verificar que es BadRequestException (no IndexError)
+        msg = str(exc_info.value)
+        assert "fila" in msg.lower() or "row" in msg.lower()
+
+    def test_validar_encabezados_empty_worksheet_raises_exception(self):
+        """Hoja totalmente vacía (None values) debe lanzar BadRequestException por mismatch."""
+        wb = Workbook()
+        ws = wb.active
+        # Hoja sin contenido - openpyxl siempre crea al menos max_row=1 con None values
+        esperados = {"A": "ID", "B": "Nombre"}
+
+        with pytest.raises(BadRequestException) as exc_info:
+            validar_encabezados(ws, esperados, fila=1)
+
+        # Debe ser BadRequestException sobre mismatch de encabezados (None → '' no coincide con 'ID')
+        msg = str(exc_info.value)
+        assert "encabezado" in msg.lower() or "header" in msg.lower()
+
+    def test_validar_encabezados_with_multiple_columns(self):
+        """Validar múltiples columnas a la vez."""
+        ws = self._build_worksheet([
+            "ID", "Nombre", "Correo", "Teléfono", "Fecha Ingreso"
+        ])
+        esperados = {
+            "A": "ID",
+            "B": "Nombre",
+            "C": "Correo",
+            "D": "Teléfono",
+            "E": "Fecha Ingreso",
+        }
+
+        # No debe lanzar excepción
+        validar_encabezados(ws, esperados, fila=1)
+
+    def test_validar_encabezados_partial_mismatch(self):
+        """Solo una columna no coincide, debe identificarla específicamente."""
+        ws = self._build_worksheet(["ID", "Nombre", "CORREO", "Teléfono"])
+        esperados = {
+            "A": "ID",
+            "B": "Nombre",
+            "C": "Email",  # No coincide con "CORREO"
+            "D": "Teléfono",
+        }
+
+        with pytest.raises(BadRequestException) as exc_info:
+            validar_encabezados(ws, esperados, fila=1)
+
+        msg = str(exc_info.value)
+        # Debe mencionar la columna C
+        assert "C" in msg
+
+    def test_validar_encabezados_headers_with_extra_spaces_and_accents(self):
+        """Encabezados con múltiples espacios y acentos deben normalizarse."""
+        ws = self._build_worksheet([
+            "  Número  de  Documento  ",
+            " INFORMACIÓN  ADICIONAL ",
+            "ASESORÍA"
+        ])
+        esperados = {
+            "A": "numero de documento",
+            "B": "informacion adicional",
+            "C": "asesoria",
+        }
+
+        # No debe lanzar excepción (normalizados coinciden)
+        validar_encabezados(ws, esperados, fila=1)

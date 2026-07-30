@@ -229,8 +229,16 @@ def validar_encabezados(ws, esperados: dict[str, str], fila: int) -> None:
             col_num = col_num * 26 + (ord(char) - ord("A") + 1)
         col_map[col_num] = (col_letter, expected_text)
 
+    # Guard against row out of range
+    if fila > ws.max_row:
+        raise BadRequestException(
+            f"No se encontró la fila {fila} en la hoja de cálculo. "
+            f"La hoja solo tiene {ws.max_row} filas."
+        )
+
     # Leer la fila de encabezados
-    row_values = list(ws.iter_rows(min_row=fila, max_row=fila, values_only=True))[0]
+    row_data = list(ws.iter_rows(min_row=fila, max_row=fila, values_only=True))
+    row_values = row_data[0]
 
     # Validar cada columna esperada
     for col_num, (col_letter, expected_text) in col_map.items():
