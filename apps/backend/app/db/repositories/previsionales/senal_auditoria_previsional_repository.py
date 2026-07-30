@@ -11,6 +11,7 @@ una incapacidad — construye todas las instancias del modelo, las agrega con
 p.ej. Task 3.x, que puede estar persistiendo varias incapacidades del mismo
 lote en una sola transacción).
 """
+from collections import defaultdict
 from typing import Any
 from uuid import UUID
 
@@ -50,6 +51,40 @@ class SenalAuditoriaPrevisionalRepository(BaseRepository[SenalAuditoriaPrevision
         )
         result = await db.execute(query)
         return list(result.scalars().all())
+
+    async def get_by_incapacidades(
+        self,
+        db: AsyncSession,
+        incapacidad_ids: list[UUID],
+    ) -> dict[UUID, list[SenalAuditoriaPrevisional]]:
+        """
+        Versión batch de `get_by_incapacidad` (fix-round de Task 3.4, ver
+        `respuesta_afp.py`): UNA sola query para las señales de TODAS las
+        incapacidades listadas, agrupadas por `incapacidad_previsional_id`.
+        Mismo patrón que `PeriodoPrevisionalRepository.get_by_incapacidades`
+        -- "nunca N+1" (CLAUDE.md).
+
+        Args:
+            db: Sesión de base de datos
+            incapacidad_ids: UUIDs de las incapacidades a cargar (lista
+                vacía devuelve un dict vacío sin consultar la BD)
+
+        Returns:
+            dict incapacidad_id -> lista de SenalAuditoriaPrevisional. Una
+            incapacidad sin señales persistidas simplemente no aparece como
+            clave (el llamador debe usar `.get(id, [])`).
+        """
+        if not incapacidad_ids:
+            return {}
+
+        query = select(SenalAuditoriaPrevisional).where(
+            SenalAuditoriaPrevisional.incapacidad_previsional_id.in_(incapacidad_ids)
+        )
+        result = await db.execute(query)
+        agrupadas: dict[UUID, list[SenalAuditoriaPrevisional]] = defaultdict(list)
+        for senal in result.scalars().all():
+            agrupadas[senal.incapacidad_previsional_id].append(senal)
+        return dict(agrupadas)
 
     async def delete_by_incapacidad(
         self,

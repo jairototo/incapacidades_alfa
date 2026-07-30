@@ -57,9 +57,17 @@ Otros judgment calls, documentados también en el reporte de la tarea:
 - Columna OBSERVACION cuando AVAL="SI": se reutiliza el texto YA
   CALCULADO por la señal persistida `SenalAuditoriaPrevisional(codigo="AB")`
   (Task 1.4/3.3: `"DIA 181 " + dia_181_alfa`) -- si esa señal no existe
-  (el lote nunca se auditó) o sigue en PENDIENTE (`valor is None`, aún sin
-  `dia_181_alfa`), la observación queda en blanco -- no se recalcula aquí
-  ni se inventa un texto.
+  (el lote nunca se auditó) o sigue en PENDIENTE (`valor` no es `str`, aún
+  sin `dia_181_alfa`), la observación queda en blanco -- no se recalcula
+  aquí ni se inventa un texto. NUNCA se usa `senal.detalle` como fallback:
+  para `codigo="AB"`, `detalle` solo trae el mensaje interno de depuración
+  de la rama PENDIENTE (`regla_ab_observacion`), nunca el texto "DIA 181
+  ..." reutilizable (fix-round de esta tarea; ese fallback filtraba texto
+  interno hacia el excel que se le envía al fondo).
+  Resuelto con UN solo query batch para todas las incapacidades
+  avaladas-SI del lote (`_indice_observaciones_avaladas` ->
+  `senal_auditoria_previsional_repository.get_by_incapacidades`), no un
+  query por fila (fix-round: N+1 detectado en revisión).
 
 Gap preexistente y conocido (NO se arregla en esta tarea, ver brief):
 `storage_backend.get_file_content(...)` es un método específico de
@@ -115,21 +123,40 @@ def _construir_indice_por_clave(incapacidades: list) -> dict[tuple[str, Any], An
     return indice
 
 
-async def _observacion_avalada(db: AsyncSession, incapacidad_id: UUID) -> str | None:
+async def _indice_observaciones_avaladas(
+    db: AsyncSession, incapacidad_ids: list[UUID]
+) -> dict[UUID, str | None]:
     """
-    Texto de OBSERVACION cuando AVAL="SI": reutiliza el texto YA CALCULADO
-    por la señal persistida `codigo="AB"` (`"DIA 181 " + dia_181_alfa`, ver
-    `auditoria_rules.regla_ab_observacion`) -- nunca se recalcula aquí.
-    `None` si la señal no existe (lote nunca auditado) o sigue PENDIENTE
-    (`valor` es `None` porque `dia_181_alfa` aún no se definió).
+    incapacidad_id -> texto de OBSERVACION cuando AVAL="SI", para TODAS las
+    incapacidades avaladas del lote, resuelto con UNA sola query batch (fix-
+    round: antes esto era `senal_auditoria_previsional_repository.
+    get_by_incapacidad` -- una query por fila avalada-SI dentro del loop,
+    el mismo patrón N+1 que CLAUDE.md marca como pecado capital del repo).
+
+    Reutiliza el texto YA CALCULADO por la señal persistida `codigo="AB"`
+    (`"DIA 181 " + dia_181_alfa`, ver `auditoria_rules.regla_ab_observacion`)
+    -- nunca se recalcula aquí. El valor del dict es `None` si la señal no
+    existe (lote nunca auditado) o sigue PENDIENTE (`valor` no es un `str`
+    porque `dia_181_alfa` aún no se definió por el auditor).
+
+    IMPORTANTE (fix-round): NO se usa `senal_ab.detalle` como fallback. Para
+    `codigo="AB"`, `detalle` solo se puebla en la rama PENDIENTE de
+    `regla_ab_observacion` con un mensaje interno de depuración ("Aun no hay
+    dia_181_alfa calculado por el auditor") -- nunca con el texto "DIA 181
+    ..." reutilizable, que SOLO vive en `valor` en la rama OK. Devolver
+    `detalle` filtraba ese texto interno hacia el excel que se le envía al
+    fondo.
     """
-    senales = await senal_auditoria_previsional_repository.get_by_incapacidad(db, incapacidad_id)
-    senal_ab = next((s for s in senales if s.codigo == _CODIGO_SENAL_AB), None)
-    if senal_ab is None:
-        return None
-    if isinstance(senal_ab.valor, str):
-        return senal_ab.valor
-    return senal_ab.detalle
+    senales_por_incapacidad = await senal_auditoria_previsional_repository.get_by_incapacidades(
+        db, incapacidad_ids
+    )
+    indice: dict[UUID, str | None] = {}
+    for incapacidad_id, senales in senales_por_incapacidad.items():
+        senal_ab = next((s for s in senales if s.codigo == _CODIGO_SENAL_AB), None)
+        indice[incapacidad_id] = (
+            senal_ab.valor if senal_ab is not None and isinstance(senal_ab.valor, str) else None
+        )
+    return indice
 
 
 async def generar_respuesta(db: AsyncSession, lote_id: UUID) -> bytes:
@@ -182,6 +209,14 @@ async def generar_respuesta(db: AsyncSession, lote_id: UUID) -> bytes:
     )
     indice_por_clave = _construir_indice_por_clave(incapacidades)
 
+    # Batch-load de las señales AB de TODAS las incapacidades avaladas-SI del
+    # lote en UNA query (fix-round: evita el N+1 que había antes, un query
+    # por fila dentro del loop -- ver docstring de `_indice_observaciones_avaladas`).
+    ids_avaladas_si = [
+        inc.id for inc in incapacidades if inc.aval == AvalPrevisional.SI.value
+    ]
+    indice_observaciones = await _indice_observaciones_avaladas(db, ids_avaladas_si)
+
     col_aval = ws.max_column + 1
     col_obs = col_aval + 1
     ws.cell(row=_FILA_ENCABEZADO, column=col_aval, value="AVAL")
@@ -214,7 +249,7 @@ async def generar_respuesta(db: AsyncSession, lote_id: UUID) -> bytes:
 
         if inc.aval == AvalPrevisional.SI.value:
             aval_texto = "SI"
-            observacion_texto = await _observacion_avalada(db, inc.id)
+            observacion_texto = indice_observaciones.get(inc.id)
         elif inc.aval == AvalPrevisional.NO.value:
             aval_texto = "NO"
             observacion_texto = inc.motivo_no_aval

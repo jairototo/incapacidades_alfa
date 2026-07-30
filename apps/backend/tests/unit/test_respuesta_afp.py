@@ -242,6 +242,96 @@ async def test_no_reconstruye_el_libro_todas_las_filas_originales_se_conservan(
 
 
 @pytest.mark.asyncio
+async def test_fila_avalada_si_con_senal_ab_pendiente_no_filtra_texto_interno(
+    db_session, lote_con_respuesta_pendiente
+):
+    """Fix-round Finding 1: si aval="SI" pero la señal AB persistida sigue
+    PENDIENTE (valor=None, dia_181_alfa aún no calculado por el auditor),
+    la OBSERVACION debe quedar en blanco -- NUNCA el texto interno de
+    `detalle` ("Aun no hay dia_181_alfa calculado por el auditor")."""
+    lote = lote_con_respuesta_pendiente["lote"]
+    inc_si = lote_con_respuesta_pendiente["inc_si"]
+
+    # Reemplaza la señal AB "OK" del fixture por una PENDIENTE (valor=None,
+    # detalle=mensaje interno de depuración) -- exactamente lo que produce
+    # `auditoria_rules.regla_ab_observacion` mientras `dia_181_alfa` no ha
+    # sido fijado por el auditor (el estado por defecto de casi toda fila
+    # hoy en el sistema).
+    from sqlalchemy import delete
+
+    await db_session.execute(
+        delete(SenalAuditoriaPrevisional).where(
+            SenalAuditoriaPrevisional.incapacidad_previsional_id == inc_si.id
+        )
+    )
+    senal_pendiente = SenalAuditoriaPrevisional(
+        incapacidad_previsional_id=inc_si.id,
+        codigo="AB",
+        nombre="Dia 181 (auditado)",
+        estado="PENDIENTE",
+        valor=None,
+        detalle="Aun no hay dia_181_alfa calculado por el auditor",
+    )
+    db_session.add(senal_pendiente)
+    await db_session.commit()
+
+    resultado_bytes = await generar_respuesta(db_session, lote.id)
+
+    wb = openpyxl.load_workbook(io.BytesIO(resultado_bytes))
+    ws = wb["FORMALIZACION"]
+    fila = _leer_fila_por_identificacion(ws, "1000000001")
+    assert fila["aval"] == "SI"
+    assert fila["observacion"] is None
+    assert fila["observacion"] != "Aun no hay dia_181_alfa calculado por el auditor"
+
+
+@pytest.mark.asyncio
+async def test_multiples_filas_avaladas_si_reciben_su_propia_observacion_batch(
+    db_session, lote_con_respuesta_pendiente
+):
+    """Fix-round Finding 2: la observación de cada fila avalada-SI se
+    resuelve con un lookup batch (una sola query para todo el lote), no una
+    query por fila. Prueba de comportamiento: 2 incapacidades avaladas-SI en
+    el mismo lote, cada una con su propia señal AB "OK", deben terminar con
+    SU PROPIO texto -- no el de la otra, ni un texto compartido/mezclado."""
+    lote = lote_con_respuesta_pendiente["lote"]
+    inc_no = lote_con_respuesta_pendiente["inc_no"]
+
+    # Convierte la fila "avalada NO" del fixture (identificacion
+    # 1000000002) en una segunda fila avalada-SI, con su propia señal AB
+    # distinta de la de inc_si (identificacion 1000000001, DIA 181
+    # 2026-08-01 según el fixture).
+    inc_no.aval = "SI"
+    inc_no.motivo_no_aval = None
+    db_session.add(inc_no)
+    await db_session.flush()
+
+    senal_ab_segunda = SenalAuditoriaPrevisional(
+        incapacidad_previsional_id=inc_no.id,
+        codigo="AB",
+        nombre="Dia 181 (auditado)",
+        estado="OK",
+        valor="DIA 181 2026-09-15",
+        detalle=None,
+    )
+    db_session.add(senal_ab_segunda)
+    await db_session.commit()
+
+    resultado_bytes = await generar_respuesta(db_session, lote.id)
+
+    wb = openpyxl.load_workbook(io.BytesIO(resultado_bytes))
+    ws = wb["FORMALIZACION"]
+
+    fila_1 = _leer_fila_por_identificacion(ws, "1000000001")
+    fila_2 = _leer_fila_por_identificacion(ws, "1000000002")
+    assert fila_1["aval"] == "SI"
+    assert fila_1["observacion"] == "DIA 181 2026-08-01"
+    assert fila_2["aval"] == "SI"
+    assert fila_2["observacion"] == "DIA 181 2026-09-15"
+    assert fila_1["observacion"] != fila_2["observacion"]
+
+
+@pytest.mark.asyncio
 async def test_lote_inexistente_lanza_not_found(db_session):
     from uuid import uuid4
 
