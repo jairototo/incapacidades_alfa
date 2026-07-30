@@ -140,6 +140,62 @@ async def test_construir_contexto_sin_referencia_para_identificacion_ausente(
 
 
 @pytest.mark.asyncio
+async def test_construir_contexto_solicitud_ambigua_queda_ausente_del_dict(db_session):
+    """
+    Fix (ronda 1): con 2+ `SolicitudPrevisional` distintas para la misma
+    identificación, `_elegir_solicitudes` ya NO elige "la primera" -- la
+    identificación debe quedar ausente de `solicitudes_por_id`, igual que
+    `_seleccionar_siniestro` deja ausente una identificación con 2+
+    siniestros candidatos.
+    """
+    lote = LotePrevisional(nombre_archivo="RADICADOS_SOLICITUD_AMBIGUA.xlsx")
+    db_session.add(lote)
+    await db_session.flush()
+
+    inc = IncapacidadPrevisional(
+        lote_id=lote.id,
+        identificacion="4000000004",
+        fecha_inicial=date(2026, 4, 1),
+        fecha_final=date(2026, 4, 20),
+        tipo_ingreso="INICIAL",
+    )
+    db_session.add(inc)
+    await db_session.flush()
+
+    sol_a = SolicitudPrevisional(
+        identificacion="4000000004",
+        radicado="RAD-A",
+        dia_181=date(2025, 9, 1),
+        fecha_crie=date(2025, 8, 15),
+    )
+    sol_b = SolicitudPrevisional(
+        identificacion="4000000004",
+        radicado="RAD-B",
+        dia_181=date(2025, 10, 1),
+        fecha_crie=date(2025, 9, 15),
+    )
+    db_session.add_all([sol_a, sol_b])
+    await db_session.commit()
+    await db_session.refresh(inc)
+
+    ctx = await auditoria_previsional_service.construir_contexto(db_session, lote.id)
+    assert "4000000004" not in ctx.solicitudes_por_id
+
+    total = await auditoria_previsional_service.auditar_lote(db_session, lote.id)
+    assert total == 1
+
+    senales = await senal_auditoria_previsional_repository.get_by_incapacidad(db_session, inc.id)
+    senal_ae = next(s for s in senales if s.codigo == "AE")
+    senal_ag = next(s for s in senales if s.codigo == "AG")
+    # Ambigüedad genuina (2 solicitudes distintas) -> PENDIENTE, no un OK
+    # con un valor elegido sin base real.
+    assert senal_ae.estado == "PENDIENTE"
+    assert senal_ae.valor is None
+    assert senal_ag.estado == "PENDIENTE"
+    assert senal_ag.valor is None
+
+
+@pytest.mark.asyncio
 async def test_construir_contexto_repetidas_por_clave_se_deriva_del_lote(db_session):
     lote = LotePrevisional(nombre_archivo="RADICADOS_REPETIDAS.xlsx")
     db_session.add(lote)
@@ -331,6 +387,56 @@ async def test_registrar_aval_id_inexistente_lanza_not_found(db_session, test_us
         await auditoria_previsional_service.registrar_aval(
             db_session, uuid.uuid4(), "SI", None, test_usuario.id
         )
+
+
+@pytest.mark.asyncio
+async def test_registrar_aval_estado_liquidado_lanza_bad_request_y_no_regresa_estado(
+    db_session, lote_para_auditar, test_usuario
+):
+    """
+    Fix (ronda 1): si la fila ya avanzó más allá de la etapa de auditoría
+    (aquí, LIQUIDADO), `registrar_aval` debe rechazar la llamada en vez de
+    retroceder `estado` silenciosamente de vuelta a AVALADO/NO_AVALADO.
+    """
+    inc = lote_para_auditar["inc_1"]
+    inc.estado = "LIQUIDADO"
+    db_session.add(inc)
+    await db_session.commit()
+
+    with pytest.raises(BadRequestException):
+        await auditoria_previsional_service.registrar_aval(
+            db_session, inc.id, "SI", None, test_usuario.id
+        )
+
+    result = await db_session.execute(
+        select(IncapacidadPrevisional).where(IncapacidadPrevisional.id == inc.id)
+    )
+    fresca = result.scalar_one()
+    # El estado NO debe haber regresado a AVALADO -- sigue en LIQUIDADO.
+    assert fresca.estado == "LIQUIDADO"
+    assert fresca.aval is None
+    assert fresca.usuario_auditoria_id is None
+
+
+@pytest.mark.asyncio
+async def test_registrar_aval_estado_pagado_lanza_bad_request(
+    db_session, lote_para_auditar, test_usuario
+):
+    inc = lote_para_auditar["inc_2"]
+    inc.estado = "PAGADO"
+    db_session.add(inc)
+    await db_session.commit()
+
+    with pytest.raises(BadRequestException):
+        await auditoria_previsional_service.registrar_aval(
+            db_session, inc.id, "NO", "Motivo cualquiera", test_usuario.id
+        )
+
+    result = await db_session.execute(
+        select(IncapacidadPrevisional).where(IncapacidadPrevisional.id == inc.id)
+    )
+    fresca = result.scalar_one()
+    assert fresca.estado == "PAGADO"
 
 
 # ---------------------------------------------------------------------------

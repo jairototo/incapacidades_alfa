@@ -29,6 +29,14 @@ completo):
   trae 2+ candidatos para una identificación, las reglas ya devuelven
   PENDIENTE con el payload de ambigüedad — este servicio no interviene ahí,
   solo construye el contexto y serializa lo que las reglas devuelven.
+- AE/AG (selección de solicitud): mismo principio que AM-AP, aplicado por
+  este servicio (no por `auditoria_rules.py`) en `_elegir_solicitudes` --
+  si hay 2+ `SolicitudPrevisional` distintas para la misma identificación,
+  NUNCA se elige silenciosamente una (ni "la más reciente"): la
+  identificación queda ausente de `ContextoAuditoria.solicitudes_por_id`,
+  y `regla_ae_dia_181`/`regla_ag_fecha_crie` ya reportan PENDIENTE cuando
+  `.get(identificacion)` devuelve `None`. Ver el docstring de
+  `_elegir_solicitudes` para el detalle y el porqué del fix.
 """
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timezone
@@ -90,6 +98,21 @@ from app.utils.enums import AvalPrevisional, EstadoIncapacidadPrevisional
 #   `lote_service._construir_metadata`) mientras se agrega la marca de
 #   quién duplicó — ver `AuditoriaPrevisionalService.duplicar`.
 # ---------------------------------------------------------------------------
+# Estados de `EstadoIncapacidadPrevisional` que ya avanzaron MÁS ALLÁ de la
+# etapa de auditoría (ver `AuditoriaPrevisionalService.registrar_aval`).
+# Ningún otro código de este repo (Tasks 3.1/3.2) escribe `estado` todavía --
+# `registrar_aval` es el primer y único llamador real -- así que esta guarda
+# es la única barrera contra una regresión silenciosa: si una tarea futura
+# de liquidación/pago ya movió la fila a LIQUIDADO/PAGADO, un `registrar_aval`
+# repetido (p.ej. una segunda llamada por error, o un reintento tardío) NO
+# debe poder retroceder el estado a AVALADO/NO_AVALADO por la puerta trasera.
+_ESTADOS_POSTERIORES_A_AUDITORIA: frozenset[str] = frozenset(
+    {
+        EstadoIncapacidadPrevisional.LIQUIDADO.value,
+        EstadoIncapacidadPrevisional.PAGADO.value,
+    }
+)
+
 _CAMPOS_COPIABLES_EN_DUPLICADO: tuple[str, ...] = (
     "lote_id",
     "tipo_identificacion",
@@ -202,24 +225,44 @@ def _elegir_solicitudes(solicitudes: list) -> dict[str, SolicitudRef]:
     LISTA por diseño (puede haber varias solicitudes históricas por
     afiliado — ver docstring de ese repositorio). `ContextoAuditoria.
     solicitudes_por_id` en cambio es `dict[str, SolicitudRef]` (Task 1.4:
-    un solo valor por afiliado para las reglas AE/AF/AG). Judgment call de
-    esta tarea: se resuelve tomando la PRIMERA de la lista ya ordenada por
-    el repositorio (`fecha_inicial` descendente, `created_at` descendente
-    como desempate) — "la solicitud vigente más probable primero", tal
-    como el propio repositorio documenta. A diferencia de la selección de
-    siniestro (AM, que expone la ambigüedad como PENDIENTE cuando hay 2+
-    candidatos), aquí no hay una `SolicitudRef` con "candidatos" en su
-    forma — el dataclass es demasiado angosto (solo `dia_181`/`fecha_crie`)
-    para cargar una lista de ambigüedad sin tocar `auditoria_rules.py`
-    (Task 1.4, fuera de alcance de esta tarea).
+    un solo valor por afiliado para las reglas AE/AG, y AF por extensión
+    aritmética de AE).
+
+    Fix (ronda 1 de revisión de esta tarea): NUNCA se adivina cuál
+    solicitud es "la vigente" cuando hay 2+ candidatos para la misma
+    identificación. Mismo principio que `_seleccionar_siniestro`
+    (`auditoria_rules.py`, AM-AP) aplica para siniestros: solo se puebla
+    la entrada del dict cuando hay EXACTAMENTE UN candidato. Con 0 o con
+    2+ candidatos, la identificación queda AUSENTE del dict a propósito
+    -- `regla_ae_dia_181`/`regla_ag_fecha_crie` ya tratan
+    `ctx.solicitudes_por_id.get(identificacion) is None` como PENDIENTE
+    (ver esas funciones en `auditoria_rules.py`), así que omitir la clave
+    basta para que la ambigüedad se reporte honestamente como PENDIENTE en
+    vez de un OK con un valor elegido sin base real.
+
+    Versión anterior (ya no vigente): tomaba la primera solicitud de la
+    lista ya ordenada por el repositorio (`fecha_inicial` descendente,
+    `created_at` descendente como desempate) incluso cuando había 2+
+    solicitudes distintas para la misma identificación -- eso alimentaba
+    AE/AG con un valor específico pero arbitrariamente elegido, que esas
+    reglas reportaban como "OK" aunque el dato de origen fuera genuinamente
+    ambiguo. Reintroducía, una capa más arriba, exactamente el patrón que
+    AM (Task 1.4) fue diseñada para eliminar en siniestros.
     """
-    elegidas: dict[str, SolicitudRef] = {}
+    agrupadas: dict[str, list] = {}
     for sol in solicitudes:
-        if sol.identificacion in elegidas:
+        agrupadas.setdefault(sol.identificacion, []).append(sol)
+
+    elegidas: dict[str, SolicitudRef] = {}
+    for identificacion, candidatos in agrupadas.items():
+        if len(candidatos) != 1:
+            # 0 (no debería ocurrir, ya que agrupadas solo tiene claves con
+            # al menos 1) o 2+ candidatos: ambigüedad genuina -- se omite la
+            # clave a propósito, no se elige "el primero" ni "el más
+            # reciente" silenciosamente.
             continue
-        elegidas[sol.identificacion] = SolicitudRef(
-            dia_181=sol.dia_181, fecha_crie=sol.fecha_crie
-        )
+        sol = candidatos[0]
+        elegidas[identificacion] = SolicitudRef(dia_181=sol.dia_181, fecha_crie=sol.fecha_crie)
     return elegidas
 
 
@@ -385,6 +428,20 @@ class AuditoriaPrevisionalService:
         se autocalcula"). Valida ANTES de tocar la BD — ni siquiera un
         `get_by_id` corre si la validación falla, así que `aval='NO'` sin
         `motivo` no dispara ninguna consulta, mucho menos una escritura.
+
+        Fix (ronda 1 de revisión de esta tarea): guarda contra regresión de
+        `estado`. Si la fila ya avanzó más allá de la etapa de auditoría
+        (`LIQUIDADO`/`PAGADO` -- ver `_ESTADOS_POSTERIORES_A_AUDITORIA`),
+        esta llamada lanza `BadRequestException` y NO toca la fila. Antes
+        de este fix, `registrar_aval` sobreescribía `estado` incondicional-
+        mente en cada llamada; una segunda invocación sobre una fila que ya
+        avanzó de etapa (p.ej. por un reintento tardío o un error de
+        cliente) habría retrocedido `estado` silenciosamente de vuelta a
+        AVALADO/NO_AVALADO. Cualquier estado EN O ANTES de la etapa de
+        auditoría (`SIN_SINIESTRO`, `CON_SINIESTRO`, `EN_AUDITORIA`, y
+        también `AVALADO`/`NO_AVALADO` -- el auditor puede cambiar de
+        opinión dentro de la misma etapa) sigue permitiendo la transición
+        normalmente.
         """
         if aval not in (AvalPrevisional.SI, AvalPrevisional.NO):
             raise BadRequestException("aval debe ser 'SI' o 'NO'")
@@ -397,6 +454,13 @@ class AuditoriaPrevisionalService:
         inc = await incapacidad_previsional_repository.get_by_id(db, incapacidad_id)
         if inc is None:
             raise NotFoundException(f"IncapacidadPrevisional {incapacidad_id} no encontrada")
+
+        if inc.estado in _ESTADOS_POSTERIORES_A_AUDITORIA:
+            raise BadRequestException(
+                f"IncapacidadPrevisional {incapacidad_id} ya avanzó más allá de la "
+                f"etapa de auditoría (estado actual: {inc.estado!r}) -- su decisión de "
+                "aval no puede modificarse a través de este método"
+            )
 
         inc.aval = aval
         # Judgment call: si el aval pasa a 'SI', se limpia cualquier
