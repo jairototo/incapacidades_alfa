@@ -88,6 +88,10 @@ function renderPage() {
         <Routes>
           <Route path="/previsionales/lotes/:loteId" element={<RadicacionLotePage />} />
           <Route path="/previsionales/siniestros/nuevo" element={<div>Registrar Siniestro</div>} />
+          <Route
+            path="/previsionales/incapacidades/:incapacidadId/auditoria"
+            element={<div>Auditoría de Incapacidad</div>}
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
@@ -207,5 +211,22 @@ describe('RadicacionLotePage', () => {
     await user.click(screen.getByRole('button', { name: /crear siniestros/i }));
 
     expect(await screen.findByText('Registrar Siniestro')).toBeInTheDocument();
+  });
+
+  it('the "Auditar" link on a row navigates to the audit screen with loteId in the query', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('lote_afp.xlsx');
+
+    const auditarLinks = await screen.findAllByRole('link', { name: /auditar/i });
+    expect(auditarLinks.length).toBe(mockIncapacidades.length);
+    expect(auditarLinks[0]).toHaveAttribute(
+      'href',
+      `/previsionales/incapacidades/${mockIncapacidades[0].id}/auditoria?loteId=${mockIncapacidades[0].lote_id}`
+    );
+
+    await user.click(auditarLinks[0]);
+
+    expect(await screen.findByText('Auditoría de Incapacidad')).toBeInTheDocument();
   });
 });

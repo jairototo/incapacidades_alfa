@@ -38,9 +38,22 @@
  * del texto de error genérico. `previsionalesService` deliberadamente NO
  * envuelve este endpoint (ver su docstring), así que se llama a `api.post`
  * directamente aquí.
+ *
+ * "Auditar" (columna Acciones, agregado en Task 5.5): sin este enlace la
+ * pantalla de auditoría de Task 5.5
+ * (`/previsionales/incapacidades/:incapacidadId/auditoria`) sería
+ * inalcanzable desde la UI real -- esta era la única pantalla de la que un
+ * auditor llega naturalmente a una incapacidad puntual. Navega pasando
+ * `?loteId=` porque esa pantalla depende de él para poder cargar datos (no
+ * existe un GET individual por incapacidad en el backend, ver docstring de
+ * `AuditoriaPrevisionalPage.tsx`). Usa `row.original.lote_id` (ya viene en
+ * `IncapacidadPrevisionalResponse`) en vez de cerrar sobre el `loteId` de
+ * la URL de esta pantalla -- así la columna sigue siendo un `ColumnDef`
+ * estático de nivel de módulo, sin necesitar convertirla en una fábrica
+ * que dependa del componente.
  */
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { FilePlus2, Loader2, RefreshCw } from 'lucide-react';
@@ -197,6 +210,18 @@ const columns: ColumnDef<IncapacidadPrevisional>[] = [
         </div>
       );
     },
+  },
+  {
+    id: 'acciones',
+    header: 'Acciones',
+    cell: ({ row }) => (
+      <Link
+        to={`/previsionales/incapacidades/${row.original.id}/auditoria?loteId=${row.original.lote_id}`}
+        className="text-sm font-medium text-blue-700 hover:underline"
+      >
+        Auditar
+      </Link>
+    ),
   },
 ];
 

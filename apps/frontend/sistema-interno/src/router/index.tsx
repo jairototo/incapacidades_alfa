@@ -22,6 +22,7 @@ import { EmpleadosPage } from '@/pages/admin/EmpleadosPage';
 import { CargaLotePage } from '@/pages/previsionales/CargaLotePage';
 import { RadicacionLotePage } from '@/pages/previsionales/RadicacionLotePage';
 import { SiniestroManualPage } from '@/pages/previsionales/SiniestroManualPage';
+import { AuditoriaPrevisionalPage } from '@/pages/previsionales/AuditoriaPrevisionalPage';
 
 /**
  * Configuración de rutas del sistema
@@ -208,7 +209,7 @@ export const router = createBrowserRouter([
               {
                 // Task 5.5 - Auditoría (señales AB-AT, aval, día 181, duplicar) de una incapacidad.
                 path: 'incapacidades/:incapacidadId/auditoria',
-                element: <div className="p-6">Auditoría de Incapacidad (Placeholder — Task 5.5)</div>,
+                element: <AuditoriaPrevisionalPage />,
               },
               {
                 // Task 5.6 - Liquidación (re-liquidar) de un lote.
