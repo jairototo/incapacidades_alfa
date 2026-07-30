@@ -85,6 +85,59 @@ _FILA_MALFORMADA_FECHA_FINAL = [
     None, None, None, None, None, None, None, None,
 ]
 
+# Fila que parsea perfecto a nivel de campo (ningun parser de excel_common
+# acota longitud de `radicado`) pero revienta a nivel de BD: la columna
+# `IncapacidadPrevisional.radicado` es `String(20)` y este radicado trae 25
+# digitos. Escrito como str python (no int/float) para que `parse_radicado`
+# lo devuelva tal cual, sin normalizar longitud -- ver Finding 1, fix round 1.
+_FILA_RADICADO_DEMASIADO_LARGO = [
+    4, "4000000004", "9" * 25, date(2026, 9, 1), "INICIAL",
+    "1/09/2026", "10/09/2026", 10, 10, "R101",
+    900000, 900000, 10,
+    date(2025, 4, 1), date(2026, 3, 1), 300000,
+    date(2026, 9, 5), "Aseguradora Test", "VIGENTE",
+    None, None, None, None, None, None, None, None,
+]
+
+# Par de filas para el encadenamiento de prorrogas (Finding 2, fix round 1):
+# misma identificacion, la segunda (PRORROGA) empieza justo despues de que
+# termina la primera (INICIAL).
+_FILA_PRORROGA_INICIAL = [
+    5, "5000000005", 111111111111111, date(2026, 1, 1), "INICIAL",
+    "1/01/2026", "15/01/2026", 15, 15, "M545",
+    1000000, 1000000, 15,
+    date(2025, 1, 1), date(2025, 12, 1), 250000,
+    date(2026, 1, 5), "Aseguradora Test", "VIGENTE",
+    None, None, None, None, None, None, None, None,
+]
+_FILA_PRORROGA_SIGUIENTE = [
+    6, "5000000005", 222222222222222, date(2026, 1, 16), "PRORROGA",
+    "16/01/2026", "31/01/2026", 16, 31, "M545",
+    1000000, 1000000, 16,
+    date(2025, 1, 1), date(2025, 12, 1), 270000,
+    date(2026, 1, 20), "Aseguradora Test", "VIGENTE",
+    None, None, None, None, None, None, None, None,
+]
+
+# Par de filas repetidas (Finding 2, fix round 1): misma identificacion Y
+# misma fecha_inicial -- una repetida genuina segun la regla AD de Task 1.4.
+_FILA_REPETIDA_A = [
+    7, "6000000006", 333333333333333, date(2026, 3, 1), "INICIAL",
+    "1/03/2026", "10/03/2026", 10, 10, "M545",
+    1000000, 1000000, 10,
+    date(2025, 1, 1), date(2025, 12, 1), 200000,
+    date(2026, 3, 5), "Aseguradora Test", "VIGENTE",
+    None, None, None, None, None, None, None, None,
+]
+_FILA_REPETIDA_B = [
+    8, "6000000006", 444444444444444, date(2026, 3, 1), "INICIAL",
+    "1/03/2026", "10/03/2026", 10, 10, "M545",
+    1000000, 1000000, 10,
+    date(2025, 1, 1), date(2025, 12, 1), 200000,
+    date(2026, 3, 5), "Aseguradora Test", "VIGENTE",
+    None, None, None, None, None, None, None, None,
+]
+
 
 def _construir_workbook(filas: list[list]) -> bytes:
     wb = Workbook()
@@ -309,3 +362,160 @@ async def test_cargar_lote_encabezado_critico_incorrecto_rechaza_sin_persistir(
 
     lotes = (await db_session.execute(select(LotePrevisional))).scalars().all()
     assert lotes == []
+
+
+# ---------------------------------------------------------------------------
+# Fix round 1 / Finding 1: un error de BD (no de parseo) en una fila no
+# aborta el lote completo -- se persiste en modo degradado y las demas
+# filas del lote siguen intactas.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_cargar_lote_error_de_bd_en_una_fila_no_aborta_el_lote(
+    db_session, test_usuario, smlmv_2026
+):
+    file_bytes = _construir_workbook(
+        [_FILA_VALIDA_1, _FILA_RADICADO_DEMASIADO_LARGO, _FILA_VALIDA_2]
+    )
+
+    # (a) `cargar_lote` no debe propagar el `DataError` de BD.
+    lote = await lote_previsional_service.cargar_lote(
+        db_session,
+        file_bytes=file_bytes,
+        password=None,
+        nombre_archivo="RADICADOS_RADICADO_LARGO.xlsx",
+        usuario_id=test_usuario.id,
+    )
+
+    assert lote.total_filas == 3
+    # La fila con error de BD no cuenta como "creada exitosamente".
+    assert lote.total_incapacidades == 2
+
+    incapacidades = (
+        (
+            await db_session.execute(
+                select(IncapacidadPrevisional).where(IncapacidadPrevisional.lote_id == lote.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    # (b) las 2 filas válidas SÍ se persisten y (c) la fila mala tambien
+    # queda persistida (modo degradado) -- ninguna de las 3 desaparece.
+    assert len(incapacidades) == 3
+
+    por_identificacion = {inc.identificacion: inc for inc in incapacidades}
+
+    inc_bd_error = por_identificacion["4000000004"]
+    assert inc_bd_error.errores_carga is not None
+    assert "persistencia" in inc_bd_error.errores_carga
+    # El radicado de 25 digitos se truncó a la longitud máxima de columna
+    # SOLO en este camino degradado -- nunca en el camino feliz.
+    assert len(inc_bd_error.radicado) <= 20
+    assert len(inc_bd_error.radicado_normalizado) <= 16
+
+    # Los periodos se omiten deliberadamente en el reintento degradado.
+    periodos_fila_mala = (
+        (
+            await db_session.execute(
+                select(PeriodoPrevisional).where(
+                    PeriodoPrevisional.incapacidad_id == inc_bd_error.id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert periodos_fila_mala == []
+
+    # Las filas válidas no se contaminan por el fallo de BD de la otra fila.
+    inc1 = por_identificacion["1000000001"]
+    inc2 = por_identificacion["2000000002"]
+    assert inc1.errores_carga is None
+    assert inc2.errores_carga is None
+    assert inc1.radicado == "123456789012345"
+
+    periodos_inc1 = (
+        (
+            await db_session.execute(
+                select(PeriodoPrevisional).where(PeriodoPrevisional.incapacidad_id == inc1.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(periodos_inc1) == 1
+
+
+# ---------------------------------------------------------------------------
+# Fix round 1 / Finding 2: cableado de `agrupar_repetidas`/`encadenar_prorrogas`
+# hacia `es_duplicado_interno`/`prorroga_de_id` -- sin ejercitar antes.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_cargar_lote_encadena_prorroga_de_id_con_la_incapacidad_anterior(
+    db_session, test_usuario, smlmv_2026
+):
+    file_bytes = _construir_workbook([_FILA_PRORROGA_INICIAL, _FILA_PRORROGA_SIGUIENTE])
+
+    lote = await lote_previsional_service.cargar_lote(
+        db_session,
+        file_bytes=file_bytes,
+        password=None,
+        nombre_archivo="RADICADOS_PRORROGA.xlsx",
+        usuario_id=test_usuario.id,
+    )
+
+    incapacidades = (
+        (
+            await db_session.execute(
+                select(IncapacidadPrevisional).where(IncapacidadPrevisional.lote_id == lote.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(incapacidades) == 2
+
+    por_tipo = {inc.tipo_ingreso: inc for inc in incapacidades}
+    inicial = por_tipo["INICIAL"]
+    prorroga = por_tipo["PRORROGA"]
+
+    assert inicial.prorroga_de_id is None
+    assert prorroga.prorroga_de_id == inicial.id
+
+
+@pytest.mark.asyncio
+async def test_cargar_lote_marca_es_duplicado_interno_en_filas_repetidas(
+    db_session, test_usuario, smlmv_2026
+):
+    file_bytes = _construir_workbook([_FILA_REPETIDA_A, _FILA_REPETIDA_B])
+
+    lote = await lote_previsional_service.cargar_lote(
+        db_session,
+        file_bytes=file_bytes,
+        password=None,
+        nombre_archivo="RADICADOS_REPETIDAS.xlsx",
+        usuario_id=test_usuario.id,
+    )
+
+    incapacidades = (
+        (
+            await db_session.execute(
+                select(IncapacidadPrevisional).where(IncapacidadPrevisional.lote_id == lote.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(incapacidades) == 2
+
+    # Misma identificacion + misma fecha_inicial -> repetida genuina (regla
+    # AD): AMBAS filas quedan marcadas, simetricamente, sin elegir una
+    # "original" (ver comentario junto al cableado en lote_service.py).
+    assert all(inc.es_duplicado_interno for inc in incapacidades)
+    # `incapacidad_origen_id` deliberadamente no se pobla por esta carga
+    # (no hay campo "esta es la copia de aquella" que el diseño llene aqui).
+    assert all(inc.incapacidad_origen_id is None for inc in incapacidades)

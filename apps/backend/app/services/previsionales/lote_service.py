@@ -79,6 +79,9 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
 
+from loguru import logger
+from sqlalchemy import String
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.storage_core import storage_backend
@@ -265,7 +268,16 @@ def _parsear_fila(row_values: tuple) -> tuple[dict, dict]:
 
 
 def _construir_metadata(datos: dict) -> dict | None:
-    """Campos AFP sin columna dedicada en el modelo -- ver decision 3 en el docstring del módulo."""
+    """Campos AFP sin columna dedicada en el modelo -- ver decision 3 en el docstring del módulo.
+
+    Nota (fix round 1 / Finding 3, flagged forward -- sin cambio de codigo):
+    `instancia_judicial`/`observacion_juridica` (columnas Z/AA, tutela/juridico)
+    quedan aqui adentro del JSONB `metadata_` sin columna dedicada ni indice.
+    Es un limite conocido de este esquema, no un descuido de esta tarea: una
+    futura tarea de flujo AUDITOR_JURIDICO probablemente necesitara columnas
+    propias (o un indice sobre este JSONB) si necesita filtrar/buscar por
+    estado de tutela -- hoy esos dos campos son opacos para cualquier query.
+    """
     fecha_rad_aseg = datos.get("fecha_radicacion_aseguradora")
     metadata = {
         "dias_acumulados": datos.get("dias_acumulados"),
@@ -287,8 +299,117 @@ def _extraer_cie10(diagnosticos_raw: str | None) -> str | None:
     return partes[0] if partes else None
 
 
+# ---------------------------------------------------------------------------
+# Fix round 1 / Finding 1: reintento degradado ante fallo de BD por fila.
+#
+# `parse_radicado`/`normalizar_radicado` (excel_common.py, arpis_export.py)
+# no acotan longitud -- un radicado anomalo (p.ej. 25 digitos) pasa el
+# parseo tolerante sin error y solo revienta al hacer flush contra columnas
+# `String(20)`/`String(16)` (`radicado`, `radicado_normalizado`). Este mapa
+# se deriva de las columnas reales del modelo (no hardcodeado) para poder
+# truncar defensivamente SOLO en el camino de reintento degradado, nunca en
+# el camino feliz.
+# ---------------------------------------------------------------------------
+_LONGITUDES_MAXIMAS_STRING: dict[str, int] = {
+    col.name: col.type.length
+    for col in IncapacidadPrevisional.__table__.columns
+    if isinstance(col.type, String) and col.type.length
+}
+
+
+def _truncar_campos_string(campos: dict) -> dict:
+    """Copia `campos` truncando los valores string que excedan la longitud
+    máxima de su columna en `IncapacidadPrevisional`.
+
+    Usado EXCLUSIVAMENTE como reintento degradado tras un fallo de BD en el
+    intento normal (ver `LotePrevisionalService._persistir_fila`) -- nunca
+    se llama en el camino feliz, así que ningún dato se trunca en silencio
+    salvo cuando la alternativa es perder la fila completa.
+    """
+    truncado = dict(campos)
+    for nombre, max_len in _LONGITUDES_MAXIMAS_STRING.items():
+        valor = truncado.get(nombre)
+        if isinstance(valor, str) and len(valor) > max_len:
+            truncado[nombre] = valor[:max_len]
+    return truncado
+
+
 class LotePrevisionalService:
     """Orquesta la carga completa de un lote previsional desde el excel de la AFP."""
+
+    async def _persistir_fila(
+        self,
+        db: AsyncSession,
+        campos_incapacidad: dict,
+        periodos_data: list[dict],
+        errores: dict,
+    ) -> "IncapacidadPrevisional | None":
+        """
+        Persiste una fila (`IncapacidadPrevisional` + sus `PeriodoPrevisional`)
+        dentro de un SAVEPOINT (`db.begin_nested()`), siguiendo el mismo
+        patrón ya establecido en
+        `RadicacionPipelineService._crear_incapacidad`
+        (`app/services/radicacion_pipeline_service.py`) para aislar errores
+        de BD por fila dentro de una carga masiva.
+
+        Por qué SAVEPOINT y no un `try/except` a secas (Finding 1, fix
+        round 1 de Task 3.1): un error de BD en el flush (p.ej. `DataError`
+        por un `radicado`/`radicado_normalizado` que excede su
+        `String(20)`/`String(16)` -- ver `_LONGITUDES_MAXIMAS_STRING` más
+        arriba) dejaría la sesión en un estado inválido para las filas
+        SIGUIENTES si solo se atrapara la excepción sin revertir nada; y un
+        `db.rollback()` completo de la sesión descartaría también las filas
+        ANTERIORES de este mismo lote que ya se habían flusheado con éxito
+        (recordar: `cargar_lote` hace un único `db.commit()` al final,
+        entonces todas las filas viven en la misma transacción externa).
+        Un SAVEPOINT resuelve ambos problemas: al fallar, revierte
+        únicamente lo que esta fila alcanzó a escribir, dejando intacto
+        todo lo anterior y la sesión lista para la fila siguiente.
+
+        Si el intento normal falla con `SQLAlchemyError`, se reintenta UNA
+        vez en modo degradado: trunca defensivamente los campos string a la
+        longitud máxima de columna (`_truncar_campos_string`) y omite los
+        `PeriodoPrevisional` (no hay forma genérica de saber cuál de los
+        valores originales causó el error, así que se prioriza dejar un
+        registro auditable de la incapacidad -- con el error de BD
+        explícito en `errores_carga` -- sobre completar sus periodos). Si
+        incluso ese reintento falla, la fila se descarta (se loguea) y el
+        caller la trata como no persistida.
+        """
+        try:
+            async with db.begin_nested():
+                incapacidad = await incapacidad_previsional_repository.create_flushed(
+                    db, campos_incapacidad
+                )
+                for periodo_data in periodos_data:
+                    await periodo_previsional_repository.create_flushed(
+                        db, {"incapacidad_id": incapacidad.id, **periodo_data}
+                    )
+            return incapacidad
+        except SQLAlchemyError as exc:
+            logger.warning(
+                "Fallo de BD al persistir una fila del lote previsional -- "
+                f"reintentando en modo degradado (valores truncados, sin periodos): {exc}"
+            )
+            errores["persistencia"] = (
+                "Error de base de datos al guardar la fila (persistida en modo "
+                f"degradado: valores truncados a la longitud de columna, sin "
+                f"periodos): {exc}"
+            )
+            campos_degradados = _truncar_campos_string(campos_incapacidad)
+            campos_degradados["errores_carga"] = errores
+            try:
+                async with db.begin_nested():
+                    return await incapacidad_previsional_repository.create_flushed(
+                        db, campos_degradados
+                    )
+            except SQLAlchemyError as exc2:
+                logger.error(
+                    "No se pudo persistir una fila del lote previsional ni "
+                    f"siquiera en modo degradado -- fila descartada, el lote "
+                    f"continúa con las demás: {exc2}"
+                )
+                return None
 
     async def cargar_lote(
         self,
@@ -413,32 +534,42 @@ class LotePrevisionalService:
 
             cie10 = _extraer_cie10(datos.get("diagnosticos"))
 
-            incapacidad = await incapacidad_previsional_repository.create_flushed(
-                db,
-                {
-                    "lote_id": lote.id,
-                    "identificacion": datos.get("identificacion"),
-                    "radicado": datos.get("radicado"),
-                    "radicado_normalizado": radicado_normalizado,
-                    "tipo_ingreso": datos.get("tipo_ingreso"),
-                    "fecha_inicial": fecha_inicial,
-                    "fecha_final": fecha_final,
-                    "fecha_radicacion_afp": datos.get("fecha_radicacion_afp"),
-                    "dia_181_afp": datos.get("dia_181_afp"),
-                    "valor_afp": datos.get("valor_afp"),
-                    "cie10": cie10,
-                    "observacion": datos.get("observacion"),
-                    "valor_auditado": valor_auditado,
-                    "diferencia_valor_afp": diferencia_valor_afp,
-                    "errores_carga": errores or None,
-                    "metadata_": _construir_metadata(datos),
-                },
+            campos_incapacidad = {
+                "lote_id": lote.id,
+                "identificacion": datos.get("identificacion"),
+                "radicado": datos.get("radicado"),
+                "radicado_normalizado": radicado_normalizado,
+                "tipo_ingreso": datos.get("tipo_ingreso"),
+                "fecha_inicial": fecha_inicial,
+                "fecha_final": fecha_final,
+                "fecha_radicacion_afp": datos.get("fecha_radicacion_afp"),
+                "dia_181_afp": datos.get("dia_181_afp"),
+                "valor_afp": datos.get("valor_afp"),
+                "cie10": cie10,
+                "observacion": datos.get("observacion"),
+                "valor_auditado": valor_auditado,
+                "diferencia_valor_afp": diferencia_valor_afp,
+                "errores_carga": errores or None,
+                "metadata_": _construir_metadata(datos),
+            }
+
+            # `errores` se pasa por referencia: si `_persistir_fila` cae al
+            # modo degradado, muta este mismo dict agregando la clave
+            # "persistencia" -- así el `if not errores` de abajo (y
+            # `errores_carga` en el propio registro) reflejan el fallo de BD
+            # aunque la fila hubiera parseado perfecto a nivel de campo.
+            incapacidad = await self._persistir_fila(
+                db, campos_incapacidad, periodos_data, errores
             )
 
-            for periodo_data in periodos_data:
-                await periodo_previsional_repository.create_flushed(
-                    db, {"incapacidad_id": incapacidad.id, **periodo_data}
-                )
+            if incapacidad is None:
+                # Fallo irrecuperable de BD incluso en modo degradado (ver
+                # `_persistir_fila`) -- la fila ya se contó en `total_filas`
+                # (leida del excel) pero no queda ningun registro
+                # persistido para ella; no participa en el cruce de
+                # referencia (repetidas/prorrogas) porque no tiene id. El
+                # lote entero sigue sin abortar (Finding 1, fix round 1).
+                continue
 
             if not errores:
                 total_incapacidades += 1
@@ -464,6 +595,22 @@ class LotePrevisionalService:
             fila["id"]: fila["_obj"] for fila in filas_procesadas
         }
 
+        # Fix round 1 / Finding 2: confirmado y documentado explicitamente
+        # (antes solo implicito en el judgment call #16 del reporte) --
+        # `es_duplicado_interno` es el UNICO campo que esta carga escribe
+        # para marcar una repetida (regla AD). Se marca TRUE simetricamente
+        # en TODAS las filas del grupo, sin elegir una "original": el FK
+        # `incapacidad_origen_id` (que el modelo documenta como "la
+        # incapacidad original de la que esta es duplicado interno")
+        # deliberadamente se deja sin poblar aqui, porque
+        # `auditoria_rules.py` es explicito en que este modulo nunca elige
+        # silenciosamente "la primera" fila como ganadora/original (mismo
+        # principio aplicado en la seleccion de siniestro AM). Si una tarea
+        # futura necesita un puntero real "duplicado de cual", debe ser una
+        # decision explicita de un auditor humano, no algo que esta carga
+        # infiera. Cubierto por
+        # test_cargar_lote_marca_es_duplicado_interno_en_filas_repetidas en
+        # test_lote_service.py.
         repetidas = agrupar_repetidas(filas_para_reglas)
         for _clave, ids in repetidas.items():
             if len(ids) > 1:
