@@ -12,6 +12,7 @@ de carga masiva (Task 3.3, `construir_contexto`) — UNA sola consulta con
 `IN` sobre tuplas `(identificacion, fecha_inicial)` en vez de N consultas.
 """
 from datetime import date
+from typing import Any
 
 from sqlalchemy import exists, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -89,6 +90,37 @@ class IteHistoricoRepository(BaseRepository[IteHistorico]):
         )
         result = await db.execute(query)
         return {(row.identificacion, row.fecha_inicial) for row in result.all()}
+
+    async def bulk_create_flushed(
+        self,
+        db: AsyncSession,
+        registros: list[dict[str, Any]],
+    ) -> list[IteHistorico]:
+        """
+        Crear en lote registros de histórico de ITE (Task 3.2,
+        `referencia_adapter.ExcelReferenciaAdapter.importar_ite_historico`),
+        usando `db.add_all()` + un único `flush()` — no hace `commit()`,
+        mismo patrón que
+        `SenalAuditoriaPrevisionalRepository.bulk_create_flushed`. Evita
+        N+1 en el lado de ESCRITURA al importar el archivo de referencia
+        completo del asegurador (hoja "LISTADO ITE DIA") en vez de un
+        `create()` por fila.
+
+        Args:
+            db: Sesión de base de datos
+            registros: Lista de diccionarios con los datos de cada
+                registro (mismas claves que las columnas del modelo)
+
+        Returns:
+            Lista de IteHistorico creados (con id asignado)
+        """
+        if not registros:
+            return []
+
+        db_objs = [IteHistorico(**r) for r in registros]
+        db.add_all(db_objs)
+        await db.flush()
+        return db_objs
 
 
 # Instancia global del repositorio

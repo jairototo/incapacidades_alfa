@@ -14,6 +14,8 @@ silenciosamente a un solo valor cuando el modelo no lo garantiza),
 desempate; la capa de reglas de negocio (Task 3.x) decide cuál usar para
 `SolicitudRef` si hay más de una.
 """
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,6 +92,36 @@ class SolicitudPrevisionalRepository(BaseRepository[SolicitudPrevisional]):
         )
         result = await db.execute(query)
         return list(result.scalars().all())
+
+    async def bulk_create_flushed(
+        self,
+        db: AsyncSession,
+        solicitudes: list[dict[str, Any]],
+    ) -> list[SolicitudPrevisional]:
+        """
+        Crear en lote solicitudes previsionales (Task 3.2,
+        `referencia_adapter.ExcelReferenciaAdapter.importar_solicitudes`),
+        usando `db.add_all()` + un único `flush()` — no hace `commit()`,
+        mismo patrón que
+        `SenalAuditoriaPrevisionalRepository.bulk_create_flushed`. Evita
+        N+1 en el lado de ESCRITURA al importar el archivo de referencia
+        completo del asegurador en vez de un `create()` por fila.
+
+        Args:
+            db: Sesión de base de datos
+            solicitudes: Lista de diccionarios con los datos de cada
+                solicitud (mismas claves que las columnas del modelo)
+
+        Returns:
+            Lista de SolicitudPrevisional creadas (con id asignado)
+        """
+        if not solicitudes:
+            return []
+
+        db_objs = [SolicitudPrevisional(**s) for s in solicitudes]
+        db.add_all(db_objs)
+        await db.flush()
+        return db_objs
 
 
 # Instancia global del repositorio

@@ -11,6 +11,8 @@ Por eso `get_by_identificacion` SIEMPRE devuelve una lista ordenada —
 jamás `.first()` / `.scalar_one_or_none()` — dejando la decisión de cuál
 usar (o si hay ambigüedad) a la capa de servicio/reglas de negocio.
 """
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -91,6 +93,37 @@ class SiniestroPrevisionalRepository(BaseRepository[SiniestroPrevisional]):
         )
         result = await db.execute(query)
         return list(result.scalars().all())
+
+    async def bulk_create_flushed(
+        self,
+        db: AsyncSession,
+        siniestros: list[dict[str, Any]],
+    ) -> list[SiniestroPrevisional]:
+        """
+        Crear en lote siniestros previsionales (Task 3.2,
+        `referencia_adapter.ExcelReferenciaAdapter.importar_siniestros`),
+        usando `db.add_all()` + un único `flush()` — no hace `commit()`,
+        mismo patrón que
+        `SenalAuditoriaPrevisionalRepository.bulk_create_flushed`. Evita
+        N+1 en el lado de ESCRITURA al importar el archivo de referencia
+        completo del asegurador (miles de filas) en vez de un `create()`
+        por fila.
+
+        Args:
+            db: Sesión de base de datos
+            siniestros: Lista de diccionarios con los datos de cada
+                siniestro (mismas claves que las columnas del modelo)
+
+        Returns:
+            Lista de SiniestroPrevisional creados (con id asignado)
+        """
+        if not siniestros:
+            return []
+
+        db_objs = [SiniestroPrevisional(**s) for s in siniestros]
+        db.add_all(db_objs)
+        await db.flush()
+        return db_objs
 
 
 # Instancia global del repositorio
