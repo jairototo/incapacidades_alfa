@@ -17,8 +17,9 @@ Cubre las consultas no triviales listadas en el brief:
   llamada.
 - `senal_auditoria_previsional_repository.bulk_create_flushed`.
 """
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+from uuid import UUID
 
 import pytest
 import pytest_asyncio
@@ -462,13 +463,41 @@ async def test_bulk_create_flushed_senales(db_session, lote_con_incapacidades):
         },
     ]
 
+    # Espiamos AsyncSession.refresh para probar que bulk_create_flushed no
+    # emite un SELECT por objeto (el bug N+1 original hacía exactamente
+    # esto: un refresh() por señal tras el flush). Si el método vuelve a
+    # agregar ese loop, este spy lo detecta sin necesidad de contar
+    # queries SQL crudas.
+    refresh_calls: list = []
+    refresh_original = db_session.refresh
+
+    async def refresh_spy(instance, *args, **kwargs):
+        refresh_calls.append(instance)
+        return await refresh_original(instance, *args, **kwargs)
+
+    db_session.refresh = refresh_spy
+
     creadas = await senal_auditoria_previsional_repository.bulk_create_flushed(
         db_session, senales
     )
-    await db_session.commit()
+
+    # Estas aserciones corren INMEDIATAMENTE después del flush, antes de
+    # cualquier commit o query posterior — demuestran que los objetos ya
+    # están completamente poblados en memoria sin un round-trip a la BD
+    # (id/created_at/updated_at son defaults del lado de Python en
+    # BaseModel, no server_default).
+    assert refresh_calls == []
 
     assert len(creadas) == 2
-    assert all(s.id is not None for s in creadas)
+    for senal in creadas:
+        assert isinstance(senal.id, UUID)
+        assert isinstance(senal.created_at, datetime)
+        assert isinstance(senal.updated_at, datetime)
+
+    codigos_creadas = {s.codigo for s in creadas}
+    assert codigos_creadas == {"AB", "AT"}
+
+    await db_session.commit()
 
     resultado = await senal_auditoria_previsional_repository.get_by_incapacidad(
         db_session, incapacidad_id

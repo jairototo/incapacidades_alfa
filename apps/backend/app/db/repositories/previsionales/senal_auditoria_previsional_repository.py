@@ -71,6 +71,15 @@ class SenalAuditoriaPrevisionalRepository(BaseRepository[SenalAuditoriaPrevision
 
         Returns:
             Lista de SenalAuditoriaPrevisional creadas (con id asignado)
+
+        Nota: no se llama a `db.refresh()` por objeto tras el `flush()`.
+        `id` (`default=uuid4`), `created_at` y `updated_at`
+        (`default=datetime.utcnow`) son defaults del lado de Python en
+        `BaseModel` (`app/models/base.py`), no `server_default` — ya están
+        completamente poblados en memoria justo después del `flush()`. Un
+        `refresh()` por objeto aquí solo agregaría un SELECT extra por
+        señal (N+1) sin sincronizar nada que la base de datos genere del
+        lado del servidor.
         """
         if not senales:
             return []
@@ -78,8 +87,6 @@ class SenalAuditoriaPrevisionalRepository(BaseRepository[SenalAuditoriaPrevision
         db_objs = [SenalAuditoriaPrevisional(**s) for s in senales]
         db.add_all(db_objs)
         await db.flush()
-        for db_obj in db_objs:
-            await db.refresh(db_obj)
         return db_objs
 
 
