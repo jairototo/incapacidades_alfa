@@ -21,6 +21,7 @@ import { EmpresasPage } from '@/pages/admin/EmpresasPage';
 import { EmpleadosPage } from '@/pages/admin/EmpleadosPage';
 import { CargaLotePage } from '@/pages/previsionales/CargaLotePage';
 import { RadicacionLotePage } from '@/pages/previsionales/RadicacionLotePage';
+import { SiniestroManualPage } from '@/pages/previsionales/SiniestroManualPage';
 
 /**
  * Configuración de rutas del sistema
@@ -202,7 +203,7 @@ export const router = createBrowserRouter([
               {
                 // Task 5.4 - Registro manual de un siniestro previsional.
                 path: 'siniestros/nuevo',
-                element: <div className="p-6">Registrar Siniestro (Placeholder — Task 5.4)</div>,
+                element: <SiniestroManualPage />,
               },
               {
                 // Task 5.5 - Auditoría (señales AB-AT, aval, día 181, duplicar) de una incapacidad.
