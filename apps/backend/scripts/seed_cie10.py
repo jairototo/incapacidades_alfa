@@ -145,8 +145,8 @@ async def main():
     parser.add_argument(
         '--file',
         type=str,
-        default='backend/data/cie10.csv',
-        help='Ruta al archivo CSV con códigos CIE-10 (default: backend/data/cie10.csv)'
+        default='data/TablaReferencia_CIE10__1 - Table.csv',
+        help='Ruta al archivo CSV con códigos CIE-10 (default: data/TablaReferencia_CIE10__1 - Table.csv)'
     )
     parser.add_argument(
         '--limpiar',

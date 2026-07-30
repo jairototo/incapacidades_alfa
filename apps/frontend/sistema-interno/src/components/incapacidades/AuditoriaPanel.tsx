@@ -26,12 +26,8 @@ import { cn } from '@/lib/utils';
 const today = new Date().toISOString().split('T')[0];
 
 const approvalSchema = z.object({
-  fecha_inicio_aprobada: z.string().min(1, 'Requerido').refine(v => v <= today, {
-    message: 'No puede ser posterior a hoy',
-  }),
-  fecha_fin_aprobada: z.string().min(1, 'Requerido').refine(v => v <= today, {
-    message: 'No puede ser posterior a hoy',
-  }),
+  fecha_inicio_aprobada: z.string().min(1, 'Requerido'),
+  fecha_fin_aprobada: z.string().min(1, 'Requerido'),
   cie10_aprobado: z.string().regex(/^[A-Z]\d{2}[0-9X]$/, 'Formato inválido (ej: M545, A09X)').optional().or(z.literal('')),
   descripcion_cie10: z.string().optional(),
   canal_recepcion: z.string().min(1, 'Requerido'),
@@ -39,7 +35,7 @@ const approvalSchema = z.object({
   nombre_medico: z.string().optional(),
   especialidad_medico: z.string().optional(),
   observacion: z.string().min(10, 'Mínimo 10 caracteres'),
-}).refine(d => !d.fecha_inicio_aprobada || !d.fecha_fin_aprobada || d.fecha_fin_aprobada >= d.fecha_inicio_aprobada, {
+}).refine(d => !(!d.fecha_inicio_aprobada || !d.fecha_fin_aprobada || d.fecha_fin_aprobada <= d.fecha_inicio_aprobada), {
   message: 'La fecha fin no puede ser anterior a la fecha inicio',
   path: ['fecha_fin_aprobada'],
 });
@@ -223,12 +219,12 @@ function ApprovalForm({ incapacidad, onSubmit, onCancel, isLoading, backendError
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label htmlFor="fecha_inicio_aprobada">Fecha inicio aprobada <span className="text-red-500">*</span></Label>
-          <Input id="fecha_inicio_aprobada" type="date" max={today} {...register('fecha_inicio_aprobada')} />
+          <Input id="fecha_inicio_aprobada" type="date" {...register('fecha_inicio_aprobada')} />
           {errors.fecha_inicio_aprobada && <p className="text-xs text-red-500">{errors.fecha_inicio_aprobada.message}</p>}
         </div>
         <div className="space-y-1">
           <Label htmlFor="fecha_fin_aprobada">Fecha fin aprobada <span className="text-red-500">*</span></Label>
-          <Input id="fecha_fin_aprobada" type="date" max={today} {...register('fecha_fin_aprobada')} />
+          <Input id="fecha_fin_aprobada" type="date" min={fechaInicio} {...register('fecha_fin_aprobada')} />
           {errors.fecha_fin_aprobada && <p className="text-xs text-red-500">{errors.fecha_fin_aprobada.message}</p>}
         </div>
       </div>
