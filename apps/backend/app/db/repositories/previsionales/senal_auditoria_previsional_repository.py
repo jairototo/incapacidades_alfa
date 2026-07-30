@@ -14,7 +14,7 @@ lote en una sola transacción).
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.base_repository import BaseRepository
@@ -50,6 +50,39 @@ class SenalAuditoriaPrevisionalRepository(BaseRepository[SenalAuditoriaPrevision
         )
         result = await db.execute(query)
         return list(result.scalars().all())
+
+    async def delete_by_incapacidad(
+        self,
+        db: AsyncSession,
+        incapacidad_id: UUID,
+    ) -> int:
+        """
+        Borrar todas las señales previas de una incapacidad (Task 3.3,
+        `AuditoriaPrevisionalService.auditar_lote`/`auditar_incapacidad`).
+
+        Añadido en Task 3.3 para respaldar la estrategia de re-auditoría
+        borra-e-inserta: `evaluar_todas()` siempre corre las 19 reglas
+        completas (nunca un subconjunto), así que no hay "señales
+        parciales" que preservar entre corridas de auditoría — borrar todo
+        lo previo de esa incapacidad y volver a insertar es más simple que
+        un upsert campo por campo, y evita arrastrar señales obsoletas de
+        una regla que Task 1.4 haya podido cambiar. No hace `commit()`,
+        mismo patrón "caller-managed transaction" que el resto del
+        repositorio.
+
+        Args:
+            db: Sesión de base de datos
+            incapacidad_id: UUID de la IncapacidadPrevisional
+
+        Returns:
+            Número de señales borradas (0 si no había ninguna, p.ej. la
+            primera vez que se audita esa incapacidad)
+        """
+        stmt = delete(SenalAuditoriaPrevisional).where(
+            SenalAuditoriaPrevisional.incapacidad_previsional_id == incapacidad_id
+        )
+        result = await db.execute(stmt)
+        return result.rowcount or 0
 
     async def bulk_create_flushed(
         self,
