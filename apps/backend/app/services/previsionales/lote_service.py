@@ -307,27 +307,71 @@ def _extraer_cie10(diagnosticos_raw: str | None) -> str | None:
 # parseo tolerante sin error y solo revienta al hacer flush contra columnas
 # `String(20)`/`String(16)` (`radicado`, `radicado_normalizado`). Este mapa
 # se deriva de las columnas reales del modelo (no hardcodeado) para poder
-# truncar defensivamente SOLO en el camino de reintento degradado, nunca en
-# el camino feliz.
+# truncar defensivamente en el camino de reintento degradado -- pero NUNCA
+# para los campos de identidad (ver Fix round 2 / Finding abajo).
+#
+# Fix round 2: `identificacion`, `radicado` y `radicado_normalizado` quedan
+# EXCLUIDOS de todo truncamiento. Un `radicado` o una `identificacion`
+# truncados no son "un best-effort aceptable" -- son un valor DISTINTO Y
+# FALSO que puede referirse a una persona/reclamo equivocado para cualquier
+# codigo downstream que no inspeccione `errores_carga` primero (el mismo
+# principio que `arpis_export.py` ya aplica de forma explicita: nunca
+# adivinar un radicado, fallar ruidosamente en su lugar). Si el flush falla
+# porque alguno de estos tres campos excede su longitud de columna, la fila
+# se trata como un fallo de nivel-parseo: se registra el error y NO se
+# persiste ningun registro para ella (ver `_campo_identidad_excede_longitud`
+# y `LotePrevisionalService._persistir_fila`).
 # ---------------------------------------------------------------------------
+_CAMPOS_IDENTIDAD_CRITICOS: frozenset[str] = frozenset(
+    {"identificacion", "radicado", "radicado_normalizado"}
+)
+
 _LONGITUDES_MAXIMAS_STRING: dict[str, int] = {
     col.name: col.type.length
     for col in IncapacidadPrevisional.__table__.columns
     if isinstance(col.type, String) and col.type.length
 }
 
+# Subconjunto de `_LONGITUDES_MAXIMAS_STRING` que SI se puede truncar en el
+# reintento degradado -- todo excepto los campos de identidad. En la
+# practica hoy son columnas como `tipo_ingreso`/`cie10` (campos de bajo
+# riesgo o de mapeo/clasificacion, no identificadores de persona/reclamo).
+_LONGITUDES_MAXIMAS_TRUNCABLES: dict[str, int] = {
+    nombre: longitud
+    for nombre, longitud in _LONGITUDES_MAXIMAS_STRING.items()
+    if nombre not in _CAMPOS_IDENTIDAD_CRITICOS
+}
+
+
+def _campo_identidad_excede_longitud(campos: dict) -> str | None:
+    """Devuelve el nombre del primer campo de identidad
+    (`_CAMPOS_IDENTIDAD_CRITICOS`) cuyo valor excede la longitud máxima de
+    su columna, o `None` si ninguno la excede. Estos campos nunca se
+    truncan -- ver nota arriba de `_LONGITUDES_MAXIMAS_STRING`."""
+    for nombre in _CAMPOS_IDENTIDAD_CRITICOS:
+        valor = campos.get(nombre)
+        max_len = _LONGITUDES_MAXIMAS_STRING.get(nombre)
+        if isinstance(valor, str) and max_len is not None and len(valor) > max_len:
+            return nombre
+    return None
+
 
 def _truncar_campos_string(campos: dict) -> dict:
-    """Copia `campos` truncando los valores string que excedan la longitud
-    máxima de su columna en `IncapacidadPrevisional`.
+    """Copia `campos` truncando los valores string NO-IDENTITARIOS que
+    excedan la longitud máxima de su columna en `IncapacidadPrevisional`
+    (`_LONGITUDES_MAXIMAS_TRUNCABLES`) -- `identificacion`/`radicado`/
+    `radicado_normalizado` quedan explícitamente fuera de este mapa y por lo
+    tanto nunca se tocan aquí.
 
     Usado EXCLUSIVAMENTE como reintento degradado tras un fallo de BD en el
-    intento normal (ver `LotePrevisionalService._persistir_fila`) -- nunca
-    se llama en el camino feliz, así que ningún dato se trunca en silencio
-    salvo cuando la alternativa es perder la fila completa.
+    intento normal (ver `LotePrevisionalService._persistir_fila`), y solo
+    cuando ese fallo NO involucra un campo de identidad -- nunca se llama en
+    el camino feliz, así que ningún dato se trunca en silencio salvo cuando
+    la alternativa es perder la fila completa y el campo en cuestión no es
+    un identificador.
     """
     truncado = dict(campos)
-    for nombre, max_len in _LONGITUDES_MAXIMAS_STRING.items():
+    for nombre, max_len in _LONGITUDES_MAXIMAS_TRUNCABLES.items():
         valor = truncado.get(nombre)
         if isinstance(valor, str) and len(valor) > max_len:
             truncado[nombre] = valor[:max_len]
@@ -354,27 +398,41 @@ class LotePrevisionalService:
 
         Por qué SAVEPOINT y no un `try/except` a secas (Finding 1, fix
         round 1 de Task 3.1): un error de BD en el flush (p.ej. `DataError`
-        por un `radicado`/`radicado_normalizado` que excede su
-        `String(20)`/`String(16)` -- ver `_LONGITUDES_MAXIMAS_STRING` más
-        arriba) dejaría la sesión en un estado inválido para las filas
-        SIGUIENTES si solo se atrapara la excepción sin revertir nada; y un
-        `db.rollback()` completo de la sesión descartaría también las filas
-        ANTERIORES de este mismo lote que ya se habían flusheado con éxito
-        (recordar: `cargar_lote` hace un único `db.commit()` al final,
-        entonces todas las filas viven en la misma transacción externa).
-        Un SAVEPOINT resuelve ambos problemas: al fallar, revierte
-        únicamente lo que esta fila alcanzó a escribir, dejando intacto
-        todo lo anterior y la sesión lista para la fila siguiente.
+        por un campo `String(N)` que excede su longitud -- ver
+        `_LONGITUDES_MAXIMAS_STRING` más arriba) dejaría la sesión en un
+        estado inválido para las filas SIGUIENTES si solo se atrapara la
+        excepción sin revertir nada; y un `db.rollback()` completo de la
+        sesión descartaría también las filas ANTERIORES de este mismo lote
+        que ya se habían flusheado con éxito (recordar: `cargar_lote` hace
+        un único `db.commit()` al final, entonces todas las filas viven en
+        la misma transacción externa). Un SAVEPOINT resuelve ambos
+        problemas: al fallar, revierte únicamente lo que esta fila alcanzó
+        a escribir, dejando intacto todo lo anterior y la sesión lista para
+        la fila siguiente.
 
-        Si el intento normal falla con `SQLAlchemyError`, se reintenta UNA
-        vez en modo degradado: trunca defensivamente los campos string a la
-        longitud máxima de columna (`_truncar_campos_string`) y omite los
-        `PeriodoPrevisional` (no hay forma genérica de saber cuál de los
-        valores originales causó el error, así que se prioriza dejar un
-        registro auditable de la incapacidad -- con el error de BD
-        explícito en `errores_carga` -- sobre completar sus periodos). Si
-        incluso ese reintento falla, la fila se descarta (se loguea) y el
-        caller la trata como no persistida.
+        Si el intento normal falla con `SQLAlchemyError`, el manejo se
+        bifurca (Fix round 2 -- ver nota junto a `_LONGITUDES_MAXIMAS_STRING`):
+
+        - Si el fallo involucra un campo de IDENTIDAD (`identificacion`,
+          `radicado`, `radicado_normalizado` -- detectado vía
+          `_campo_identidad_excede_longitud`, NO por inspeccionar el texto
+          de la excepción de BD): NUNCA se reintenta con truncamiento. Un
+          `radicado`/`identificacion` truncado es un valor DISTINTO Y FALSO,
+          no un best-effort aceptable (mismo principio que
+          `arpis_export.py` ya aplica: nunca adivinar/mutilar un radicado,
+          fallar ruidosamente en su lugar). La fila se descarta sin
+          persistir ningún registro -- se comporta como si fuera un error
+          de nivel-parseo, no como una degradación de BD.
+        - En cualquier otro caso (ningún campo de identidad involucrado): se
+          reintenta UNA vez en modo degradado, truncando defensivamente
+          solo los campos string NO-identitarios a su longitud máxima de
+          columna (`_truncar_campos_string`) y omitiendo los
+          `PeriodoPrevisional` (no hay forma genérica de saber cuál de los
+          valores originales causó el error, así que se prioriza dejar un
+          registro auditable de la incapacidad -- con el error de BD
+          explícito en `errores_carga` -- sobre completar sus periodos). Si
+          incluso ese reintento falla, la fila se descarta (se loguea) y el
+          caller la trata como no persistida.
         """
         try:
             async with db.begin_nested():
@@ -387,14 +445,39 @@ class LotePrevisionalService:
                     )
             return incapacidad
         except SQLAlchemyError as exc:
+            campo_identidad = _campo_identidad_excede_longitud(campos_incapacidad)
+            if campo_identidad is not None:
+                # Fix round 2: nunca truncar un campo de identidad -- la
+                # fila se descarta sin persistir nada, tratada como un
+                # fallo de nivel-parseo.
+                logger.warning(
+                    "Fallo de BD al persistir una fila del lote previsional -- "
+                    f"el campo de identidad {campo_identidad!r} excede la "
+                    "longitud máxima de su columna. No se trunca "
+                    "(identificacion/radicado/radicado_normalizado nunca se "
+                    "truncan, porque un valor truncado sería un identificador "
+                    f"DISTINTO Y FALSO) -- la fila se descarta sin persistir "
+                    f"ningún registro: {exc}"
+                )
+                errores["persistencia"] = (
+                    f"No se pudo guardar la fila: el campo de identidad "
+                    f"'{campo_identidad}' excede la longitud máxima permitida "
+                    "de su columna. Este campo nunca se trunca (truncar "
+                    "identificacion/radicado/radicado_normalizado produciría "
+                    "un identificador distinto y falso), por lo que la fila "
+                    f"NO se persiste. Error de BD original: {exc}"
+                )
+                return None
+
             logger.warning(
                 "Fallo de BD al persistir una fila del lote previsional -- "
-                f"reintentando en modo degradado (valores truncados, sin periodos): {exc}"
+                "reintentando en modo degradado (solo campos no-identitarios "
+                f"truncados, sin periodos): {exc}"
             )
             errores["persistencia"] = (
                 "Error de base de datos al guardar la fila (persistida en modo "
-                f"degradado: valores truncados a la longitud de columna, sin "
-                f"periodos): {exc}"
+                "degradado: campos no-identitarios truncados a la longitud de "
+                f"columna, sin periodos): {exc}"
             )
             campos_degradados = _truncar_campos_string(campos_incapacidad)
             campos_degradados["errores_carga"] = errores
@@ -563,12 +646,16 @@ class LotePrevisionalService:
             )
 
             if incapacidad is None:
-                # Fallo irrecuperable de BD incluso en modo degradado (ver
-                # `_persistir_fila`) -- la fila ya se contó en `total_filas`
-                # (leida del excel) pero no queda ningun registro
-                # persistido para ella; no participa en el cruce de
-                # referencia (repetidas/prorrogas) porque no tiene id. El
-                # lote entero sigue sin abortar (Finding 1, fix round 1).
+                # `_persistir_fila` devuelve None por dos motivos (ver su
+                # docstring): (a) un campo de identidad (identificacion/
+                # radicado/radicado_normalizado) excede su longitud de
+                # columna -- nunca se trunca, se descarta directo (Fix
+                # round 2); o (b) fallo irrecuperable de BD incluso en modo
+                # degradado (Finding 1, fix round 1). En ambos casos la
+                # fila ya se contó en `total_filas` (leida del excel) pero
+                # no queda ningun registro persistido para ella; no
+                # participa en el cruce de referencia (repetidas/prorrogas)
+                # porque no tiene id. El lote entero sigue sin abortar.
                 continue
 
             if not errores:

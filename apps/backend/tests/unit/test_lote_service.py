@@ -99,6 +99,23 @@ _FILA_RADICADO_DEMASIADO_LARGO = [
     None, None, None, None, None, None, None, None,
 ]
 
+# Fila que parsea perfecto a nivel de campo pero revienta a nivel de BD por
+# un campo NO-identitario: `IncapacidadPrevisional.cie10` es `String(10)` y
+# `DIAGNOSTICOS` trae un solo codigo (sin "-", asi que `_extraer_cie10` lo
+# toma completo) de 20 caracteres. A diferencia de
+# `_FILA_RADICADO_DEMASIADO_LARGO`, ni `identificacion` ni `radicado` estan
+# involucrados aqui -- usado para probar que el camino de truncamiento
+# degradado SIGUE existiendo para campos que no son de identidad
+# (ver Fix round 2).
+_FILA_CIE10_DEMASIADO_LARGO = [
+    5, "5000000005", 111222333444555, date(2026, 10, 1), "INICIAL",
+    "1/10/2026", "10/10/2026", 10, 10, "ABCDEFGHIJKLMNOPQRST",
+    900000, 900000, 10,
+    date(2025, 5, 1), date(2026, 4, 1), 300000,
+    date(2026, 10, 5), "Aseguradora Test", "VIGENTE",
+    None, None, None, None, None, None, None, None,
+]
+
 # Par de filas para el encadenamiento de prorrogas (Finding 2, fix round 1):
 # misma identificacion, la segunda (PRORROGA) empieza justo despues de que
 # termina la primera (INICIAL).
@@ -372,9 +389,16 @@ async def test_cargar_lote_encabezado_critico_incorrecto_rechaza_sin_persistir(
 
 
 @pytest.mark.asyncio
-async def test_cargar_lote_error_de_bd_en_una_fila_no_aborta_el_lote(
+async def test_cargar_lote_radicado_demasiado_largo_no_se_persiste_ni_se_trunca(
     db_session, test_usuario, smlmv_2026
 ):
+    """Fix round 2: un `radicado` (campo de IDENTIDAD) que excede su
+    columna `String(20)` YA NO se trunca-y-persiste (fix round 1's
+    "degraded mode" behavior). Truncar un radicado produce un valor
+    DISTINTO Y FALSO -- no un best-effort aceptable -- así que la fila se
+    descarta por completo (sin `IncapacidadPrevisional` persistida para
+    ella), exactamente como un error de nivel-parseo. Las demás filas del
+    lote no se ven afectadas."""
     file_bytes = _construir_workbook(
         [_FILA_VALIDA_1, _FILA_RADICADO_DEMASIADO_LARGO, _FILA_VALIDA_2]
     )
@@ -389,7 +413,9 @@ async def test_cargar_lote_error_de_bd_en_una_fila_no_aborta_el_lote(
     )
 
     assert lote.total_filas == 3
-    # La fila con error de BD no cuenta como "creada exitosamente".
+    # La fila con el radicado demasiado largo no se persiste -- no cuenta
+    # como exitosa (ni tampoco como "fallida pero persistida en modo
+    # degradado", ese camino ya no aplica a campos de identidad).
     assert lote.total_incapacidades == 2
 
     incapacidades = (
@@ -401,35 +427,15 @@ async def test_cargar_lote_error_de_bd_en_una_fila_no_aborta_el_lote(
         .scalars()
         .all()
     )
-    # (b) las 2 filas válidas SÍ se persisten y (c) la fila mala tambien
-    # queda persistida (modo degradado) -- ninguna de las 3 desaparece.
-    assert len(incapacidades) == 3
+    # (b) las 2 filas válidas SÍ se persisten; (c) la fila con el radicado
+    # de 25 dígitos NO deja ningún registro en absoluto -- se descarta en
+    # vez de truncarse-y-guardarse.
+    assert len(incapacidades) == 2
 
     por_identificacion = {inc.identificacion: inc for inc in incapacidades}
+    assert "4000000004" not in por_identificacion
 
-    inc_bd_error = por_identificacion["4000000004"]
-    assert inc_bd_error.errores_carga is not None
-    assert "persistencia" in inc_bd_error.errores_carga
-    # El radicado de 25 digitos se truncó a la longitud máxima de columna
-    # SOLO en este camino degradado -- nunca en el camino feliz.
-    assert len(inc_bd_error.radicado) <= 20
-    assert len(inc_bd_error.radicado_normalizado) <= 16
-
-    # Los periodos se omiten deliberadamente en el reintento degradado.
-    periodos_fila_mala = (
-        (
-            await db_session.execute(
-                select(PeriodoPrevisional).where(
-                    PeriodoPrevisional.incapacidad_id == inc_bd_error.id
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    assert periodos_fila_mala == []
-
-    # Las filas válidas no se contaminan por el fallo de BD de la otra fila.
+    # Las filas válidas no se contaminan por el fallo de la otra fila.
     inc1 = por_identificacion["1000000001"]
     inc2 = por_identificacion["2000000002"]
     assert inc1.errores_carga is None
@@ -446,6 +452,73 @@ async def test_cargar_lote_error_de_bd_en_una_fila_no_aborta_el_lote(
         .all()
     )
     assert len(periodos_inc1) == 1
+
+
+@pytest.mark.asyncio
+async def test_cargar_lote_campo_no_identitario_demasiado_largo_se_trunca_y_persiste(
+    db_session, test_usuario, smlmv_2026
+):
+    """Fix round 2: distingue el nuevo camino "descartar sin truncar"
+    (campos de identidad, ver test anterior) del camino de truncamiento
+    degradado que SÍ sigue existiendo para campos NO-identitarios. Aquí
+    `cie10` (`String(10)`) recibe un único código en `DIAGNOSTICOS` (sin
+    "-", así que `_extraer_cie10` lo toma completo) de 20 caracteres --
+    revienta el flush por longitud, pero como `cie10` no es un
+    identificador de persona/reclamo, la fila SÍ se persiste truncada
+    (a diferencia del radicado/identificacion)."""
+    file_bytes = _construir_workbook([_FILA_CIE10_DEMASIADO_LARGO])
+
+    lote = await lote_previsional_service.cargar_lote(
+        db_session,
+        file_bytes=file_bytes,
+        password=None,
+        nombre_archivo="RADICADOS_CIE10_LARGO.xlsx",
+        usuario_id=test_usuario.id,
+    )
+
+    assert lote.total_filas == 1
+    # Se persiste en modo degradado, pero no cuenta como "exitosa" porque
+    # tiene `errores_carga`.
+    assert lote.total_incapacidades == 0
+
+    incapacidades = (
+        (
+            await db_session.execute(
+                select(IncapacidadPrevisional).where(IncapacidadPrevisional.lote_id == lote.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(incapacidades) == 1
+    inc = incapacidades[0]
+
+    assert inc.errores_carga is not None
+    assert "persistencia" in inc.errores_carga
+    # El cie10 se truncó a la longitud máxima de columna (10) -- campo
+    # NO-identitario, este camino sigue permitiendo truncamiento degradado.
+    assert inc.cie10 is not None
+    assert len(inc.cie10) <= 10
+    assert inc.cie10 == "ABCDEFGHIJ"
+
+    # El radicado (campo de identidad) de esta misma fila es corto y válido
+    # -- no se ve afectado por el fallo de `cie10`, prueba de que el
+    # truncamiento degradado nunca toca campos de identidad aunque estén
+    # presentes en la misma fila que sí se degrada.
+    assert inc.radicado == "111222333444555"
+    assert len(inc.radicado) <= 20
+
+    # Los periodos se omiten deliberadamente en el reintento degradado.
+    periodos_fila = (
+        (
+            await db_session.execute(
+                select(PeriodoPrevisional).where(PeriodoPrevisional.incapacidad_id == inc.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert periodos_fila == []
 
 
 # ---------------------------------------------------------------------------
