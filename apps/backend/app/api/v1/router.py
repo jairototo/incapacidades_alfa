@@ -7,6 +7,9 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     usuarios
 )
+from app.api.v1.endpoints.previsionales import lotes as previsionales_lotes
+from app.api.v1.endpoints.previsionales import parametros as previsionales_parametros
+from app.api.v1.endpoints.previsionales import referencia as previsionales_referencia
 
 api_router = APIRouter()
 
@@ -30,3 +33,6 @@ api_router.include_router(documentos.router, prefix="/documentos", tags=["docume
 api_router.include_router(storage.router, prefix="/storage", tags=["storage"])
 api_router.include_router(ordenes_pago.router, prefix="/ordenes-pago", tags=["ordenes-pago"])
 api_router.include_router(pre_incapacidades.router, prefix="/pre-incapacidades", tags=["pre-incapacidades"])
+api_router.include_router(previsionales_lotes.router, prefix="/previsionales/lotes", tags=["previsionales-lotes"])
+api_router.include_router(previsionales_referencia.router, prefix="/previsionales/referencia", tags=["previsionales-referencia"])
+api_router.include_router(previsionales_parametros.router, prefix="/previsionales/parametros", tags=["previsionales-parametros"])
