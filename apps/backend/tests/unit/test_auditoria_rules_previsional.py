@@ -93,6 +93,41 @@ def test_ad_repetidas_independiente_del_orden():
     assert len(grupos[("23333262", date(2026, 7, 11))]) == 3
 
 
+def test_agrupar_repetidas_no_revienta_con_fila_mal_formada():
+    """Una fila sin 'identificacion' no puede aportar a un KeyError -- se excluye."""
+    buena_1 = {"id": "r1", "identificacion": "23333262", "fecha_inicial": date(2026, 7, 11)}
+    buena_2 = {"id": "r2", "identificacion": "23333262", "fecha_inicial": date(2026, 7, 11)}
+    mala_sin_identificacion = {"id": "r3", "fecha_inicial": date(2026, 7, 11)}
+    mala_sin_fecha = {"id": "r4", "identificacion": "23333262"}
+    mala_sin_id = {"identificacion": "23333262", "fecha_inicial": date(2026, 7, 11)}
+    rows = [buena_1, mala_sin_identificacion, buena_2, mala_sin_fecha, mala_sin_id]
+    grupos = agrupar_repetidas(rows)  # no debe lanzar KeyError
+    assert grupos == {("23333262", date(2026, 7, 11)): ["r1", "r2"]}
+
+
+def test_encadenar_prorrogas_no_revienta_con_fila_mal_formada():
+    """Una fila predecesora sin 'identificacion' se ignora como candidata, no revienta el lote."""
+    original = {
+        "id": "orig", "identificacion": "111", "tipo_ingreso": "INICIAL",
+        "fecha_inicial": date(2026, 6, 1), "fecha_final": date(2026, 6, 30),
+    }
+    prorroga = {
+        "id": "prorroga1", "identificacion": "111", "tipo_ingreso": "PRORROGA",
+        "fecha_inicial": date(2026, 7, 1), "fecha_final": date(2026, 7, 31),
+    }
+    mala_sin_identificacion = {"id": "mala1", "tipo_ingreso": "INICIAL", "fecha_final": date(2026, 6, 15)}
+    mala_sin_id = {"identificacion": "111", "tipo_ingreso": "INICIAL", "fecha_final": date(2026, 6, 20)}
+    mala_encadenable_sin_fecha_inicial = {
+        "id": "mala2", "identificacion": "222", "tipo_ingreso": "PRORROGA",
+    }
+    rows = [original, prorroga, mala_sin_identificacion, mala_sin_id, mala_encadenable_sin_fecha_inicial]
+    encadenadas = encadenar_prorrogas(rows)  # no debe lanzar KeyError
+    # La fila bien formada sigue encadenando correctamente pese a las malas.
+    assert encadenadas["prorroga1"] == "orig"
+    # La fila encadenable pero sin fecha_inicial se excluye del resultado.
+    assert "mala2" not in encadenadas
+
+
 # ---------------------------------------------------------------------------
 # Una regla a la vez, AB..AT
 # ---------------------------------------------------------------------------
@@ -204,6 +239,9 @@ def test_an_pendiente_con_varios_siniestros():
     ctx = replace(ctx_vacio, siniestros_por_id={"111": [sin_a, sin_b]})
     s = regla_an_origen({"identificacion": "111"}, ctx)
     assert s.estado == "PENDIENTE"
+    # AN debe exponer el mismo payload de ambiguedad que AM, no solo el
+    # estado -- para que un consumidor de AN no tenga que cruzar con AM.
+    assert s.valor == {"candidatos": [sin_a, sin_b], "seleccionado": None}
 
 
 def test_ao_estado_ok_con_un_solo_siniestro():
@@ -211,6 +249,30 @@ def test_ao_estado_ok_con_un_solo_siniestro():
     ctx = replace(ctx_vacio, siniestros_por_id={"111": [sin_a]})
     s = regla_ao_estado({"identificacion": "111"}, ctx)
     assert s.estado == "OK" and s.valor == "ABIERTO"
+
+
+def test_ao_pendiente_con_varios_siniestros_expone_candidatos():
+    sin_a = SiniestroRef(numero_siniestro="SIN-A", origen="ARL", estado="ABIERTO")
+    sin_b = SiniestroRef(numero_siniestro="SIN-B", origen="ARL", estado="CERRADO")
+    ctx = replace(ctx_vacio, siniestros_por_id={"111": [sin_a, sin_b]})
+    s = regla_ao_estado({"identificacion": "111"}, ctx)
+    assert s.estado == "PENDIENTE"
+    assert s.valor == {"candidatos": [sin_a, sin_b], "seleccionado": None}
+
+
+def test_ap_pendiente_con_varios_siniestros_expone_candidatos():
+    sin_a = SiniestroRef(
+        numero_siniestro="SIN-A", origen="ARL", estado="ABIERTO",
+        fecha_aviso=date(2026, 1, 5), fecha_siniestro=date(2026, 1, 1),
+    )
+    sin_b = SiniestroRef(
+        numero_siniestro="SIN-B", origen="ARL", estado="CERRADO",
+        fecha_aviso=date(2026, 2, 5), fecha_siniestro=date(2026, 2, 1),
+    )
+    ctx = replace(ctx_vacio, siniestros_por_id={"111": [sin_a, sin_b]})
+    s = regla_ap_fecha_siniestro({"identificacion": "111"}, ctx)
+    assert s.estado == "PENDIENTE"
+    assert s.valor == {"candidatos": [sin_a, sin_b], "seleccionado": None}
 
 
 def test_ap_fechas_siniestro_tupla_tipada():

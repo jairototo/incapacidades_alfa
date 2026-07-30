@@ -243,40 +243,64 @@ def regla_am_siniestro(row: dict, ctx: ContextoAuditoria) -> Senal:
 
 
 def regla_an_origen(row: dict, ctx: ContextoAuditoria) -> Senal:
-    """AN: origen del siniestro seleccionado (ver AM para la seleccion)."""
+    """AN: origen del siniestro seleccionado (ver AM para la seleccion).
+
+    Con 2+ candidatos comparte la misma ambiguedad que AM (derivan de la
+    misma seleccion), asi que expone el mismo payload
+    `{"candidatos": [...], "seleccionado": None}` en vez de dejar `valor` en
+    None -- para que un consumidor de la senal AN no tenga que cruzar con AM
+    para ver los candidatos.
+    """
     ident = row.get("identificacion")
     seleccionado, candidatos = _seleccionar_siniestro(ctx, ident)
     if not candidatos:
         return Senal("AN", "Origen del siniestro", "PENDIENTE", None,
                      "El afiliado no tiene siniestro asociado")
     if seleccionado is None:
-        return Senal("AN", "Origen del siniestro", "PENDIENTE", None,
+        return Senal("AN", "Origen del siniestro", "PENDIENTE",
+                     {"candidatos": candidatos, "seleccionado": None},
                      f"{len(candidatos)} siniestros candidatos sin seleccionar; ver AM")
     return Senal("AN", "Origen del siniestro", "OK", seleccionado.origen)
 
 
 def regla_ao_estado(row: dict, ctx: ContextoAuditoria) -> Senal:
-    """AO: estado del siniestro seleccionado (ver AM para la seleccion)."""
+    """AO: estado del siniestro seleccionado (ver AM para la seleccion).
+
+    Con 2+ candidatos comparte la misma ambiguedad que AM (derivan de la
+    misma seleccion), asi que expone el mismo payload
+    `{"candidatos": [...], "seleccionado": None}` en vez de dejar `valor` en
+    None -- para que un consumidor de la senal AO no tenga que cruzar con AM
+    para ver los candidatos.
+    """
     ident = row.get("identificacion")
     seleccionado, candidatos = _seleccionar_siniestro(ctx, ident)
     if not candidatos:
         return Senal("AO", "Estado del siniestro", "PENDIENTE", None,
                      "El afiliado no tiene siniestro asociado")
     if seleccionado is None:
-        return Senal("AO", "Estado del siniestro", "PENDIENTE", None,
+        return Senal("AO", "Estado del siniestro", "PENDIENTE",
+                     {"candidatos": candidatos, "seleccionado": None},
                      f"{len(candidatos)} siniestros candidatos sin seleccionar; ver AM")
     return Senal("AO", "Estado del siniestro", "OK", seleccionado.estado)
 
 
 def regla_ap_fecha_siniestro(row: dict, ctx: ContextoAuditoria) -> Senal:
-    """AP: fechas del siniestro seleccionado, tipadas (aviso y siniestro)."""
+    """AP: fechas del siniestro seleccionado, tipadas (aviso y siniestro).
+
+    Con 2+ candidatos comparte la misma ambiguedad que AM (derivan de la
+    misma seleccion), asi que expone el mismo payload
+    `{"candidatos": [...], "seleccionado": None}` en vez de dejar `valor` en
+    None -- para que un consumidor de la senal AP no tenga que cruzar con AM
+    para ver los candidatos.
+    """
     ident = row.get("identificacion")
     seleccionado, candidatos = _seleccionar_siniestro(ctx, ident)
     if not candidatos:
         return Senal("AP", "Fechas del siniestro", "PENDIENTE", None,
                      "El afiliado no tiene siniestro asociado")
     if seleccionado is None:
-        return Senal("AP", "Fechas del siniestro", "PENDIENTE", None,
+        return Senal("AP", "Fechas del siniestro", "PENDIENTE",
+                     {"candidatos": candidatos, "seleccionado": None},
                      f"{len(candidatos)} siniestros candidatos sin seleccionar; ver AM")
     return Senal("AP", "Fechas del siniestro", "OK",
                  {"fecha_aviso": seleccionado.fecha_aviso,
@@ -360,11 +384,21 @@ def agrupar_repetidas(rows: list[dict]) -> dict[tuple[str, date], list[str]]:
     conjunto de filas, no de en que orden llegaron. Respalda la regla AD.
     Cada fila debe traer "id" (identificador unico de la fila dentro del
     lote), "identificacion" y "fecha_inicial".
+
+    Igual que las 19 `regla_xx_*`, lee con `.get(...)` en vez de indexar
+    directo: una fila mal formada (le falta "id", "identificacion" o
+    "fecha_inicial") no puede agruparse y simplemente se excluye del
+    resultado -- nunca aborta el lote completo con un KeyError.
     """
     grupos: dict[tuple[str, date], list[str]] = {}
     for row in rows:
-        clave = (row["identificacion"], row["fecha_inicial"])
-        grupos.setdefault(clave, []).append(row["id"])
+        row_id = row.get("id")
+        identificacion = row.get("identificacion")
+        fecha_inicial = row.get("fecha_inicial")
+        if row_id is None or identificacion is None or fecha_inicial is None:
+            continue
+        clave = (identificacion, fecha_inicial)
+        grupos.setdefault(clave, []).append(row_id)
     return grupos
 
 
@@ -380,23 +414,34 @@ def encadenar_prorrogas(rows: list[dict]) -> dict[str, str | None]:
 
     Cada fila debe traer "id", "identificacion", "tipo_ingreso",
     "fecha_inicial" y "fecha_final".
+
+    Igual que las 19 `regla_xx_*`, lee con `.get(...)` en vez de indexar
+    directo. Una fila candidata a encadenarse (o una fila candidata a ser
+    predecesora) que le falte "id", "identificacion" o "fecha_inicial"
+    (para la fila actual) simplemente se excluye de la computacion -- nunca
+    aborta el lote completo con un KeyError.
     """
     encadenadas: dict[str, str | None] = {}
     for row in rows:
         if row.get("tipo_ingreso") not in _TIPOS_ENCADENABLES:
             continue
-        ident = row["identificacion"]
-        fecha_inicial = row["fecha_inicial"]
+        row_id = row.get("id")
+        ident = row.get("identificacion")
+        fecha_inicial = row.get("fecha_inicial")
+        if row_id is None or ident is None or fecha_inicial is None:
+            continue
         mejor_id: str | None = None
         mejor_fecha_final: date | None = None
         for otra in rows:
-            if otra["id"] == row["id"] or otra["identificacion"] != ident:
+            otra_id = otra.get("id")
+            otra_ident = otra.get("identificacion")
+            if otra_id is None or otra_id == row_id or otra_ident != ident:
                 continue
             fecha_final_otra = otra.get("fecha_final")
             if fecha_final_otra is None or fecha_final_otra >= fecha_inicial:
                 continue
             if mejor_fecha_final is None or fecha_final_otra > mejor_fecha_final:
                 mejor_fecha_final = fecha_final_otra
-                mejor_id = otra["id"]
-        encadenadas[row["id"]] = mejor_id
+                mejor_id = otra_id
+        encadenadas[row_id] = mejor_id
     return encadenadas
