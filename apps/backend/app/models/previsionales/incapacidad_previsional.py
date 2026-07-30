@@ -109,6 +109,13 @@ class IncapacidadPrevisional(BaseModel):
     fecha_final: Mapped[Optional[date]] = mapped_column(
         Date, nullable=True, comment="Fecha final de la incapacidad"
     )
+    # NOTA para Task 2.2+: `arpis_export.py` línea 275 espera un único `dia_181`
+    # en el dict de fila. Los tres campos de abajo los mapean al export — pero
+    # cuál de estos tres es el que debe poblar `dia_181` en la fila de export no
+    # está documentado aún. El AB (regla_ab_observacion en auditoria_rules.py:129)
+    # usa `dia_181_alfa` ("el auditado, no el de la AFP"), sugiriendo que
+    # `dia_181_alfa` sea el candidato más probable per la regla "usa el día 181
+    # AUDITADO". Esta es una decisión pendiente, no un Made Decision.
     dia_181_alfa: Mapped[Optional[date]] = mapped_column(
         Date, nullable=True, comment="Día 181 auditado (Alfa) — usado por regla AB, distinto del de AFP"
     )
@@ -133,6 +140,14 @@ class IncapacidadPrevisional(BaseModel):
     valor_afp: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(15, 2), nullable=True, comment="Valor reportado por la AFP (regla AR, base de diferencia_valor_afp)"
     )
+    # NOTA para Task 2.2+: este es un scalar String(10), pero `arpis_export.py`
+    # línea 245 documenta que espera `cie10_list: list[str]` y solo usa el
+    # primero (línea 290: `cie10_list[0] if cie10_list else None`). Si la hoja
+    # Excel de origen de la AFP puede llevar más de un código CIE10 por fila,
+    # este campo pierde datos. Antes de cablear el ingestion/export path
+    # (Task 2.2+), confirmar contra la fuente AFP real si hay múltiples CIE10
+    # por registro. Si hay, este column debe convertirse en JSONB list o una
+    # tabla child relacionada.
     cie10: Mapped[Optional[str]] = mapped_column(
         String(10), nullable=True, comment="Primer código CIE10 de la incapacidad"
     )
