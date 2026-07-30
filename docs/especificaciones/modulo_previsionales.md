@@ -40,7 +40,7 @@ Ambos roles están definidos en `app/utils/enums.py` (`RolUsuario`), pasan la co
 
 ### 2.1 La fórmula de liquidación usa IBC, no SALARIO
 
-Una versión anterior del spec asumía que la base de liquidación era la columna SALARIO del archivo de la AFP. Esto es **incorrecto** y quedó corregido esta sesión tras verificación empírica contra el libro real de auditoría de la aseguradora (`RADICADOS_AUDITORIA_20260706.xlsx`, en `docs/recursos_previsionales/`).
+Una versión anterior del spec asumía que la base de liquidación era la columna SALARIO del archivo de la AFP. Esto es **incorrecto** y quedó corregido esta sesión tras verificación empírica contra el libro real de auditoría de la aseguradora (`Copy_RADICADOS_AUDITORIA_20260706.xlsx`, en `docs/recursos_previsionales/`).
 
 **Fórmula correcta:**
 
@@ -177,5 +177,5 @@ Comportamientos del proceso manual (macro de Excel) que este módulo identificó
 - `apps/backend/tests/unit/test_roles_previsionales.py`
 - `apps/backend/tests/unit/test_lote_excel_reader_fixture.py`
 - `apps/backend/alembic/versions/20260729_1929_87e66dac698e_add_smlmv_parametros_table.py`
-- `docs/recursos_previsionales/RADICADOS_AUDITORIA_20260706.xlsx` (libro de auditoría real usado para la verificación 37/37)
+- `docs/recursos_previsionales/Copy_RADICADOS_AUDITORIA_20260706.xlsx` (libro de auditoría real usado para la verificación 37/37)
 - `.superpowers/sdd/fizzy-gathering-adleman/progress.md` (bitácora de las tareas 0.1-1.5 que produjeron este código)
