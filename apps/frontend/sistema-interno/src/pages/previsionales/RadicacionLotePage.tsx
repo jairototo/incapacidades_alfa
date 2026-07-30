@@ -80,8 +80,14 @@ const ESTADO_LABELS: Record<string, string> = {
   PAGADO: 'Pagado',
 };
 
-/** Clases tailwind de fondo de fila por señal, reutilizadas también en la leyenda. */
-const HIGHLIGHT_CLASSES = {
+/**
+ * Clases tailwind de fondo de fila por señal, reutilizadas también en la
+ * leyenda. Se exporta (Task 5.6) para que `LiquidacionPrevisionalPage`
+ * reutilice exactamente el mismo azul de "diferencia de valor" en vez de
+ * duplicar el valor del literal -- misma señal visual, misma fuente de
+ * verdad, en las dos pantallas donde aplica.
+ */
+export const HIGHLIGHT_CLASSES = {
   error: 'bg-red-50',
   repetida: 'bg-purple-50',
   sinSiniestro: 'bg-amber-50',

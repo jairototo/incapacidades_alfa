@@ -23,6 +23,7 @@ import { CargaLotePage } from '@/pages/previsionales/CargaLotePage';
 import { RadicacionLotePage } from '@/pages/previsionales/RadicacionLotePage';
 import { SiniestroManualPage } from '@/pages/previsionales/SiniestroManualPage';
 import { AuditoriaPrevisionalPage } from '@/pages/previsionales/AuditoriaPrevisionalPage';
+import { LiquidacionPrevisionalPage } from '@/pages/previsionales/LiquidacionPrevisionalPage';
 
 /**
  * Configuración de rutas del sistema
@@ -214,7 +215,7 @@ export const router = createBrowserRouter([
               {
                 // Task 5.6 - Liquidación (re-liquidar) de un lote.
                 path: 'lotes/:loteId/liquidacion',
-                element: <div className="p-6">Liquidación de Lote (Placeholder — Task 5.6)</div>,
+                element: <LiquidacionPrevisionalPage />,
               },
               {
                 // Task 5.7 - Exportación de la respuesta AFP de un lote.
