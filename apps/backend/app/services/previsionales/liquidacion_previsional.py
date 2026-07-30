@@ -3,7 +3,7 @@ Pension-disability liquidation formula (base IBC).
 
 CRITICAL CORRECTION TO THE WRITTEN SPEC: the liquidation base is the IBC
 (Ingreso Base de Cotizacion) column, NOT SALARIO as an earlier spec draft
-claimed. This was empirically verified this session against 198 real
+claimed. This was empirically verified this session against 37 parseable
 audited rows of the insurer's own Excel workbook:
 
     Sum(max(IBC_mes * 50%, SMLMV_ano) / 30 * dias_mes)

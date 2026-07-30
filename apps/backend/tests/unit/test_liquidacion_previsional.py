@@ -13,7 +13,7 @@ Cases in test_piso_smlmv_cuando_ibc_bajo through test_dos_pisos_al_cruzar_ano
 are taken verbatim from the approved implementation brief (task 1.2).
 """
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import openpyxl
@@ -23,7 +23,7 @@ from app.services.previsionales.liquidacion_previsional import (
     DetallePeriodo,
     calcular_valor,
 )
-from app.services.previsionales.segmentacion import segmentar
+from app.services.previsionales.segmentacion import segmentar, split_multivalor
 
 SMLMV = {2024: Decimal(1300000), 2025: Decimal(1423500), 2026: Decimal(1750905)}
 
@@ -140,14 +140,6 @@ def _parse_fecha_tolerante(valor) -> date:
     return date(int(ano), int(mes), int(dia))
 
 
-def _split_ibc(valor) -> list[Decimal]:
-    """Split the IBC column: may be 'N - N ' (repeated per segment) or a bare number."""
-    if isinstance(valor, str):
-        partes = [p.strip() for p in valor.split("-") if p.strip()]
-        return [Decimal(p) for p in partes]
-    return [Decimal(str(valor))]
-
-
 @pytest.mark.slow
 def test_regresion_masiva_contra_workbook_auditado():
     fixture_path = _resolve_fixture_path()
@@ -175,7 +167,7 @@ def test_regresion_masiva_contra_workbook_auditado():
         fecha_inicial = _parse_fecha_tolerante(fecha_inicial_raw)
         fecha_final = _parse_fecha_tolerante(fecha_final_raw)
         segmentos = segmentar(fecha_inicial, fecha_final)
-        ibcs = _split_ibc(ibc_raw)
+        ibcs = split_multivalor(ibc_raw)
 
         if len(segmentos) != len(ibcs):
             # Real data has ~3 such rows (expected, not a bug) -- skip for comparison.
@@ -185,18 +177,23 @@ def test_regresion_masiva_contra_workbook_auditado():
         pares = list(zip(segmentos, ibcs))
         total, _ = calcular_valor(pares, SMLMV)
 
-        esperado = Decimal(str(valor_raw)).quantize(Decimal("1"))
+        esperado = Decimal(str(valor_raw)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
         comparadas += 1
         if total == esperado:
             coincidencias += 1
         else:
             fallos.append((idx, total, esperado))
 
-    assert comparadas >= 30, (
-        f"Only {comparadas} comparable rows found (need >= 30). "
-        f"Skipped {saltadas_por_desalineacion} rows for segment/IBC count mismatch. "
-        "A near-zero comparable count usually means the fixture path, sheet "
-        "name, or column layout changed."
+    assert saltadas_por_desalineacion == 3, (
+        f"Expected exactly 3 rows skipped for segment/IBC count mismatch, "
+        f"got {saltadas_por_desalineacion}. A different count usually means the "
+        "fixture, sheet name, or column layout changed."
+    )
+    assert comparadas == 37, (
+        f"Expected exactly 37 comparable rows (fixed, committed fixture), got "
+        f"{comparadas}. Skipped {saltadas_por_desalineacion} rows for "
+        "segment/IBC count mismatch. A different comparable count usually "
+        "means the fixture path, sheet name, or column layout changed."
     )
     assert fallos == [], f"{len(fallos)}/{comparadas} rows mismatched: {fallos}"
     assert coincidencias == comparadas
