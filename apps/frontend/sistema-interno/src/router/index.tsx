@@ -20,6 +20,7 @@ import { AuditoresPage } from '@/pages/admin/AuditoresPage';
 import { EmpresasPage } from '@/pages/admin/EmpresasPage';
 import { EmpleadosPage } from '@/pages/admin/EmpleadosPage';
 import { CargaLotePage } from '@/pages/previsionales/CargaLotePage';
+import { RadicacionLotePage } from '@/pages/previsionales/RadicacionLotePage';
 
 /**
  * Configuración de rutas del sistema
@@ -196,7 +197,7 @@ export const router = createBrowserRouter([
               {
                 // Task 5.3 - Panel de radicación: detalle de un lote + sus incapacidades.
                 path: 'lotes/:loteId',
-                element: <div className="p-6">Detalle de Lote (Placeholder — Task 5.3)</div>,
+                element: <RadicacionLotePage />,
               },
               {
                 // Task 5.4 - Registro manual de un siniestro previsional.
