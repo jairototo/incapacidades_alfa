@@ -107,6 +107,9 @@ class Settings(BaseSettings):
     # Alert thresholds
     PENDIENTE_ALERT_DAYS: int = 8
 
+    # Previsionales - AFP Excel decryption
+    PREVISIONALES_AFP_PASSWORD: Optional[str] = None
+
 
 # Create settings instance
 settings = Settings()
