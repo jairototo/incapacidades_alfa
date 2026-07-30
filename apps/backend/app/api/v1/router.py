@@ -12,6 +12,7 @@ from app.api.v1.endpoints.previsionales import liquidacion as previsionales_liqu
 from app.api.v1.endpoints.previsionales import lotes as previsionales_lotes
 from app.api.v1.endpoints.previsionales import parametros as previsionales_parametros
 from app.api.v1.endpoints.previsionales import referencia as previsionales_referencia
+from app.api.v1.endpoints.previsionales import siniestros as previsionales_siniestros
 
 api_router = APIRouter()
 
@@ -40,3 +41,4 @@ api_router.include_router(previsionales_liquidacion.router, prefix="/previsional
 api_router.include_router(previsionales_referencia.router, prefix="/previsionales/referencia", tags=["previsionales-referencia"])
 api_router.include_router(previsionales_parametros.router, prefix="/previsionales/parametros", tags=["previsionales-parametros"])
 api_router.include_router(previsionales_auditoria.router, prefix="/previsionales/incapacidades", tags=["previsionales-auditoria"])
+api_router.include_router(previsionales_siniestros.router, prefix="/previsionales/siniestros", tags=["previsionales-siniestros"])
