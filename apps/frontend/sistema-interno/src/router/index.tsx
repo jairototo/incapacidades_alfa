@@ -19,6 +19,7 @@ import { BandejaLiquidacionPage } from '@/pages/incapacidades/BandejaLiquidacion
 import { AuditoresPage } from '@/pages/admin/AuditoresPage';
 import { EmpresasPage } from '@/pages/admin/EmpresasPage';
 import { EmpleadosPage } from '@/pages/admin/EmpleadosPage';
+import { CargaLotePage } from '@/pages/previsionales/CargaLotePage';
 
 /**
  * Configuración de rutas del sistema
@@ -188,9 +189,9 @@ export const router = createBrowserRouter([
                 element: <Navigate to="carga" replace />,
               },
               {
-                // Task 5.2 - Carga de lote (excel AFP) + listado de lotes cargados.
+                // Task 5.2 - Carga de lote (excel AFP): entrada del flujo Previsionales.
                 path: 'carga',
-                element: <div className="p-6">Carga de Lote (Placeholder — Task 5.2)</div>,
+                element: <CargaLotePage />,
               },
               {
                 // Task 5.3 - Panel de radicación: detalle de un lote + sus incapacidades.
