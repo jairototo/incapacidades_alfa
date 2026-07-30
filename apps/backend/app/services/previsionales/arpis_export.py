@@ -120,17 +120,26 @@ def _aplicar_padding(valor: str) -> str:
 def normalizar_radicado(radicado: str, observacion: str | None) -> str:
     """Normaliza un numero de radicado ARPIS.
 
-    Si `radicado` son puros digitos, se usa tal cual (salvo padding de
-    15->16 digitos). Si no, se extrae de `observacion` el texto que sigue al
-    literal "Rad No. " hasta el siguiente espacio, y se le aplica la misma
-    regla de padding.
+    Si `radicado` son puros digitos (ignorando espacios en blanco al inicio
+    o al final), se usa tal cual (salvo padding de 15->16 digitos). Si no,
+    se extrae de `observacion` el texto que sigue al literal "Rad No. "
+    hasta el siguiente espacio, y se le aplica la misma regla de padding --
+    pero solo si ese texto extraido tambien es puramente numerico. Este
+    modulo existe para fallar ruidosamente en vez de devolver basura (ver
+    docstring del modulo); un valor no numerico extraido de la observacion
+    (p.ej. "ERROR" en "algo Rad No. ERROR mas texto") NO se retorna
+    silenciosamente -- se levanta ValueError.
 
     Raises:
         ValueError: si `radicado` no es numerico y no se encuentra el patron
-            "Rad No. " en `observacion` (incluyendo `observacion is None`).
+            "Rad No. " en `observacion` (incluyendo `observacion is None`),
+            o si el valor encontrado tras el patron no es puramente
+            numerico.
     """
-    if radicado and radicado.isdigit():
-        return _aplicar_padding(radicado)
+    if radicado:
+        radicado_normalizado = radicado.strip()
+        if radicado_normalizado.isdigit():
+            return _aplicar_padding(radicado_normalizado)
 
     if observacion is not None:
         idx = observacion.find(_MARCADOR_RAD_NO)
@@ -138,6 +147,12 @@ def normalizar_radicado(radicado: str, observacion: str | None) -> str:
             resto = observacion[idx + len(_MARCADOR_RAD_NO):]
             extraido = resto.split(None, 1)[0] if resto.strip() else ""
             if extraido:
+                if not extraido.isdigit():
+                    raise ValueError(
+                        f"Valor extraido de observacion tras el patron "
+                        f"{_MARCADOR_RAD_NO!r} no es numerico: {extraido!r} "
+                        f"(observacion={observacion!r})"
+                    )
                 return _aplicar_padding(extraido)
 
     raise ValueError(

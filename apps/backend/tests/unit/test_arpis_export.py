@@ -54,6 +54,15 @@ def test_grupo_suma_dias_de_todos_sus_segmentos():
     assert g[0].dias == sum(s.dias for s in segs)
 
 
+def test_exactamente_tres_grupos_pasa():
+    # 3 es el limite exacto que ARPIS soporta (columnas K-M / N-P); no debe
+    # levantar DemasiadosGruposError -- solo 4+ lo hace.
+    tres_segmentos = segmentar(date(2026, 1, 1), date(2026, 3, 31))
+    assert len(tres_segmentos) == 3
+    g = agrupar_salarios([(s, Decimal(i * 100)) for i, s in enumerate(tres_segmentos)])
+    assert len(g) == 3
+
+
 # ---------------------------------------------------------------------------
 # normalizar_radicado
 # ---------------------------------------------------------------------------
@@ -79,6 +88,13 @@ def test_radicado_no_numerico_sin_patron_lanza():
 def test_radicado_no_numerico_sin_observacion_lanza():
     with pytest.raises(ValueError):
         normalizar_radicado("N/A", None)
+
+
+def test_radicado_extraido_no_numerico_lanza():
+    # El valor tras "Rad No. " tampoco es numerico -- debe fallar ruidosamente
+    # en vez de devolver "ERROR" como si fuera un radicado valido.
+    with pytest.raises(ValueError):
+        normalizar_radicado("N/A", "algo Rad No. ERROR mas texto")
 
 
 # ---------------------------------------------------------------------------
@@ -152,3 +168,12 @@ def test_libro_multiples_filas_avanzan_correctamente():
     assert ws["B4"].value == "123456789"
     assert ws["B5"].value == "123456789"
     assert ws["B6"].value is None
+
+
+def test_libro_cie10_multiple_usa_solo_el_primero():
+    # ARPIS solo tiene una columna de CIE10 (R); si la incapacidad tiene
+    # varios diagnosticos, solo el primero debe escribirse -- nunca una
+    # concatenacion ni la lista completa.
+    fila_multi_cie10 = dict(fila, cie10_list=["M545", "S720", "T140"])
+    ws = load_workbook(io.BytesIO(construir_libro_arpis([fila_multi_cie10]))).active
+    assert ws["R4"].value == "M545"
