@@ -31,8 +31,6 @@ class Segmento:
 class ConteoSegmentosError(ValueError):
     """Raised when segment counts don't align across data sources."""
 
-    pass
-
 
 def segmentar(fecha_inicial: date, fecha_final: date) -> list[Segmento]:
     """
@@ -119,12 +117,12 @@ def split_multivalor(valor: str | float | int | None) -> list[Decimal]:
         return [Decimal(part) for part in parts]
 
     if isinstance(valor, (int, float)):
-        return [Decimal(valor)]
+        return [Decimal(str(valor))]
 
     return []
 
 
-def parear_segmentos(segs, ibc, salario, dias_cotizados) -> list[tuple]:
+def parear_segmentos(segs, ibc, salario, dias_cotizados) -> list[tuple[Segmento, Decimal, Decimal, int]]:
     """
     Pair monthly segments with corresponding AFP data columns.
 

@@ -59,3 +59,28 @@ def test_conteo_desalineado_lanza():
             salario=[Decimal(0)] * 5,
             dias_cotizados=[30] * 5,
         )
+
+
+def test_split_float_precision_no_binary_contamination():
+    """
+    Regression test: Decimal(str(valor)) must be used, not Decimal(valor).
+
+    When valor is a float like 1234.56, Decimal(float) produces binary
+    representation: Decimal('1234.55999999999994543031789362430572509765625').
+    Using Decimal(str(valor)) ensures we get the intended value.
+
+    This is critical for AFP calculations where decimal places matter.
+    """
+    # Test with a float that has decimal places (would exhibit binary precision issues)
+    result = split_multivalor(1234.56)
+    assert result == [Decimal("1234.56")], (
+        f"Expected [Decimal('1234.56')], got {result}. "
+        "Float-to-Decimal conversion must use str() to avoid binary contamination."
+    )
+
+    # Also test that string input with decimals works
+    result_str = split_multivalor("1234.56")
+    assert result_str == [Decimal("1234.56")]
+
+    # Verify the two paths produce identical results
+    assert split_multivalor(1234.56) == split_multivalor("1234.56")
