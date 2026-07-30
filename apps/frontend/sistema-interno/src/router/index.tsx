@@ -164,6 +164,13 @@ export const router = createBrowserRouter([
           },
 
           // Previsionales - ADMIN, AUDITOR_PREVISIONALES y AUDITOR_JURIDICO
+          //
+          // Esqueleto de rutas de la Fase 5 (Task 5.1). Las 6 pantallas reales
+          // (Tasks 5.2-5.7) todavía no existen -- cada hijo abajo es un
+          // placeholder mínimo que la tarea correspondiente reemplazará por
+          // una página real, uno a la vez. `index` no tiene tarea propia: en
+          // vez de un placeholder huérfano, redirige al punto de entrada
+          // natural del flujo (carga de lote, Task 5.2).
           {
             path: '/previsionales',
             element: (
@@ -178,7 +185,37 @@ export const router = createBrowserRouter([
             children: [
               {
                 index: true,
-                element: <div className="p-6">Módulo Previsionales (Placeholder)</div>,
+                element: <Navigate to="carga" replace />,
+              },
+              {
+                // Task 5.2 - Carga de lote (excel AFP) + listado de lotes cargados.
+                path: 'carga',
+                element: <div className="p-6">Carga de Lote (Placeholder — Task 5.2)</div>,
+              },
+              {
+                // Task 5.3 - Panel de radicación: detalle de un lote + sus incapacidades.
+                path: 'lotes/:loteId',
+                element: <div className="p-6">Detalle de Lote (Placeholder — Task 5.3)</div>,
+              },
+              {
+                // Task 5.4 - Registro manual de un siniestro previsional.
+                path: 'siniestros/nuevo',
+                element: <div className="p-6">Registrar Siniestro (Placeholder — Task 5.4)</div>,
+              },
+              {
+                // Task 5.5 - Auditoría (señales AB-AT, aval, día 181, duplicar) de una incapacidad.
+                path: 'incapacidades/:incapacidadId/auditoria',
+                element: <div className="p-6">Auditoría de Incapacidad (Placeholder — Task 5.5)</div>,
+              },
+              {
+                // Task 5.6 - Liquidación (re-liquidar) de un lote.
+                path: 'lotes/:loteId/liquidacion',
+                element: <div className="p-6">Liquidación de Lote (Placeholder — Task 5.6)</div>,
+              },
+              {
+                // Task 5.7 - Exportación de la respuesta AFP de un lote.
+                path: 'lotes/:loteId/respuesta',
+                element: <div className="p-6">Respuesta AFP (Placeholder — Task 5.7)</div>,
               },
             ],
           },

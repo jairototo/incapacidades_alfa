@@ -21,6 +21,8 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   isLoading?: boolean;
   emptyMessage?: string;
+  /** Clase(s) CSS opcional(es) a aplicar a cada fila, calculada a partir de sus datos. */
+  rowClassName?: (row: TData) => string;
 }
 
 export function DataTable<TData, TValue>({
@@ -28,6 +30,7 @@ export function DataTable<TData, TValue>({
   data,
   isLoading,
   emptyMessage = 'No hay datos para mostrar',
+  rowClassName,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -65,7 +68,7 @@ export function DataTable<TData, TValue>({
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.id} className={rowClassName?.(row.original)}>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

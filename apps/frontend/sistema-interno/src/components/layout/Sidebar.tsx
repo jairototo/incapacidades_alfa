@@ -103,9 +103,15 @@ const menuItems: MenuItem[] = [
     roles: ['ADMIN'],
   },
   {
+    // Enlace único al punto de entrada del flujo (carga de lote), no un
+    // submenú: las demás pantallas del módulo (detalle de lote, auditoría,
+    // liquidación, respuesta) se alcanzan navegando desde ahí (por lote/
+    // incapacidad), no como destinos independientes del sidebar -- mismo
+    // criterio que Incapacidades no expone ':id/gestionar' como entrada de
+    // menú propia.
     label: 'Previsionales',
     icon: Scale,
-    href: '/previsionales',
+    href: '/previsionales/carga',
     roles: ['ADMIN', 'AUDITOR_PREVISIONALES', 'AUDITOR_JURIDICO'],
   },
   {
