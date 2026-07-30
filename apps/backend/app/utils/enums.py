@@ -222,3 +222,43 @@ class MetodoPagoLiquidacion(str, Enum):
 
     CHEQUE = "CHEQUE"
     OXIRRE = "OXIRRE"
+
+
+class TipoIngresoPrevisional(str, Enum):
+    """Tipo de ingreso de una incapacidad previsional.
+
+    Coincide con las claves que consume `mapear_tipo_ingreso()`
+    (app/services/previsionales/arpis_export.py) y con los tipos que
+    participan en el encadenamiento de prórrogas de `auditoria_rules.py`.
+    """
+    INICIAL = "INICIAL"
+    PRORROGA = "PRORROGA"
+    TUTELA_I = "TUTELA_I"
+    TUTELA_P = "TUTELA_P"
+    AJUSTE = "AJUSTE"
+
+
+class EstadoLotePrevisional(str, Enum):
+    """Estado de un lote de carga de incapacidades previsionales."""
+    CARGADO = "CARGADO"
+    EN_AUDITORIA = "EN_AUDITORIA"
+    AUDITADO = "AUDITADO"
+    LIQUIDADO = "LIQUIDADO"
+    RESPONDIDO = "RESPONDIDO"
+
+
+class EstadoIncapacidadPrevisional(str, Enum):
+    """Estado de una incapacidad previsional individual dentro de su lote."""
+    SIN_SINIESTRO = "SIN_SINIESTRO"
+    CON_SINIESTRO = "CON_SINIESTRO"
+    EN_AUDITORIA = "EN_AUDITORIA"
+    AVALADO = "AVALADO"
+    NO_AVALADO = "NO_AVALADO"
+    LIQUIDADO = "LIQUIDADO"
+    PAGADO = "PAGADO"
+
+
+class AvalPrevisional(str, Enum):
+    """Aval de auditoría previsional. Nunca se autocalcula (ver regla AC)."""
+    SI = "SI"
+    NO = "NO"
